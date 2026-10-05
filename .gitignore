@@ -1,0 +1,27 @@
+node_modules
+dist
+.env
+.env.*
+!.env.example
+test-results
+playwright-report
+data/
+uploads/
+*.log
+.DS_Store
+
+# Local archives, snapshots and scratch (not source)
+*.zip
+*.tgz
+*.md5
+Claude outputs/
+_to_delete/
+# Local-only configs that hold real keys/IPs (e.g. infra/livekit.local.yaml)
+*.local.yaml
+.claude/settings.local.json
+# Private planning / AI working notes (kept locally, not published)
+CLAUDE.md
+.claude/
+docs/PLAN.md
+docs/DECISIONS.md
+docs/BUILD-KIT.md

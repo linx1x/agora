@@ -1,0 +1,36 @@
+# LiveKit server for Agora (ADR-031) — anything beyond your own machine.
+# Run:  LIVEKIT_KEYS="agora: <secret of 32+ chars>" livekit-server --config infra/livekit.yaml
+#       (Windows PowerShell: $env:LIVEKIT_KEYS="agora: <secret>"; livekit-server.exe --config infra\livekit.yaml)
+# Agora's server then uses LIVEKIT_API_KEY=agora and the same secret.
+# Keys are never written in this file (CLAUDE.md: no secrets in git).
+# Your real node_ip/keys: copy this file to infra/livekit.local.yaml (gitignored) and run with that.
+
+port: 7880 # signalling (WebSocket) + API; put TLS in front of it (wss://) for remote users
+rtc:
+  tcp_port: 7881 # ICE over TCP when UDP is blocked
+  udp_port: 7882
+  node_ip: 203.0.113.10 # replace with your public IP
+  # UDP media range: open/forward it in the firewall or router. ~2 ports per person;
+  # 50 ports are plenty for a pilot of 15 people.
+  port_range_start: 50000
+  port_range_end: 50050
+  # The address browsers are told to send media to. Set it to the public IP of this
+  # machine (or of the router that forwards to it). Leaving discovery on would ask a
+  # public STUN server instead (PRIVACY rule 1), so it is off.
+  use_external_ip: false
+# Embedded TURN relay for strict corporate networks (and it replaces the public STUN
+# servers LiveKit would otherwise hand to browsers). UDP 3478 is enough for most
+# networks; TURN over TLS (5349, or 443 on a second IP) needs a certificate for `domain`.
+turn:
+  enabled: true
+  domain: turn.example.org # a DNS name pointing at this machine
+  udp_port: 3478
+  # relay ports only talk to this same LiveKit, so they need no port forwarding
+  # tls_port: 5349
+  # cert_file: /path/to/fullchain.pem
+  # key_file: /path/to/privkey.pem
+room:
+  empty_timeout: 300 # seconds an empty room is kept
+logging:
+  level: info
+# keys: set LIVEKIT_KEYS in the environment (see the Run line above), never here.

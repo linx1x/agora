@@ -1,0 +1,37 @@
+# Local override (not used by the Marketplace). On a laptop the containers do not
+# share localhost, so point the app at the "db" service and persist Postgres.
+#   docker compose -f docker-compose.yml -f docker-compose.local.yml up --build
+# With LiveKit in Docker too (ADR-031), add `--profile livekit` and set in .env:
+#   LIVEKIT_URL=ws://localhost:7880  LIVEKIT_API_URL=http://livekit:7880
+#   LIVEKIT_API_KEY=devkey  LIVEKIT_API_SECRET=secret
+services:
+  web:
+    environment:
+      DATABASE_URL: postgres://postgres:secret@db:5432/agora
+      COOKIE_SECURE: 'false'
+      SESSION_SECRET: ${SESSION_SECRET:-local-dev-secret-change-me-0123456789abcdef}
+      LIVEKIT_API_URL: ${LIVEKIT_API_URL:-}
+    depends_on:
+      db:
+        condition: service_healthy
+  db:
+    ports:
+      - '5433:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 2s
+      timeout: 3s
+      retries: 20
+  # LiveKit in dev mode (local testing only: it hands out public STUN servers; see infra/livekit.yaml)
+  livekit:
+    profiles: ['livekit']
+    image: livekit/livekit-server:v1.12.0
+    command: --dev --bind 0.0.0.0 --node-ip 127.0.0.1
+    ports:
+      - '7880:7880'
+      - '7881:7881'
+      - '7882:7882/udp'
+volumes:
+  pgdata:

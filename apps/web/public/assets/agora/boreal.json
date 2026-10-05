@@ -1,0 +1,550 @@
+{
+ "sheet": "boreal.png",
+ "cell": 32,
+ "sprites": {
+  "boreal.deskH": {
+   "x": 0,
+   "y": 0,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "boreal.deskMonitor": {
+   "x": 32,
+   "y": 0,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "boreal.deskMonitorBack": {
+   "x": 64,
+   "y": 0,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "boreal.deskCorner": {
+   "x": 96,
+   "y": 0,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "boreal.deskCornerUp": {
+   "x": 128,
+   "y": 0,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "boreal.deskV": {
+   "x": 160,
+   "y": 0,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "boreal.firepit": {
+   "x": 0,
+   "y": 32,
+   "w": 128,
+   "h": 128,
+   "frames": 4,
+   "fps": 6
+  },
+  "boreal.floor": {
+   "x": 0,
+   "y": 160,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "boreal.floorB": {
+   "x": 32,
+   "y": 160,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "boreal.floorC": {
+   "x": 64,
+   "y": 160,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "boreal.dirt": {
+   "x": 96,
+   "y": 160,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "boreal.dirtB": {
+   "x": 128,
+   "y": 160,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "boreal.floorAlt": {
+   "x": 160,
+   "y": 160,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "boreal.rug": {
+   "x": 192,
+   "y": 160,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "boreal.sofa": {
+   "x": 224,
+   "y": 160,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "boreal.sofaL": {
+   "x": 256,
+   "y": 160,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "boreal.sofaM": {
+   "x": 288,
+   "y": 160,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "boreal.sofaR": {
+   "x": 320,
+   "y": 160,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "boreal.table": {
+   "x": 352,
+   "y": 160,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "boreal.decorA": {
+   "x": 384,
+   "y": 160,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "boreal.decorB": {
+   "x": 416,
+   "y": 160,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "boreal.tv": {
+   "x": 448,
+   "y": 160,
+   "w": 64,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "boreal.boardGame": {
+   "x": 0,
+   "y": 192,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "boreal.vr": {
+   "x": 32,
+   "y": 192,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "boreal.border": {
+   "x": 64,
+   "y": 192,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "boreal.borderPlant": {
+   "x": 96,
+   "y": 192,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "boreal.lamp": {
+   "x": 128,
+   "y": 192,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "boreal.path0": {
+   "x": 160,
+   "y": 192,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "boreal.path1": {
+   "x": 192,
+   "y": 192,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "boreal.path2": {
+   "x": 224,
+   "y": 192,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "boreal.path3": {
+   "x": 256,
+   "y": 192,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "boreal.path4": {
+   "x": 288,
+   "y": 192,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "boreal.path5": {
+   "x": 320,
+   "y": 192,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "boreal.path6": {
+   "x": 352,
+   "y": 192,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "boreal.path7": {
+   "x": 384,
+   "y": 192,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "boreal.path8": {
+   "x": 416,
+   "y": 192,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "boreal.path9": {
+   "x": 448,
+   "y": 192,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "boreal.path10": {
+   "x": 480,
+   "y": 192,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "boreal.path11": {
+   "x": 0,
+   "y": 224,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "boreal.path12": {
+   "x": 32,
+   "y": 224,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "boreal.path13": {
+   "x": 64,
+   "y": 224,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "boreal.path14": {
+   "x": 96,
+   "y": 224,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "boreal.path15": {
+   "x": 128,
+   "y": 224,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "boreal.plantA": {
+   "x": 160,
+   "y": 224,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "boreal.plantB": {
+   "x": 192,
+   "y": 224,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "boreal.plantC": {
+   "x": 224,
+   "y": 224,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "boreal.treeTop": {
+   "x": 256,
+   "y": 224,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "boreal.treeBase": {
+   "x": 288,
+   "y": 224,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "boreal.wallFront": {
+   "x": 320,
+   "y": 224,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "boreal.wallTop": {
+   "x": 352,
+   "y": 224,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "boreal.window": {
+   "x": 384,
+   "y": 224,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "boreal.hanging": {
+   "x": 416,
+   "y": 224,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "boreal.pond0": {
+   "x": 0,
+   "y": 256,
+   "w": 32,
+   "h": 32,
+   "frames": 4,
+   "fps": 3
+  },
+  "boreal.pond1": {
+   "x": 128,
+   "y": 256,
+   "w": 32,
+   "h": 32,
+   "frames": 4,
+   "fps": 3
+  },
+  "boreal.pond2": {
+   "x": 256,
+   "y": 256,
+   "w": 32,
+   "h": 32,
+   "frames": 4,
+   "fps": 3
+  },
+  "boreal.pond3": {
+   "x": 384,
+   "y": 256,
+   "w": 32,
+   "h": 32,
+   "frames": 4,
+   "fps": 3
+  },
+  "boreal.pond4": {
+   "x": 0,
+   "y": 288,
+   "w": 32,
+   "h": 32,
+   "frames": 4,
+   "fps": 3
+  },
+  "boreal.pond5": {
+   "x": 128,
+   "y": 288,
+   "w": 32,
+   "h": 32,
+   "frames": 4,
+   "fps": 3
+  },
+  "boreal.pond6": {
+   "x": 256,
+   "y": 288,
+   "w": 32,
+   "h": 32,
+   "frames": 4,
+   "fps": 3
+  },
+  "boreal.pond7": {
+   "x": 384,
+   "y": 288,
+   "w": 32,
+   "h": 32,
+   "frames": 4,
+   "fps": 3
+  },
+  "boreal.pond8": {
+   "x": 0,
+   "y": 320,
+   "w": 32,
+   "h": 32,
+   "frames": 4,
+   "fps": 3
+  },
+  "boreal.pond9": {
+   "x": 128,
+   "y": 320,
+   "w": 32,
+   "h": 32,
+   "frames": 4,
+   "fps": 3
+  },
+  "boreal.pond10": {
+   "x": 256,
+   "y": 320,
+   "w": 32,
+   "h": 32,
+   "frames": 4,
+   "fps": 3
+  },
+  "boreal.pond11": {
+   "x": 384,
+   "y": 320,
+   "w": 32,
+   "h": 32,
+   "frames": 4,
+   "fps": 3
+  },
+  "boreal.pond12": {
+   "x": 0,
+   "y": 352,
+   "w": 32,
+   "h": 32,
+   "frames": 4,
+   "fps": 3
+  },
+  "boreal.pond13": {
+   "x": 128,
+   "y": 352,
+   "w": 32,
+   "h": 32,
+   "frames": 4,
+   "fps": 3
+  },
+  "boreal.pond14": {
+   "x": 256,
+   "y": 352,
+   "w": 32,
+   "h": 32,
+   "frames": 4,
+   "fps": 3
+  },
+  "boreal.pond15": {
+   "x": 384,
+   "y": 352,
+   "w": 32,
+   "h": 32,
+   "frames": 4,
+   "fps": 3
+  }
+ }
+}

@@ -1,0 +1,7 @@
+Agora original pixel art (apps/web/public/assets/agora/*)
+
+Created for the Agora project by Vincent with Claude (pixel-art-gen, code-drawn pixels; sources in art-src/ and scripts/art/).
+Visual direction: Agora concept board (Jungle / Oasis / Boreal Forest / Zen / Main Lobby). No third-party artwork was copied or traced.
+
+To the extent possible under law, the authors dedicate this work to the public domain under CC0 1.0 Universal:
+https://creativecommons.org/publicdomain/zero/1.0/

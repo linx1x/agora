@@ -1,0 +1,566 @@
+{
+ "sheet": "oasis.png",
+ "cell": 32,
+ "sprites": {
+  "oasis.cabana": {
+   "x": 0,
+   "y": 0,
+   "w": 96,
+   "h": 64,
+   "frames": 1,
+   "fps": 0
+  },
+  "oasis.deskH": {
+   "x": 96,
+   "y": 0,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "oasis.deskMonitor": {
+   "x": 128,
+   "y": 0,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "oasis.deskMonitorBack": {
+   "x": 160,
+   "y": 0,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "oasis.deskCorner": {
+   "x": 192,
+   "y": 0,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "oasis.deskCornerUp": {
+   "x": 224,
+   "y": 0,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "oasis.deskV": {
+   "x": 256,
+   "y": 0,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "oasis.floor": {
+   "x": 288,
+   "y": 0,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "oasis.floorB": {
+   "x": 320,
+   "y": 0,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "oasis.floorC": {
+   "x": 352,
+   "y": 0,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "oasis.dirt": {
+   "x": 384,
+   "y": 0,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "oasis.dirtB": {
+   "x": 416,
+   "y": 0,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "oasis.floorAlt": {
+   "x": 448,
+   "y": 0,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "oasis.rug": {
+   "x": 480,
+   "y": 0,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "oasis.sofa": {
+   "x": 0,
+   "y": 64,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "oasis.sofaL": {
+   "x": 32,
+   "y": 64,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "oasis.sofaM": {
+   "x": 64,
+   "y": 64,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "oasis.sofaR": {
+   "x": 96,
+   "y": 64,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "oasis.table": {
+   "x": 128,
+   "y": 64,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "oasis.decorA": {
+   "x": 160,
+   "y": 64,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "oasis.decorB": {
+   "x": 192,
+   "y": 64,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "oasis.poolTable": {
+   "x": 224,
+   "y": 64,
+   "w": 64,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "oasis.pingPong": {
+   "x": 288,
+   "y": 64,
+   "w": 64,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "oasis.boardGame": {
+   "x": 352,
+   "y": 64,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "oasis.vr": {
+   "x": 384,
+   "y": 64,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "oasis.border": {
+   "x": 416,
+   "y": 64,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "oasis.borderPlant": {
+   "x": 448,
+   "y": 64,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "oasis.lamp": {
+   "x": 480,
+   "y": 64,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "oasis.path0": {
+   "x": 0,
+   "y": 96,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "oasis.path1": {
+   "x": 32,
+   "y": 96,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "oasis.path2": {
+   "x": 64,
+   "y": 96,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "oasis.path3": {
+   "x": 96,
+   "y": 96,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "oasis.path4": {
+   "x": 128,
+   "y": 96,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "oasis.path5": {
+   "x": 160,
+   "y": 96,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "oasis.path6": {
+   "x": 192,
+   "y": 96,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "oasis.path7": {
+   "x": 224,
+   "y": 96,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "oasis.path8": {
+   "x": 256,
+   "y": 96,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "oasis.path9": {
+   "x": 288,
+   "y": 96,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "oasis.path10": {
+   "x": 320,
+   "y": 96,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "oasis.path11": {
+   "x": 352,
+   "y": 96,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "oasis.path12": {
+   "x": 384,
+   "y": 96,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "oasis.path13": {
+   "x": 416,
+   "y": 96,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "oasis.path14": {
+   "x": 448,
+   "y": 96,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "oasis.path15": {
+   "x": 480,
+   "y": 96,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "oasis.plantA": {
+   "x": 0,
+   "y": 128,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "oasis.plantB": {
+   "x": 32,
+   "y": 128,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "oasis.plantC": {
+   "x": 64,
+   "y": 128,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "oasis.treeTop": {
+   "x": 96,
+   "y": 128,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "oasis.treeBase": {
+   "x": 128,
+   "y": 128,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "oasis.wallFront": {
+   "x": 160,
+   "y": 128,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "oasis.wallTop": {
+   "x": 192,
+   "y": 128,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "oasis.window": {
+   "x": 224,
+   "y": 128,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "oasis.hanging": {
+   "x": 256,
+   "y": 128,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "oasis.pond0": {
+   "x": 288,
+   "y": 128,
+   "w": 32,
+   "h": 32,
+   "frames": 4,
+   "fps": 4
+  },
+  "oasis.pond1": {
+   "x": 0,
+   "y": 160,
+   "w": 32,
+   "h": 32,
+   "frames": 4,
+   "fps": 4
+  },
+  "oasis.pond2": {
+   "x": 128,
+   "y": 160,
+   "w": 32,
+   "h": 32,
+   "frames": 4,
+   "fps": 4
+  },
+  "oasis.pond3": {
+   "x": 256,
+   "y": 160,
+   "w": 32,
+   "h": 32,
+   "frames": 4,
+   "fps": 4
+  },
+  "oasis.pond4": {
+   "x": 384,
+   "y": 160,
+   "w": 32,
+   "h": 32,
+   "frames": 4,
+   "fps": 4
+  },
+  "oasis.pond5": {
+   "x": 0,
+   "y": 192,
+   "w": 32,
+   "h": 32,
+   "frames": 4,
+   "fps": 4
+  },
+  "oasis.pond6": {
+   "x": 128,
+   "y": 192,
+   "w": 32,
+   "h": 32,
+   "frames": 4,
+   "fps": 4
+  },
+  "oasis.pond7": {
+   "x": 256,
+   "y": 192,
+   "w": 32,
+   "h": 32,
+   "frames": 4,
+   "fps": 4
+  },
+  "oasis.pond8": {
+   "x": 384,
+   "y": 192,
+   "w": 32,
+   "h": 32,
+   "frames": 4,
+   "fps": 4
+  },
+  "oasis.pond9": {
+   "x": 0,
+   "y": 224,
+   "w": 32,
+   "h": 32,
+   "frames": 4,
+   "fps": 4
+  },
+  "oasis.pond10": {
+   "x": 128,
+   "y": 224,
+   "w": 32,
+   "h": 32,
+   "frames": 4,
+   "fps": 4
+  },
+  "oasis.pond11": {
+   "x": 256,
+   "y": 224,
+   "w": 32,
+   "h": 32,
+   "frames": 4,
+   "fps": 4
+  },
+  "oasis.pond12": {
+   "x": 384,
+   "y": 224,
+   "w": 32,
+   "h": 32,
+   "frames": 4,
+   "fps": 4
+  },
+  "oasis.pond13": {
+   "x": 0,
+   "y": 256,
+   "w": 32,
+   "h": 32,
+   "frames": 4,
+   "fps": 4
+  },
+  "oasis.pond14": {
+   "x": 128,
+   "y": 256,
+   "w": 32,
+   "h": 32,
+   "frames": 4,
+   "fps": 4
+  },
+  "oasis.pond15": {
+   "x": 256,
+   "y": 256,
+   "w": 32,
+   "h": 32,
+   "frames": 4,
+   "fps": 4
+  },
+  "oasis.fall": {
+   "x": 0,
+   "y": 288,
+   "w": 96,
+   "h": 96,
+   "frames": 4,
+   "fps": 6
+  }
+ }
+}

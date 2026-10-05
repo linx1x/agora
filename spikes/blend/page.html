@@ -1,0 +1,138 @@
+<title>Agora Blend Spike</title>
+<style>
+  /* Layout: a workbench — tool strip on top, two maps side by side (stacked on phones), findings below. */
+  :root {
+    --bg: #eef1ea;
+    --panel: #f8faf5;
+    --fg: #1b2419;
+    --muted: #586353;
+    --line: #cdd6c7;
+    --accent: #8a531f;
+    --accent-bg: #f4b73f;
+    --ok: #2f7226;
+    --bad: #b3261e;
+    --map: #2a5822;
+    --font-ui: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    --font-data: ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #121812; --panel: #1a221a; --fg: #e4ecdf; --muted: #9caa95; --line: #2f3b2e;
+      --accent: #f4b73f; --accent-bg: #f4b73f; --ok: #77c043; --bad: #ff8a80; --map: #0f2e0e;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #121812; --panel: #1a221a; --fg: #e4ecdf; --muted: #9caa95; --line: #2f3b2e;
+    --accent: #f4b73f; --accent-bg: #f4b73f; --ok: #77c043; --bad: #ff8a80; --map: #0f2e0e;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--fg); font: 15px/1.5 var(--font-ui); margin: 0; }
+  .wrap { max-width: 1240px; margin: 0 auto; padding-inline: 16px; padding-block: 24px 48px; display: grid; gap: 20px; }
+  header { display: grid; gap: 6px; }
+  .eyebrow { font: 600 12px/1 var(--font-data); letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+  h1 { font-size: clamp(24px, 3.2vw, 32px); line-height: 1.15; margin: 0; text-wrap: balance; }
+  header p { margin: 0; color: var(--muted); max-width: 70ch; }
+  .bar { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; padding: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }
+  #palette { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; flex: 1 1 520px; min-width: 0; }
+  .layer { font: 600 11px/1 var(--font-data); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-left: 8px; }
+  .layer:first-child { margin-left: 0; }
+  button { font: inherit; font-size: 14px; color: var(--fg); background: transparent; border: 1px solid var(--line); border-radius: 6px; padding: 5px 10px; cursor: pointer; }
+  button:hover { border-color: var(--muted); }
+  .tool[aria-pressed="true"] { background: var(--accent-bg); border-color: var(--accent-bg); color: #1b1408; font-weight: 600; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .toggles { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+  .toggles label { display: inline-flex; gap: 6px; align-items: center; font-size: 14px; cursor: pointer; }
+  .maps { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 480px), 1fr)); gap: 16px; }
+  figure { margin: 0; display: grid; gap: 8px; min-width: 0; }
+  figcaption { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: baseline; }
+  figcaption b { font-size: 15px; }
+  figcaption span { color: var(--muted); font-size: 13px; }
+  .stage { position: relative; background: var(--map); border-radius: 6px; overflow: hidden; line-height: 0; cursor: crosshair; }
+  .stage canvas { width: 100%; height: auto; image-rendering: pixelated; display: block; }
+  .stage #over { position: absolute; inset: 0; pointer-events: none; }
+  .plain { cursor: default; }
+  #hint { font: 13px/1.4 var(--font-data); color: var(--muted); min-height: 1.4em; }
+  .find { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 16px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+  .card h2 { font-size: 14px; margin: 0; letter-spacing: .02em; }
+  dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; font-size: 14px; }
+  dt { color: var(--muted); }
+  dd { margin: 0; font-family: var(--font-data); font-size: 13px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+  #s-hash[data-ok="true"] { color: var(--ok); }
+  #s-hash[data-ok="false"] { color: var(--bad); }
+  pre { margin: 0; font: 12.5px/1.55 var(--font-data); white-space: pre-wrap; overflow-wrap: anywhere; color: var(--fg); }
+  ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 14px; }
+  #status { color: var(--bad); font-size: 14px; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">Agora · P9.8 spike · ADR-037 proposed</span>
+    <h1>Blended tiles from formulas</h1>
+    <p>The same jungle map drawn two ways. On the right every pixel is computed from the cell's neighbours, so desks merge into counters, ground types fade into each other and props rest on the furniture. Paint on the right map to try the build-mode preview.</p>
+    <p id="status">Loading jungle art…</p>
+  </header>
+
+  <div class="bar">
+    <div id="palette" role="group" aria-label="Palette"></div>
+    <div class="toggles">
+      <label for="snap"><input type="checkbox" id="snap" checked> Snap to jungle palette</label>
+      <label for="gridlines"><input type="checkbox" id="gridlines"> Cell grid</label>
+      <button type="button" id="reset">Reset map</button>
+    </div>
+  </div>
+
+  <div class="maps">
+    <figure>
+      <figcaption><b>Today</b><span>One tile per cell. A prop replaces the desk under it.</span></figcaption>
+      <div class="stage plain"><canvas id="today" aria-label="Map drawn with today's tiles"></canvas></div>
+    </figure>
+    <figure>
+      <figcaption><b>Blended</b><span>Click or press Enter to place. Arrow keys move.</span></figcaption>
+      <div class="stage" id="stage" tabindex="0" role="application" aria-label="Blended map. Arrow keys move the cursor, Enter places the selected item.">
+        <canvas id="blend"></canvas>
+        <canvas id="over"></canvas>
+      </div>
+      <div id="hint" aria-live="polite"></div>
+    </figure>
+  </div>
+
+  <div class="find">
+    <section class="card" aria-labelledby="m-h">
+      <h2 id="m-h">Measured in this browser</h2>
+      <dl>
+        <dt>Whole map</dt><dd id="s-full">…</dd>
+        <dt>3×3 preview</dt><dd id="s-preview">…</dd>
+        <dt>Same input, same pixels</dt><dd id="s-hash">…</dd>
+        <dt>Your edits</dt><dd id="s-edits">No edits yet</dd>
+      </dl>
+    </section>
+    <section class="card" aria-labelledby="f-h">
+      <h2 id="f-h">The two formulas</h2>
+      <pre>Ground
+  score_t = w_t + 0.5·(noise_t − ½) + 0.28·(height_t − ½)
+  w_t: weight of terrain t over the 4 nearest cell centres
+  pixel = texture of the best score, sampled in world space
+
+Objects
+  d = min over the boxes of every joined cell
+  top face: d &lt; 0 · front face: top swept down 10 px
+  light = dot(∇d, top-left) near the edge
+  outline on the outer edge only, seam where material changes
+  level → jungle ramp through a 4×4 Bayer threshold</pre>
+    </section>
+    <section class="card" aria-labelledby="w-h">
+      <h2 id="w-h">What to look at</h2>
+      <ul>
+        <li>The three desks running into two counters: one top, one outline, a seam only where the material changes.</li>
+        <li>The L and T: one continuous top, planks turning with the arm, legs only at the real ends.</li>
+        <li>Lamps resting on the desk with a contact shadow and a warm pool of light.</li>
+        <li>The dirt trail against the hand-drawn path tiles on the left.</li>
+        <li>Turn off the palette snap to see why it is there.</li>
+      </ul>
+    </section>
+  </div>
+</div>

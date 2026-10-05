@@ -1,0 +1,8 @@
+{
+  "name": "@agora/maps",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": { "./hq.tmj": "./hq.tmj.json" },
+  "scripts": { "typecheck": "echo maps ok" }
+}

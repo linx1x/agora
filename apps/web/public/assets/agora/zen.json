@@ -1,0 +1,558 @@
+{
+ "sheet": "zen.png",
+ "cell": 32,
+ "sprites": {
+  "zen.deskH": {
+   "x": 0,
+   "y": 0,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "zen.deskMonitor": {
+   "x": 32,
+   "y": 0,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "zen.deskMonitorBack": {
+   "x": 64,
+   "y": 0,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "zen.deskCorner": {
+   "x": 96,
+   "y": 0,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "zen.deskCornerUp": {
+   "x": 128,
+   "y": 0,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "zen.deskV": {
+   "x": 160,
+   "y": 0,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "zen.floor": {
+   "x": 192,
+   "y": 0,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "zen.floorB": {
+   "x": 224,
+   "y": 0,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "zen.floorC": {
+   "x": 256,
+   "y": 0,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "zen.dirt": {
+   "x": 288,
+   "y": 0,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "zen.dirtB": {
+   "x": 320,
+   "y": 0,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "zen.floorAlt": {
+   "x": 352,
+   "y": 0,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "zen.rug": {
+   "x": 384,
+   "y": 0,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "zen.zabuton": {
+   "x": 416,
+   "y": 0,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "zen.sofa": {
+   "x": 448,
+   "y": 0,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "zen.sofaL": {
+   "x": 480,
+   "y": 0,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "zen.sofaM": {
+   "x": 0,
+   "y": 32,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "zen.sofaR": {
+   "x": 32,
+   "y": 32,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "zen.table": {
+   "x": 64,
+   "y": 32,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "zen.decorA": {
+   "x": 96,
+   "y": 32,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "zen.decorB": {
+   "x": 128,
+   "y": 32,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "zen.boardGame": {
+   "x": 160,
+   "y": 32,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "zen.puzzle": {
+   "x": 192,
+   "y": 32,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "zen.tsukubai": {
+   "x": 224,
+   "y": 32,
+   "w": 32,
+   "h": 32,
+   "frames": 4,
+   "fps": 4
+  },
+  "zen.screen": {
+   "x": 352,
+   "y": 32,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "zen.border": {
+   "x": 384,
+   "y": 32,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "zen.borderPlant": {
+   "x": 416,
+   "y": 32,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "zen.lamp": {
+   "x": 448,
+   "y": 32,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "zen.path0": {
+   "x": 480,
+   "y": 32,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "zen.path1": {
+   "x": 0,
+   "y": 64,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "zen.path2": {
+   "x": 32,
+   "y": 64,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "zen.path3": {
+   "x": 64,
+   "y": 64,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "zen.path4": {
+   "x": 96,
+   "y": 64,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "zen.path5": {
+   "x": 128,
+   "y": 64,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "zen.path6": {
+   "x": 160,
+   "y": 64,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "zen.path7": {
+   "x": 192,
+   "y": 64,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "zen.path8": {
+   "x": 224,
+   "y": 64,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "zen.path9": {
+   "x": 256,
+   "y": 64,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "zen.path10": {
+   "x": 288,
+   "y": 64,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "zen.path11": {
+   "x": 320,
+   "y": 64,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "zen.path12": {
+   "x": 352,
+   "y": 64,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "zen.path13": {
+   "x": 384,
+   "y": 64,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "zen.path14": {
+   "x": 416,
+   "y": 64,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "zen.path15": {
+   "x": 448,
+   "y": 64,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "zen.plantA": {
+   "x": 480,
+   "y": 64,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "zen.plantB": {
+   "x": 0,
+   "y": 96,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "zen.plantC": {
+   "x": 32,
+   "y": 96,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "zen.treeTop": {
+   "x": 64,
+   "y": 96,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "zen.treeBase": {
+   "x": 96,
+   "y": 96,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "zen.wallFront": {
+   "x": 128,
+   "y": 96,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "zen.wallTop": {
+   "x": 160,
+   "y": 96,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "zen.window": {
+   "x": 192,
+   "y": 96,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "zen.hanging": {
+   "x": 224,
+   "y": 96,
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0
+  },
+  "zen.pond0": {
+   "x": 256,
+   "y": 96,
+   "w": 32,
+   "h": 32,
+   "frames": 4,
+   "fps": 3
+  },
+  "zen.pond1": {
+   "x": 384,
+   "y": 96,
+   "w": 32,
+   "h": 32,
+   "frames": 4,
+   "fps": 3
+  },
+  "zen.pond2": {
+   "x": 0,
+   "y": 128,
+   "w": 32,
+   "h": 32,
+   "frames": 4,
+   "fps": 3
+  },
+  "zen.pond3": {
+   "x": 128,
+   "y": 128,
+   "w": 32,
+   "h": 32,
+   "frames": 4,
+   "fps": 3
+  },
+  "zen.pond4": {
+   "x": 256,
+   "y": 128,
+   "w": 32,
+   "h": 32,
+   "frames": 4,
+   "fps": 3
+  },
+  "zen.pond5": {
+   "x": 384,
+   "y": 128,
+   "w": 32,
+   "h": 32,
+   "frames": 4,
+   "fps": 3
+  },
+  "zen.pond6": {
+   "x": 0,
+   "y": 160,
+   "w": 32,
+   "h": 32,
+   "frames": 4,
+   "fps": 3
+  },
+  "zen.pond7": {
+   "x": 128,
+   "y": 160,
+   "w": 32,
+   "h": 32,
+   "frames": 4,
+   "fps": 3
+  },
+  "zen.pond8": {
+   "x": 256,
+   "y": 160,
+   "w": 32,
+   "h": 32,
+   "frames": 4,
+   "fps": 3
+  },
+  "zen.pond9": {
+   "x": 384,
+   "y": 160,
+   "w": 32,
+   "h": 32,
+   "frames": 4,
+   "fps": 3
+  },
+  "zen.pond10": {
+   "x": 0,
+   "y": 192,
+   "w": 32,
+   "h": 32,
+   "frames": 4,
+   "fps": 3
+  },
+  "zen.pond11": {
+   "x": 128,
+   "y": 192,
+   "w": 32,
+   "h": 32,
+   "frames": 4,
+   "fps": 3
+  },
+  "zen.pond12": {
+   "x": 256,
+   "y": 192,
+   "w": 32,
+   "h": 32,
+   "frames": 4,
+   "fps": 3
+  },
+  "zen.pond13": {
+   "x": 384,
+   "y": 192,
+   "w": 32,
+   "h": 32,
+   "frames": 4,
+   "fps": 3
+  },
+  "zen.pond14": {
+   "x": 0,
+   "y": 224,
+   "w": 32,
+   "h": 32,
+   "frames": 4,
+   "fps": 3
+  },
+  "zen.pond15": {
+   "x": 128,
+   "y": 224,
+   "w": 32,
+   "h": 32,
+   "frames": 4,
+   "fps": 3
+  }
+ }
+}
