@@ -35,6 +35,8 @@ import {
 } from './camera';
 import { DEFAULT_SCENE, buildScene, regionTiles } from './scene';
 import { buildRegionMesh, disposeTree, makeAtlas, pixelTexture, scanExtents } from './meshes';
+import { Occlusion, FADE_ATTR } from './occlusion';
+import { hits, occluderObjects, screenBox, type Subject } from './occlusionMath';
 import { PaperFigures, type FigureInfo } from './paperFigures';
 import { paperScale } from './paperLayout';
 import { Overlays } from './overlays';
@@ -92,6 +94,10 @@ export class World3DView implements WorldView {
   private region: THREE.Group | null = null;
   private builtKey: string | null = null;
   private builtId: string | null = null;
+  /** occlusion fades of the region's walls and tall plants (P16.9) */
+  private occlusion: Occlusion | null = null;
+  /** the mouse pointer over the canvas, canvas CSS px (null away; touch has no hover) */
+  private pointer: { x: number; y: number } | null = null;
 
   private people: PaperFigures;
   private npcs: PaperFigures;
@@ -182,6 +188,7 @@ export class World3DView implements WorldView {
       w.__agora.view3d = {
         builtRegion: () => this.builtId,
         figure: (id: string): FigureInfo | null => this.people.info(id) ?? this.npcs.info(id),
+        faded: (): string[] => this.occlusion?.fadedKeys() ?? [],
       };
     this.raf = requestAnimationFrame(this.frame);
   }
@@ -296,13 +303,20 @@ export class World3DView implements WorldView {
     const r = id ? map.regions.find((q) => q.id === id) : undefined;
     const scene = buildScene(map, regionTiles(map, r), this.extents, DEFAULT_SCENE);
     const group = new THREE.Group();
-    group.add(buildRegionMesh(scene, this.atlas, this.atlasTex));
+    const mesh = buildRegionMesh(scene, this.atlas, this.atlasTex);
+    group.add(mesh);
     this.scene.add(group);
     this.region = group;
     this.builtId = id ?? '';
+    // face i of the scene is vertices 4i…4i+3 of the mesh, so the occluders index it directly
+    this.occlusion = new Occlusion(
+      mesh.geometry.getAttribute(FADE_ATTR) as THREE.BufferAttribute,
+      occluderObjects(scene.faces),
+    );
   }
 
   private clearRegion() {
+    this.occlusion = null;
     if (!this.region) return;
     this.scene.remove(this.region);
     disposeTree(this.region);
@@ -467,8 +481,41 @@ export class World3DView implements WorldView {
       );
     }
     this.overlays.keep(shown);
+    this.occlude(s, drawn, dtMs);
     this.renderer.render(this.scene, this.camera);
   };
+
+  /**
+   * Walls and tall plants between the camera and me, or the person under the pointer, fade
+   * (P16.9). The hovered person is the nearest figure on screen under the mouse.
+   */
+  private occlude(s: ReturnType<typeof store.get>, drawn: Set<string>, dtMs: number) {
+    if (!this.occlusion) return;
+    const subjects: Subject[] = [];
+    const mine = s.me ? screenBox(this.cam, this.people.box(s.me)) : null;
+    if (mine) subjects.push(mine);
+    const under = this.pointer ? this.figureUnder(this.pointer, drawn, s) : null;
+    if (under) subjects.push(under);
+    this.occlusion.update(this.cam, subjects, dtMs, reducedMotion());
+  }
+
+  /** The nearest person or character whose body is under the pointer (canvas px), if any. */
+  private figureUnder(
+    p: { x: number; y: number },
+    drawn: Set<string>,
+    s: ReturnType<typeof store.get>,
+  ): Subject | null {
+    const boxes = [
+      ...[...drawn].map((id) => this.people.box(id)),
+      ...s.npcs.map((n) => this.npcs.box(n.id)),
+    ];
+    let best: Subject | null = null;
+    for (const b of boxes) {
+      const seen = screenBox(this.cam, b);
+      if (seen && hits(seen.box, p.x, p.y) && (!best || seen.depth < best.depth)) best = seen;
+    }
+    return best;
+  }
 
   private placeNpcs(s: ReturnType<typeof store.get>, dtMs: number, now: number) {
     const k = Math.min(1, (dtMs / 1000) * NPC_EASE);
@@ -510,6 +557,14 @@ export class World3DView implements WorldView {
     const c = this.canvas;
     const spread = (a: { x: number; y: number }, b: { x: number; y: number }) =>
       Math.max(1, Math.hypot(a.x - b.x, a.y - b.y));
+    const onHover = (e: PointerEvent) => {
+      if (e.pointerType !== 'mouse') return;
+      const r = c.getBoundingClientRect();
+      this.pointer = { x: e.clientX - r.left, y: e.clientY - r.top };
+    };
+    const onLeave = () => {
+      this.pointer = null;
+    };
     const onDown = (e: PointerEvent) => {
       const touch = e.pointerType === 'touch';
       this.pts.set(e.pointerId, { x: e.clientX, y: e.clientY, touch });
@@ -563,12 +618,16 @@ export class World3DView implements WorldView {
     c.addEventListener('pointerup', onUp);
     c.addEventListener('pointercancel', onUp);
     c.addEventListener('wheel', onWheel, { passive: false });
+    c.addEventListener('pointermove', onHover);
+    c.addEventListener('pointerleave', onLeave);
     this.unsubs.push(() => {
       c.removeEventListener('pointerdown', onDown);
       c.removeEventListener('pointermove', onMove);
       c.removeEventListener('pointerup', onUp);
       c.removeEventListener('pointercancel', onUp);
       c.removeEventListener('wheel', onWheel);
+      c.removeEventListener('pointermove', onHover);
+      c.removeEventListener('pointerleave', onLeave);
     });
   }
 

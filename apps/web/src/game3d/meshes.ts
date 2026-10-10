@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import { TILESET_COLUMNS, TILE_DEFS } from '@agora/shared';
 import type { Extents, Face3D, Scene3D } from './scene';
+import { FADE_ATTR, ditherFade } from './occlusion';
 
 /** Shade rows baked into the atlas: lit, front (×0.82) and side (×0.64), as the spike did. */
 export const SHADES = [1, 0.82, 0.64] as const;
@@ -73,13 +74,15 @@ export function scanExtents(tileset: HTMLCanvasElement): Extents[] {
 }
 
 /**
- * One mesh for every face of a region. Faces that carry a blend key draw their base tile for now;
- * the composed variants come with P16.12.
+ * One mesh for every face of a region (four vertices per face, in face order, so face i owns
+ * vertices 4i…4i+3). Faces that carry a blend key draw their base tile for now; the composed
+ * variants come with P16.12. The `aFade` attribute starts solid (1) for every vertex.
  */
 export function buildRegionMesh(scene: Scene3D, atlas: Atlas, tex: THREE.Texture): THREE.Mesh {
   const pos: number[] = [];
   const uvs: number[] = [];
   const nrm: number[] = [];
+  const fade: number[] = [];
   const idx: number[] = [];
   const a = new THREE.Vector3();
   const b = new THREE.Vector3();
@@ -97,14 +100,19 @@ export function buildRegionMesh(scene: Scene3D, atlas: Atlas, tex: THREE.Texture
       .normalize()
       .negate();
     for (let k = 0; k < 4; k++) nrm.push(n.x, n.y, n.z);
+    fade.push(1, 1, 1, 1);
     idx.push(base, base + 3, base + 2, base, base + 2, base + 1);
   }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
   geo.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
+  const fadeAttr = new THREE.Float32BufferAttribute(fade, 1);
+  fadeAttr.setUsage(THREE.DynamicDrawUsage);
+  geo.setAttribute(FADE_ATTR, fadeAttr);
   geo.setIndex(idx);
   const mat = new THREE.MeshLambertMaterial({ map: tex, alphaTest: 0.5, side: THREE.DoubleSide });
+  ditherFade(mat);
   return new THREE.Mesh(geo, mat);
 }
 

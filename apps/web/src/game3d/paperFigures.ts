@@ -18,6 +18,7 @@ import { POSE_MS } from '../game/controller';
 import { TILT } from './camera';
 import {
   FIG_TOP,
+  FIG_W,
   PAD_BOTTOM,
   QUAD_H,
   QUAD_W,
@@ -29,6 +30,7 @@ import {
   seatPlacement,
   type FlipStart,
 } from './figureMath';
+import type { Box3 } from './occlusionMath';
 import { makePaperSheet } from './paperAvatar';
 import type { PaperScale } from './paperLayout';
 
@@ -288,6 +290,23 @@ export class PaperFigures {
     // the art leaves ~5 % of the figure empty above the hair (P16.7 drawing box), so names sit
     // on the head as in 2D rather than floating above it
     return [f.group.position.x, f.info.lift + FIG_TOP * 0.95, f.group.position.z];
+  }
+
+  /** The body as a world box (tiles): its width, from the feet (or the seat) up to the top. */
+  box(id: string): Box3 | null {
+    const f = this.figs.get(id);
+    if (!f) return null;
+    const x = f.group.position.x;
+    const z = f.group.position.z;
+    const y0 = f.info.lift;
+    return {
+      x0: x - FIG_W / 2,
+      x1: x + FIG_W / 2,
+      y0,
+      y1: y0 + FIG_TOP,
+      z0: z - 0.15,
+      z1: z + 0.15,
+    };
   }
 
   /** Remove every figure whose id is not in `ids`. */
