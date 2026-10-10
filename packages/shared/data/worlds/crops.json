@@ -1,0 +1,22 @@
+{
+  "crops": [
+    { "id": "dawn_radish", "item": "dawn_radish", "seed": "dawn_radish_seed", "seasons": ["spring"], "stages": [3, 4], "regrowDays": null, "yield": { "min": 1, "max": 1 } },
+    { "id": "clover_bulb", "item": "clover_bulb", "seed": "clover_bulb_seed", "seasons": ["spring", "autumn"], "stages": [4, 4, 4], "regrowDays": null, "yield": { "min": 1, "max": 2 } },
+    { "id": "meadow_kale", "item": "meadow_kale", "seed": "meadow_kale_seed", "seasons": ["spring"], "stages": [5, 5, 4], "regrowDays": null, "yield": { "min": 1, "max": 2 } },
+    { "id": "honey_pea", "item": "honey_pea", "seed": "honey_pea_seed", "seasons": ["spring"], "stages": [4, 3, 3], "regrowDays": 4, "yield": { "min": 1, "max": 3 } },
+    { "id": "pearl_onion", "item": "pearl_onion", "seed": "pearl_onion_seed", "seasons": ["spring"], "stages": [5, 4, 4], "regrowDays": null, "yield": { "min": 1, "max": 2 } },
+    { "id": "ember_pepper", "item": "ember_pepper", "seed": "ember_pepper_seed", "seasons": ["summer"], "stages": [4, 4, 5], "regrowDays": 3, "yield": { "min": 1, "max": 2 } },
+    { "id": "river_melon", "item": "river_melon", "seed": "river_melon_seed", "seasons": ["summer"], "stages": [6, 6, 6], "regrowDays": null, "yield": { "min": 1, "max": 1 } },
+    { "id": "gold_maize", "item": "gold_maize", "seed": "gold_maize_seed", "seasons": ["summer"], "stages": [4, 5, 5, 4], "regrowDays": null, "yield": { "min": 2, "max": 4 } },
+    { "id": "sun_tomato", "item": "sun_tomato", "seed": "sun_tomato_seed", "seasons": ["summer"], "stages": [4, 4, 4], "regrowDays": 4, "yield": { "min": 2, "max": 3 } },
+    { "id": "silk_squash", "item": "silk_squash", "seed": "silk_squash_seed", "seasons": ["summer"], "stages": [5, 5, 5, 5], "regrowDays": null, "yield": { "min": 1, "max": 2 } },
+    { "id": "amber_pumpkin", "item": "amber_pumpkin", "seed": "amber_pumpkin_seed", "seasons": ["autumn"], "stages": [7, 7, 7], "regrowDays": null, "yield": { "min": 1, "max": 1 } },
+    { "id": "mist_grape", "item": "mist_grape", "seed": "mist_grape_seed", "seasons": ["autumn"], "stages": [5, 5, 5, 4], "regrowDays": 4, "yield": { "min": 3, "max": 5 } },
+    { "id": "rust_yam", "item": "rust_yam", "seed": "rust_yam_seed", "seasons": ["autumn"], "stages": [5, 5, 5], "regrowDays": null, "yield": { "min": 1, "max": 2 } },
+    { "id": "plum_bean", "item": "plum_bean", "seed": "plum_bean_seed", "seasons": ["autumn"], "stages": [4, 4, 4], "regrowDays": 3, "yield": { "min": 2, "max": 3 } },
+    { "id": "reed_rice", "item": "reed_rice", "seed": "reed_rice_seed", "seasons": ["autumn"], "stages": [4, 4, 4], "regrowDays": null, "yield": { "min": 2, "max": 3 } },
+    { "id": "frost_cabbage", "item": "frost_cabbage", "seed": "frost_cabbage_seed", "seasons": ["winter"], "stages": [6, 6, 6], "regrowDays": null, "yield": { "min": 1, "max": 1 } },
+    { "id": "snow_lettuce", "item": "snow_lettuce", "seed": "snow_lettuce_seed", "seasons": ["winter"], "stages": [4, 4, 4], "regrowDays": null, "yield": { "min": 1, "max": 2 } },
+    { "id": "ice_berry", "item": "ice_berry", "seed": "ice_berry_seed", "seasons": ["winter"], "stages": [5, 5, 5], "regrowDays": 4, "yield": { "min": 2, "max": 3 } }
+  ]
+}

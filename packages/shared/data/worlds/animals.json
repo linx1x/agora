@@ -1,0 +1,8 @@
+{
+  "animals": [
+    { "id": "plume_hen", "housing": "coop", "product": "plume_egg", "productDays": 1, "feed": "fodder", "feedPerDay": 1 },
+    { "id": "cloud_sheep", "housing": "barn", "product": "cloud_wool", "productDays": 4, "feed": "fodder", "feedPerDay": 2 },
+    { "id": "milk_cow", "housing": "barn", "product": "fresh_milk", "productDays": 2, "feed": "fodder", "feedPerDay": 2 },
+    { "id": "rune_goat", "housing": "barn", "product": "rune_cheese", "productDays": 3, "feed": "fodder", "feedPerDay": 2 }
+  ]
+}
