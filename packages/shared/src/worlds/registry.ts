@@ -1,0 +1,138 @@
+/**
+ * Content registries for personal worlds (ADR-053): zod schemas, loaders with
+ * path-level errors, and the sprite resolver. Content is data: blocks, biomes and
+ * the other tables live as JSON in `packages/shared/data/worlds/` and are checked
+ * here when the module loads, so a bad row fails at startup with its file and path.
+ */
+import { z } from 'zod';
+import blocksJson from '../../data/worlds/blocks.json';
+import { LEVEL_MAX } from './constants';
+
+/** Tool kinds a harvest can require. Tool stats live in tools.json (P17.18); the kinds are fixed. */
+export const TOOL_KINDS = ['hand', 'hoe', 'watering_can', 'axe', 'pickaxe', 'shovel'] as const;
+export type ToolKind = (typeof TOOL_KINDS)[number];
+
+/** Lower_snake content id such as `meadow_grass` or `oak_tree`. */
+export const CONTENT_ID = /^[a-z][a-z0-9_]{1,39}$/;
+/** Sprite key: `worlds/<biome or shared>/<name>`. A file path is never written in data. */
+export const SPRITE_KEY = /^worlds\/[a-z0-9_]+\/[a-z0-9_]+$/;
+const STATE_NAME = /^[a-z][a-z0-9_]{0,23}$/;
+
+export const HarvestDropSchema = z
+  .strictObject({
+    item: z.string().regex(CONTENT_ID, 'item id must be lower_snake'),
+    min: z.number().int().min(0).max(99),
+    max: z.number().int().min(0).max(99),
+  })
+  .refine((drop) => drop.min <= drop.max, { message: 'min must be <= max' });
+
+export const HarvestSchema = z.strictObject({
+  tool: z.enum(TOOL_KINDS),
+  minTier: z.number().int().min(0).max(3),
+  hits: z.number().int().min(1).max(20),
+  drops: z.array(HarvestDropSchema).max(6),
+});
+
+export const BlockSchema = z
+  .strictObject({
+    id: z.string().regex(CONTENT_ID, 'lower_snake id, 2 to 40 characters'),
+    layer: z.enum(['ground', 'decor']),
+    sprite: z.string().regex(SPRITE_KEY, 'expected worlds/<biome or shared>/<name>'),
+    solid: z.boolean(),
+    liquid: z.boolean(),
+    /** Block height in levels above its cell (0 = flat ground). */
+    height: z.number().int().min(0).max(LEVEL_MAX),
+    placeable: z.boolean().default(false),
+    light: z.number().int().min(0).max(15).default(0),
+    states: z.array(z.string().regex(STATE_NAME)).max(8).default([]),
+    /** Biome ids where this block may appear. Empty means every biome. */
+    biomes: z.array(z.string().regex(CONTENT_ID)).max(4).default([]),
+    harvest: HarvestSchema.optional(),
+  })
+  .superRefine((block, ctx) => {
+    if (block.liquid && block.solid) {
+      ctx.addIssue({ code: 'custom', path: ['solid'], message: 'a liquid cannot also be solid' });
+    }
+    if (block.layer === 'ground' && block.height !== 0) {
+      ctx.addIssue({ code: 'custom', path: ['height'], message: 'ground blocks have height 0' });
+    }
+    if (block.layer === 'ground' && block.harvest) {
+      ctx.addIssue({ code: 'custom', path: ['harvest'], message: 'only decor blocks are harvested' });
+    }
+  });
+export type Block = z.infer<typeof BlockSchema>;
+
+export const BlocksFileSchema = z
+  .strictObject({
+    version: z.literal(1),
+    blocks: z.array(BlockSchema).min(1),
+  })
+  .superRefine((file, ctx) => {
+    const seen = new Set<string>();
+    file.blocks.forEach((block, index) => {
+      if (seen.has(block.id)) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['blocks', index, 'id'],
+          message: `duplicate id "${block.id}"`,
+        });
+      }
+      seen.add(block.id);
+    });
+  });
+
+export interface BlockRegistry {
+  readonly list: readonly Block[];
+  readonly byId: ReadonlyMap<string, Block>;
+}
+
+/** A content file failed validation. The message lists every problem with its file and path. */
+export class WorldDataError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'WorldDataError';
+  }
+}
+
+/** One line per issue: `<file>: <path>: <message>`, so the fix is findable without a debugger. */
+export function formatWorldDataIssues(file: string, error: z.ZodError): string {
+  return error.issues
+    .map((issue) => {
+      const path = issue.path.map(String).join('.') || '(root)';
+      return `${file}: ${path}: ${issue.message}`;
+    })
+    .join('\n');
+}
+
+function indexBlocks(list: readonly Block[]): BlockRegistry {
+  return { list, byId: new Map(list.map((block) => [block.id, block] as const)) };
+}
+
+/** Validate raw block data (already parsed JSON) and index it. Throws WorldDataError. */
+export function parseBlockRegistry(raw: unknown, file = 'blocks.json'): BlockRegistry {
+  const parsed = BlocksFileSchema.safeParse(raw);
+  if (!parsed.success) throw new WorldDataError(formatWorldDataIssues(file, parsed.error));
+  return indexBlocks(parsed.data.blocks);
+}
+
+/** The shipped block registry. Loading it fails fast if `blocks.json` is malformed. */
+export const BLOCKS: BlockRegistry = parseBlockRegistry(blocksJson);
+
+/** The block for an id, or undefined. Unknown ids are data errors upstream, not code branches. */
+export function getBlock(registry: BlockRegistry, id: string): Block | undefined {
+  return registry.byId.get(id);
+}
+
+export interface SpriteSource {
+  /** `file` when the registry has an art file for the key, `placeholder` when code draws it. */
+  readonly kind: 'file' | 'placeholder';
+  readonly key: string;
+}
+
+/**
+ * Resolve a sprite key against the set of art files that exist. Missing files fall back to the
+ * code placeholder (P17.13), so real art is a file drop plus a registry row.
+ */
+export function resolveSprite(key: string, files: ReadonlySet<string>): SpriteSource {
+  return { kind: files.has(key) ? 'file' : 'placeholder', key };
+}
