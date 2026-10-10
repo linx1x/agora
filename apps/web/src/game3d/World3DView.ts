@@ -9,13 +9,22 @@
  * (P16.12), props (P16.14), pets (checkpoint J).
  */
 import * as THREE from 'three';
-import { EMOTE_GLYPH, TILE, cellPos, type Cell, type Emote, type S2CMsg } from '@agora/shared';
+import {
+  EMOTE_GLYPH,
+  LAMP_COLORS,
+  TILE,
+  cellPos,
+  type Cell,
+  type Emote,
+  type S2CMsg,
+} from '@agora/shared';
 import { world } from '../net/client';
-import { store } from '../state/store';
+import { saveSettings, store, toast } from '../state/store';
 import { COMPACT_QUERY, matches } from '../ui/layout';
 import { zoomStep } from '../ui/Minimap';
 import { AV_H } from '../game/avatars';
 import { WorldController, rendered } from '../game/controller';
+import { quebecHour } from '../game/lighting';
 import { tilesetCanvas } from '../game/tiles';
 import { exposeTestApi, type ViewTestApi, type WorldView } from '../game/view';
 import {
@@ -37,6 +46,11 @@ import { DEFAULT_SCENE, buildScene, regionTiles } from './scene';
 import { buildRegionMesh, disposeTree, makeAtlas, pixelTexture, scanExtents } from './meshes';
 import { Occlusion, FADE_ATTR } from './occlusion';
 import { hits, occluderObjects, screenBox, type Subject } from './occlusionMath';
+import { blobShadows } from './blobs';
+import { FpsGuard, bloomStrength } from './lightingMath';
+import { LightRig, type LampSource } from './lightRig';
+import { PostFx } from './postfx';
+import { postFx, startTier, type Tier } from './tier';
 import { PaperFigures, type FigureInfo } from './paperFigures';
 import { paperScale } from './paperLayout';
 import { Overlays } from './overlays';
@@ -63,6 +77,10 @@ const PORTRAIT_QUERY = '(orientation: portrait)';
 const reducedMotion = () =>
   window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 
+/** The Lighting setting, as the 2D view reads it (its config flag can switch it off too). */
+const lightingOn = (s: ReturnType<typeof store.get>) =>
+  s.settings.lighting && s.config?.flags.lighting !== false;
+
 interface Pan {
   from: Pt;
   to: Pt;
@@ -84,7 +102,14 @@ export class World3DView implements WorldView {
   private renderer: THREE.WebGLRenderer;
   private scene = new THREE.Scene();
   private camera = new THREE.PerspectiveCamera(FOV, 1, 0.5, 200);
-  private sun: THREE.DirectionalLight;
+  /** the lights and shadows of the view (P16.10), and the desktop post-processing */
+  private rig: LightRig;
+  private post: PostFx | null = null;
+  private tier: Tier;
+  private pr: number;
+  private fpsGuard = new FpsGuard();
+  /** the desk lamps of this region, kept current with their pods at the slow tick */
+  private deskLamps: { src: LampSource; deskId: string }[] = [];
   private ctl: WorldController;
   private cam: Cam = { tx: 0, tz: 0, tilt: TILT, dist: 10, fov: FOV, w: 1, h: 1 };
   private atlas: ReturnType<typeof makeAtlas>;
@@ -153,10 +178,12 @@ export class World3DView implements WorldView {
     parent.append(this.renderer.domElement);
     this.canvas.style.touchAction = 'none';
 
-    // a plain sky light and one sun from the south-east (the real lighting is P16.10)
-    this.scene.add(new THREE.HemisphereLight(0xfff4e0, 0x50604a, 1.6));
-    this.sun = new THREE.DirectionalLight(0xffe7c2, 1.6);
-    this.scene.add(this.sun, this.sun.target);
+    this.pr = Math.min(window.devicePixelRatio || 1, 2);
+    this.tier = startTier(window.matchMedia?.('(pointer: coarse)').matches ?? false);
+    this.rig = new LightRig(this.scene, this.renderer, this.tier);
+    this.post = postFx(this.tier)
+      ? new PostFx(this.renderer, this.scene, this.camera, 1, 1, this.pr)
+      : null;
 
     this.fade = document.createElement('div');
     this.fade.setAttribute('aria-hidden', 'true');
@@ -189,6 +216,14 @@ export class World3DView implements WorldView {
         builtRegion: () => this.builtId,
         figure: (id: string): FigureInfo | null => this.people.info(id) ?? this.npcs.info(id),
         faded: (): string[] => this.occlusion?.fadedKeys() ?? [],
+        lighting: () => ({
+          tier: this.tier,
+          on: this.rig.lightingOn,
+          lit: this.rig.lampsLit(),
+          shadows: this.rig.shadowsOn(),
+          post: !!this.post,
+          day: this.rig.day,
+        }),
       };
     this.raf = requestAnimationFrame(this.frame);
   }
@@ -212,6 +247,8 @@ export class World3DView implements WorldView {
     if (w.__agora) delete w.__agora.view3d;
 
     this.clearRegion();
+    this.rig.dispose();
+    this.post?.dispose();
     this.people.dispose();
     this.npcs.dispose();
     this.overlays.destroy();
@@ -270,6 +307,7 @@ export class World3DView implements WorldView {
     );
     const h = Math.max(1, parentH - dock);
     this.renderer.setSize(w, h, true);
+    this.post?.setSize(w, h, this.pr);
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
     this.zoomNow = s.zoom ?? fitZoom(w, h);
@@ -304,19 +342,62 @@ export class World3DView implements WorldView {
     const scene = buildScene(map, regionTiles(map, r), this.extents, DEFAULT_SCENE);
     const group = new THREE.Group();
     const mesh = buildRegionMesh(scene, this.atlas, this.atlasTex);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
     group.add(mesh);
     this.scene.add(group);
     this.region = group;
     this.builtId = id ?? '';
     // face i of the scene is vertices 4i…4i+3 of the mesh, so the occluders index it directly
+    const objs = occluderObjects(scene.faces);
     this.occlusion = new Occlusion(
       mesh.geometry.getAttribute(FADE_ATTR) as THREE.BufferAttribute,
-      occluderObjects(scene.faces),
+      objs,
     );
+    this.rig.setBlobs(blobShadows(objs));
+    this.deskLamps = this.deskSources(s, map, id);
+    this.rig.setLamps([
+      ...scene.lights.map((l) => ({ x: l.x, y: l.y, z: l.z, kind: l.kind, biome: l.biome })),
+      ...this.deskLamps.map((d) => d.src),
+    ]);
+  }
+
+  /** The desk lamps in this region: a lamp head per pod, lit by its desk's state (P9.16). */
+  private deskSources(
+    s: ReturnType<typeof store.get>,
+    map: NonNullable<ReturnType<typeof store.get>['map']>,
+    regionId: string | null,
+  ): { src: LampSource; deskId: string }[] {
+    const r = regionId ? map.regions.find((q) => q.id === regionId) : undefined;
+    const t = regionTiles(map, r);
+    const biome = r?.biome ?? 'hub';
+    return map.desks
+      .filter(
+        (d) =>
+          d.lamp.cx >= t.x && d.lamp.cy >= t.y && d.lamp.cx < t.x + t.w && d.lamp.cy < t.y + t.h,
+      )
+      .map((d) => {
+        const desk = s.desks.find((x) => x.id === d.id);
+        return {
+          deskId: d.id,
+          src: {
+            x: d.lamp.cx + 0.69,
+            y: 1.1,
+            z: d.lamp.cy + 0.56,
+            kind: 'desk' as const,
+            biome,
+            owned: !!desk?.ownerName,
+            deskColor: LAMP_COLORS[desk?.decor.lamp ?? 0],
+          },
+        };
+      });
   }
 
   private clearRegion() {
     this.occlusion = null;
+    this.deskLamps = [];
+    this.rig.setLamps([]);
+    this.rig.setBlobs(null);
     if (!this.region) return;
     this.scene.remove(this.region);
     disposeTree(this.region);
@@ -421,8 +502,6 @@ export class World3DView implements WorldView {
     const [x, y, z] = camPos(this.cam);
     this.camera.position.set(x, y, z);
     this.camera.lookAt(this.cam.tx, 0, this.cam.tz);
-    this.sun.position.set(this.cam.tx + 12, 22, this.cam.tz + 14);
-    this.sun.target.position.set(this.cam.tx, 0, this.cam.tz);
   }
 
   // ───────────────────────────────────────────── frame
@@ -440,6 +519,7 @@ export class World3DView implements WorldView {
     if (now - this.lastSlow > SLOW_MS) {
       this.lastSlow = now;
       this.ctl.slowTick();
+      this.lightsSlow(s);
     }
     this.syncRegion(s);
 
@@ -482,8 +562,39 @@ export class World3DView implements WorldView {
     }
     this.overlays.keep(shown);
     this.occlude(s, drawn, dtMs);
-    this.renderer.render(this.scene, this.camera);
+    this.rig.frame(now, reducedMotion());
+    this.watchFps(s, now);
+    // the post-processing is part of the lit look: with Lighting off it is skipped too
+    if (this.post && lightingOn(s)) this.post.render(bloomStrength(this.rig.day));
+    else this.renderer.render(this.scene, this.camera);
   };
+
+  /** Lighting at about 3 Hz: the Québec hour, the Lighting setting, the desks' lamps (P16.10). */
+  private lightsSlow(s: ReturnType<typeof store.get>) {
+    for (const d of this.deskLamps) {
+      const desk = s.desks.find((x) => x.id === d.deskId);
+      d.src.owned = !!desk?.ownerName;
+      d.src.deskColor = LAMP_COLORS[desk?.decor.lamp ?? 0];
+    }
+    this.rig.refresh(quebecHour(), lightingOn(s), { x: this.cam.tx, z: this.cam.tz });
+  }
+
+  /**
+   * The under-15-fps switch-off of the 2D view (ADR-018), for the lights here: three slow five-second
+   * windows in a row turn Lighting off and say so. Not while a test fixes the hour (`?hour=`).
+   */
+  private watchFps(s: ReturnType<typeof store.get>, now: number) {
+    if (!lightingOn(s)) {
+      this.fpsGuard.reset();
+      return;
+    }
+    if (!this.fpsGuard.frame(now)) return;
+    if (new URLSearchParams(location.search).has('hour')) return;
+    const settings = { ...s.settings, lighting: false };
+    saveSettings(settings);
+    store.set({ settings });
+    toast('toast.lightingOff', undefined, 6000);
+  }
 
   /**
    * Walls and tall plants between the camera and me, or the person under the pointer, fade

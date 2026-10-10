@@ -154,6 +154,11 @@ describe('occluderObjects', () => {
     const objs = occluderObjects(faces);
     expect(objs.map((o) => o.key).sort()).toEqual(['1,0', '4,0', '5,0']);
     expect(objs.find((o) => o.key === '1,0')!.faces).toEqual([1]);
+    expect(objs.map((o) => [o.key, o.card]).sort()).toEqual([
+      ['1,0', false],
+      ['4,0', true],
+      ['5,0', false],
+    ]);
   });
 
   it('groups the faces of one cell into one object, with their box', () => {

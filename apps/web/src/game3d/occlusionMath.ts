@@ -43,11 +43,15 @@ export interface Seen {
   depth: number;
 }
 
-/** An occluder: its object key, the faces it owns (indices into `Scene3D.faces`), its world box. */
+/**
+ * An occluder: its object key, the faces it owns (indices into `Scene3D.faces`), its world box, and
+ * whether it stands on the floor as a card (a tree, a plant) rather than being a wall or a vine.
+ */
 export interface OccluderObject {
   key: string;
   faces: number[];
   box: Box3;
+  card: boolean;
 }
 
 /** A subject the occluders are tested against. */
@@ -143,10 +147,12 @@ export function occluderObjects(faces: readonly Face3D[]): OccluderObject[] {
           z0: Infinity,
           z1: -Infinity,
         },
+        card: false,
       };
       byKey.set(key, o);
     }
     o.faces.push(i);
+    if (f.kind === 'card') o.card = true;
     for (const p of f.p) {
       o.box.x0 = Math.min(o.box.x0, p[0]);
       o.box.x1 = Math.max(o.box.x1, p[0]);

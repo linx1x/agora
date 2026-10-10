@@ -113,7 +113,10 @@ export function buildRegionMesh(scene: Scene3D, atlas: Atlas, tex: THREE.Texture
   geo.setIndex(idx);
   const mat = new THREE.MeshLambertMaterial({ map: tex, alphaTest: 0.5, side: THREE.DoubleSide });
   ditherFade(mat);
-  return new THREE.Mesh(geo, mat);
+  const mesh = new THREE.Mesh(geo, mat);
+  // shadows keep the art's cut-outs (a tree's shadow is a tree, not its card)
+  mesh.customDepthMaterial = new THREE.MeshDepthMaterial({ map: tex, alphaTest: 0.5 });
+  return mesh;
 }
 
 /** Free the geometry and material of every mesh under `root` (textures are the caller's). */
@@ -122,6 +125,7 @@ export function disposeTree(root: THREE.Object3D): void {
     if (o instanceof THREE.Mesh) {
       o.geometry.dispose();
       (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => m.dispose());
+      o.customDepthMaterial?.dispose();
     }
   });
 }

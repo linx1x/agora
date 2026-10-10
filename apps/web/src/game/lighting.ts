@@ -38,7 +38,8 @@ interface Seg {
   by: number;
 }
 
-const LAMP_COLOR: Record<Biome, string> = {
+/** Warm light of a lamp, by biome (also the 2.5D lamps, P16.10). */
+export const LAMP_COLOR: Record<Biome, string> = {
   hub: '#ffe2b0',
   jungle: '#ffb35c',
   boreal: '#ffbf66',

@@ -183,7 +183,7 @@ interface Figure {
   look: string;
   group: THREE.Group;
   card: THREE.Mesh;
-  mat: THREE.MeshBasicMaterial;
+  mat: THREE.MeshLambertMaterial;
   /** this figure's clone of the shared sheet (own offset and repeat) */
   tex: THREE.CanvasTexture;
   shadow: THREE.Mesh;
@@ -333,13 +333,15 @@ export class PaperFigures {
     const tex = master.clone();
     tex.needsUpdate = true;
 
-    const mat = new THREE.MeshBasicMaterial({
+    // lit by the world's lights (P16.10): a figure darkens at night like the walls do
+    const mat = new THREE.MeshLambertMaterial({
       map: tex,
       transparent: true,
       alphaTest: 0.5,
       depthWrite: true,
     });
     const card = new THREE.Mesh(sh.card, mat);
+    card.receiveShadow = true;
 
     const shadowMat = new THREE.MeshBasicMaterial({
       map: sh.shadowTex,
