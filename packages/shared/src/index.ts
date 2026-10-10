@@ -22,3 +22,4 @@ export * from './roles';
 export * from './auth';
 export * from './npc-social';
 export * from './npc-fit';
+export * from './worlds/index';
