@@ -6,6 +6,8 @@ dist
 test-results
 playwright-report
 data/
+# shared game data (ADR-053 world tables) is source, not local data
+!packages/shared/data/
 uploads/
 *.log
 .DS_Store

@@ -57,6 +57,14 @@ import { Bucket } from './rate';
 import { OfficeCat } from './pets';
 import type { ScoreWeights } from '@agora/shared';
 import {
+  RETURN_PORTAL_ID,
+  checkPortal,
+  deskGate,
+  deskOfPortal,
+  inPortal,
+  type PortalRefusal,
+} from '@agora/shared';
+import {
   NpcDirector,
   type Npc,
   type NpcBrainLink,
@@ -66,6 +74,13 @@ import {
   type NpcTalkLink,
 } from './npcs';
 import { MediaGate, type GatePlayer, type SfuApi } from '../media/gate';
+import {
+  worldHubFor,
+  type WorldHub,
+  type WorldMedia,
+  type WorldMember,
+  type WorldRoom,
+} from '../worlds/worldRoom';
 
 export interface Conn {
   send(msg: S2CMsg): void;
@@ -149,6 +164,8 @@ export interface Player {
   admitted: Set<string>;
   /** pending knock: desk id and expiry */
   knock?: { deskId: string; until: number };
+  /** inside a personal world (P17.9): out of this office's presence, media and links until back */
+  world?: { room: WorldRoom; member: WorldMember };
   lastCallover: Map<string, number>;
   buckets: {
     move: Bucket;
@@ -178,6 +195,8 @@ export class SpaceRoom {
   /** desk id → ownership (persisted) */
   private desks = new Map<string, StoredDesk>();
   private spots = new Map<string, DeskSpot>();
+  /** open personal worlds, shared by every space in this process (P17.9) */
+  private readonly worlds: WorldHub;
   private timer?: NodeJS.Timeout;
   private history: ChatMsg[] = [];
   private grace: number;
@@ -207,6 +226,7 @@ export class SpaceRoom {
     private log: Logger,
   ) {
     this.grace = opts.reconnectGraceMs ?? 20_000;
+    this.worlds = worldHubFor(store.worlds);
     this.tmj = opts.tmj;
     this.mapRev = opts.mapRev ?? 0;
     for (const d of map.desks) this.spots.set(d.id, d);
@@ -525,6 +545,7 @@ export class SpaceRoom {
 
   /** Socket closed: keep the seat for the grace window, then remove. */
   disconnect(p: Player) {
+    this.leaveWorld(p); // a closed socket inside a world goes back to its office seat first
     if (!this.players.has(p.id)) return;
     p.conn = null;
     p.disconnectedAt = Date.now();
@@ -536,6 +557,11 @@ export class SpaceRoom {
   }
 
   remove(p: Player) {
+    if (p.world) {
+      // leaving the space from inside a world: take the person out of it, then run the normal removal
+      this.detachWorld(p);
+      this.players.set(p.id, p);
+    }
     if (!this.players.delete(p.id)) return;
     this.opts.npcs?.talk?.engine.end(p.uid);
     void this.gate?.left(p.id, p.scope);
@@ -553,6 +579,7 @@ export class SpaceRoom {
       return;
     }
     const m = parsed.data;
+    if (p.world) return this.onWorldMessage(p, m);
     switch (m.t) {
       case 'move':
         return this.onMove(p, m);
@@ -608,6 +635,8 @@ export class SpaceRoom {
         return this.onRtc(p, m);
       case 'teleport':
         return this.onTeleport(p, m.to);
+      case 'portal:enter':
+        return this.onPortalEnter(p, m.id);
       case 'desk:claim':
         return this.onClaim(p, m.deskId);
       case 'desk:release':
@@ -770,6 +799,176 @@ export class SpaceRoom {
     this.onZoneChange(p, before, p.zone);
     this.correct(p, 0, 'teleport');
     this.recomputeLinks();
+  }
+
+  /**
+   * The server's verdict on a step into a desk portal: the pod's rectangle, the pod's access and
+   * the visitor's own position and admission. `ownerUid` is the desk owner's (never sent).
+   */
+  private portalVerdict(
+    p: Player,
+    deskId: string,
+  ): { result: 'ok'; ownerUid: string } | { result: PortalRefusal } {
+    const spot = this.spots.get(deskId);
+    if (!spot) return { result: 'unknown' };
+    if (!inPortal(spot.zone, p.x, p.y)) return { result: 'outside' };
+    const d = this.desks.get(deskId);
+    if (!d) return { result: 'no_world' }; // an unclaimed pod has no owner, so no world
+    const verdict = checkPortal(
+      deskGate(deskId, spot.zone, d.access),
+      { x: p.x, y: p.y },
+      { isOwner: d.ownerUid === p.uid, admitted: p.admitted.has(deskId) },
+    );
+    if (verdict !== 'ok') return { result: verdict };
+    return { result: 'ok', ownerUid: d.ownerUid };
+  }
+
+  /**
+   * P17.8 (ADR-053): step through a portal. Only the server's position and rights count. The
+   * answer goes to the person who asked and nobody else; nobody moves here (the transfer is
+   * P17.9), so presence, media links, pods and chat do not change. The rights are checked again
+   * after the world lookup, in case the person moved or the desk changed meanwhile.
+   */
+  private async onPortalEnter(p: Player, id: string) {
+    if (!p.buckets.misc.take()) return;
+    const refuse = (reason: PortalRefusal) => p.conn?.send({ t: 'portal:refused', id, reason });
+    const deskId = deskOfPortal(id);
+    const first = deskId ? this.portalVerdict(p, deskId) : undefined;
+    if (!deskId || !first) return refuse('unknown');
+    if (first.result !== 'ok') return refuse(first.result);
+    const world = await this.store.worldOf(first.ownerUid).catch(() => null);
+    if (!world) return refuse('no_world');
+    const room = await this.worlds.enter(world.id).catch(() => null);
+    if (!room || room.disposed) return refuse('no_world');
+    // the position, the rights and the desk's owner may have changed while the world loaded
+    const again = this.portalVerdict(p, deskId);
+    const moved = again.result !== 'ok' || again.ownerUid !== first.ownerUid;
+    if (moved || p.world || !p.conn || !this.players.has(p.id)) {
+      this.worlds.release(room);
+      return refuse(again.result === 'ok' ? 'no_world' : again.result);
+    }
+    p.conn.send({ t: 'portal:go', id, worldId: world.id, spawn: room.spawn() });
+    this.enterWorld(p, room, p.conn);
+  }
+
+  /**
+   * Office → world (P17.9): the person leaves this office's presence, media and links and joins
+   * the world. Nothing of the office is sent to them after this (`broadcast` and `recomputeLinks`
+   * only reach people in `players`), and nothing of the world reaches the office.
+   */
+  private enterWorld(p: Player, room: WorldRoom, conn: Conn) {
+    const from = p.zone;
+    this.players.delete(p.id);
+    this.opts.npcs?.talk?.engine.end(p.uid);
+    void this.gate?.left(p.id, p.scope);
+    this.broadcast({ t: 'leave', id: p.id });
+    this.onZoneChange(p, from, undefined);
+    p.zone = undefined;
+    p.peers = '';
+    conn.send({ t: 'peers', peers: [] });
+    this.recomputeLinks();
+    p.world = {
+      room,
+      member: room.join(
+        conn,
+        { id: p.id, uid: p.uid, name: p.profile.name, avatar: p.profile.avatar },
+        this.worldMedia(),
+      ),
+    };
+    this.log.info({ player: p.id, world: room.id }, 'entered world');
+  }
+
+  /** The SFU a world's members use, when this server runs one (ADR-031). */
+  private worldMedia(): WorldMedia | undefined {
+    const sfu = this.opts.sfu;
+    return sfu ? { api: sfu.api, url: sfu.url, prefix: sfu.prefix, log: this.log } : undefined;
+  }
+
+  /** Take the person out of their world. Nothing is sent to them here. */
+  private detachWorld(p: Player) {
+    const w = p.world;
+    if (!w) return;
+    p.world = undefined;
+    w.room.leave(w.member);
+  }
+
+  /**
+   * World → office: back at the desk (a visitor: the hub), with the office presence, media and
+   * links again. Everyone in the office hears the person arrive.
+   */
+  private leaveWorld(p: Player) {
+    if (!p.world) return;
+    this.detachWorld(p);
+    const home = this.homeSpot(p.uid);
+    p.x = home.x;
+    p.y = home.y;
+    p.pose = 'stand';
+    p.dir = 'down';
+    p.lastMoveAt = Date.now();
+    p.zone = zoneAt(this.map, p.x, p.y);
+    p.scope = mediaScope(this.placed(p));
+    this.players.set(p.id, p);
+    this.onZoneChange(p, undefined, p.zone);
+    void this.gate?.joined(this.gp(p));
+    this.broadcast({ t: 'profile', profile: p.profile }, p.id);
+    this.recomputeLinks();
+    p.conn?.send({ t: 'world:exit' });
+    this.log.info({ player: p.id }, 'left world');
+  }
+
+  /** Where someone returning from a world stands: their desk's guest spot, else the hub spawn. */
+  private homeSpot(uid: string): { x: number; y: number } {
+    const myDesk = this.deskOf(uid);
+    const spot = myDesk ? this.spots.get(myDesk.deskId) : undefined;
+    if (spot) {
+      const g = cellPos(this.map, spot.guest);
+      return nearestFree(this.map, g.x, g.y);
+    }
+    const s = defaultSpawn(this.map);
+    return nearestFree(this.map, s.x, s.y);
+  }
+
+  /**
+   * Messages from someone inside a world: moves, leaving, ping, chat and signalling inside the
+   * world (P17.11), media tokens, and the return pad (P17.10: the only portal inside a world,
+   * checked against the person's position). Office-only messages do nothing there.
+   */
+  private onWorldMessage(p: Player, m: C2SMsg) {
+    const w = p.world;
+    if (!w) return;
+    switch (m.t) {
+      case 'move':
+        if (!p.buckets.move.take()) return;
+        return w.room.move(w.member, m);
+      case 'world:leave':
+        if (!p.buckets.misc.take()) return;
+        return this.leaveWorld(p);
+      case 'chat':
+        if (!p.buckets.chat.take()) return p.conn?.send({ t: 'error', code: 'rate_limited' });
+        return w.room.chat(w.member, m.body);
+      case 'rtc': {
+        if (!p.buckets.rtc.take()) return;
+        const verdict = w.room.signal(w.member, m.to, m.data);
+        if (verdict !== 'ok') p.conn?.send({ t: 'error', code: verdict === 'off' ? 'rtc_off' : 'rtc_not_linked' });
+        return;
+      }
+      case 'media:token':
+        if (!p.buckets.misc.take()) return;
+        return w.room.refreshMedia(w.member);
+      case 'portal:enter': {
+        if (!p.buckets.misc.take()) return;
+        if (m.id !== RETURN_PORTAL_ID) return p.conn?.send({ t: 'portal:refused', id: m.id, reason: 'unknown' });
+        if (!w.room.atReturn(w.member))
+          return p.conn?.send({ t: 'portal:refused', id: m.id, reason: 'outside' });
+        return this.leaveWorld(p);
+      }
+      case 'ping':
+        return p.conn?.send({ t: 'pong', at: m.at });
+      case 'leave':
+        return this.remove(p);
+      default:
+        return;
+    }
   }
 
   private onClaim(p: Player, deskId: string) {

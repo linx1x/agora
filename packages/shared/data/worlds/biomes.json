@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "blend": { "radius": 0.32 },
+  "biomes": [
+    {
+      "id": "meadow",
+      "palette": "zen",
+      "centre": { "temperature": 0.5, "humidity": 0.5 },
+      "surface": "meadow_grass",
+      "subsurface": "meadow_dirt",
+      "deep": "stone",
+      "decor": [
+        { "block": "tall_grass", "density": 0.18 },
+        { "block": "flower", "density": 0.04 },
+        { "block": "oak_tree", "density": 0.02 }
+      ]
+    },
+    {
+      "id": "jungle",
+      "palette": "jungle",
+      "centre": { "temperature": 0.85, "humidity": 0.85 },
+      "surface": "jungle_grass",
+      "subsurface": "jungle_mud",
+      "deep": "stone",
+      "decor": [
+        { "block": "fern", "density": 0.22 },
+        { "block": "jungle_tree", "density": 0.05 }
+      ]
+    },
+    {
+      "id": "desert",
+      "palette": "oasis",
+      "centre": { "temperature": 0.85, "humidity": 0.15 },
+      "surface": "desert_sand",
+      "subsurface": "desert_sandstone",
+      "deep": "stone",
+      "decor": [
+        { "block": "dead_bush", "density": 0.02 },
+        { "block": "cactus", "density": 0.015 },
+        { "block": "palm", "density": 0.01 }
+      ]
+    },
+    {
+      "id": "taiga",
+      "palette": "boreal",
+      "centre": { "temperature": 0.15, "humidity": 0.55 },
+      "surface": "taiga_moss",
+      "subsurface": "taiga_podzol",
+      "deep": "stone",
+      "alpine": "taiga_snow",
+      "decor": [
+        { "block": "spruce", "density": 0.05 }
+      ]
+    }
+  ]
+}

@@ -18,6 +18,7 @@ import {
   Settings as SettingsIcon,
   ShieldCheck,
   Smile,
+  SlidersHorizontal,
   UserCog,
   Video,
   VideoOff,
@@ -70,6 +71,10 @@ function useControls() {
     panelOpen: useStore((s) => s.panelOpen),
     myDesk: useStore((s) => s.myDesk),
     canBuild: useStore((s) => s.builder && s.config?.flags.builder !== false),
+    /** world tuning panel (P17.12): behind the `worlds` flag, for builders and in development */
+    canTune: useStore(
+      (s) => s.config?.flags.worlds === true && (s.builder || import.meta.env.DEV),
+    ),
     building: useStore((s) => !!s.build),
     spaceName: useStore((s) => s.spaceName),
     /** the owner's People page (invites, accounts), passkey mode only */
@@ -301,6 +306,17 @@ function DesktopBar() {
         <Armchair size={18} aria-hidden />
         <span className="sr-only">{t('desk.title')}</span>
       </button>
+      {c.canTune && (
+        <button
+          type="button"
+          className="ctrl"
+          onClick={() => store.set({ dialog: 'worldTuning' })}
+          title={t('worlds.tuning.open')}
+        >
+          <SlidersHorizontal size={18} aria-hidden />
+          <span className="sr-only">{t('worlds.tuning.open')}</span>
+        </button>
+      )}
       {c.canBuild && (
         <button
           type="button"

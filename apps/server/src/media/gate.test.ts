@@ -124,8 +124,9 @@ describe('SFU media rooms (ADR-031): private rooms are enforced by the server', 
   const follow = (conn: FakeConn) => {
     const g = conn.of('media:grant').at(-1);
     if (!g) return;
-    const me = (JSON.parse(g.floor.token) as Tok).identity;
-    if (!sfu.in(g.floor.room).includes(me)) sfu.connect(g.floor.token); // a live connection is kept
+    const floor = g.floor!; // an office grant always has a floor (a world grant has none, P17.11)
+    const me = (JSON.parse(floor.token) as Tok).identity;
+    if (!sfu.in(floor.room).includes(me)) sfu.connect(floor.token); // a live connection is kept
     if (g.zone) sfu.connect(g.zone.token);
   };
   const settle = async () => {
@@ -168,8 +169,8 @@ describe('SFU media rooms (ADR-031): private rooms are enforced by the server', 
     await settle();
     const g = d.of('media:grant')[0]!;
     expect(g).toMatchObject({ url: 'wss://rtc.test', zone: null, publish: 'floor' });
-    expect(g.floor.room).toBe(FLOOR);
-    expect(JSON.parse(g.floor.token)).toMatchObject({ room: FLOOR, canPublish: true });
+    expect(g.floor?.room).toBe(FLOOR);
+    expect(JSON.parse(g.floor!.token)).toMatchObject({ room: FLOOR, canPublish: true });
   });
 
   it('isolation: only people inside get a zone token; C outside the wall never does', () => {

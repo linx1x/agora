@@ -965,5 +965,95 @@
     "web": {
       "sources": "Sources: {{sites}}"
     }
+  },
+  "worlds": {
+    "tuning": {
+      "open": "World tuning",
+      "title": "World tuning (preview)",
+      "intro": "Preview only: each world keeps the values of its generator version. Copy the JSON to update worldgen.json.",
+      "seed": "Seed",
+      "reset": "Reset to defaults",
+      "copy": "Copy JSON",
+      "copied": "JSON copied.",
+      "copyFailed": "Copying is not available here: select the text in the JSON field.",
+      "summary": "Preview of {{size}} by {{size}} cells, {{water}}% water.",
+      "legend": "Legend",
+      "json": "Parameters JSON"
+    },
+    "group": {
+      "elevation": "Elevation",
+      "temperature": "Temperature",
+      "humidity": "Humidity",
+      "shape": "Terrain shape",
+      "rivers": "Rivers and lakes"
+    },
+    "param": {
+      "elevation": {
+        "scale": "Elevation scale (cells)",
+        "octaves": "Elevation octaves",
+        "contrast": "Elevation contrast"
+      },
+      "temperature": {
+        "scale": "Temperature scale (cells)",
+        "octaves": "Temperature octaves",
+        "contrast": "Temperature contrast"
+      },
+      "humidity": {
+        "scale": "Humidity scale (cells)",
+        "octaves": "Humidity octaves",
+        "contrast": "Humidity contrast"
+      },
+      "seaElevation": "Sea level",
+      "beachWidth": "Beach width",
+      "alpineElevation": "Alpine elevation",
+      "rivers": {
+        "sourceGrid": "Source grid",
+        "sourceChance": "Source chance",
+        "sourceHeight": "Minimum source height",
+        "maxSteps": "Longest river (steps)",
+        "lakeRadius": "Lake radius",
+        "lakeRise": "Lake rise"
+      }
+    },
+    "block": {
+      "stone": "Stone",
+      "gravel": "Gravel",
+      "sand": "Sand",
+      "water": "Water",
+      "meadow_grass": "Meadow grass",
+      "meadow_dirt": "Meadow dirt",
+      "jungle_grass": "Jungle grass",
+      "jungle_mud": "Jungle mud",
+      "desert_sand": "Desert sand",
+      "desert_sandstone": "Desert sandstone",
+      "taiga_moss": "Taiga moss",
+      "taiga_podzol": "Taiga podzol",
+      "taiga_snow": "Taiga snow",
+      "tilled_soil": "Tilled soil",
+      "tall_grass": "Tall grass",
+      "flower": "Flower",
+      "fern": "Fern",
+      "dead_bush": "Dead bush",
+      "oak_tree": "Oak tree",
+      "jungle_tree": "Jungle tree",
+      "palm": "Palm",
+      "spruce": "Spruce",
+      "cactus": "Cactus",
+      "boulder": "Boulder",
+      "wood_wall": "Wood wall",
+      "torch": "Torch",
+      "stone_stairs": "Stone stairs",
+      "wood_floor": "Wood floor",
+      "return_pad": "Return pad",
+      "bed": "Bed",
+      "shipping_bin": "Shipping bin",
+      "shop_board": "Shop board"
+    },
+    "biome": {
+      "meadow": "Meadow",
+      "jungle": "Jungle",
+      "desert": "Desert",
+      "taiga": "Taiga"
+    }
   }
 }
