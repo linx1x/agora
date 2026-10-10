@@ -1,6 +1,15 @@
 import { readFileSync } from 'node:fs';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { C2S, TILE, cellPos, parseMap, remapTmj, type S2CMsg, type Tmj } from '@agora/shared';
+import {
+  C2S,
+  TILE,
+  WORLD_SPAWN,
+  cellPos,
+  parseMap,
+  remapTmj,
+  type S2CMsg,
+  type Tmj,
+} from '@agora/shared';
 import { MemoryStore, roomStore } from '../db/store';
 import { SpaceRoom, type Player } from './room';
 
@@ -578,5 +587,121 @@ describe('SpaceRoom: build mode', () => {
     expect(room.map.solid[9 * room.map.width + 5]).toBe(0);
     await new Promise((r) => setTimeout(r, 5));
     expect(await store.loadMap('hq')).toBeNull();
+  });
+});
+
+describe('SpaceRoom: portals into worlds (P17.8, ADR-053)', () => {
+  const spot = map.desks.find((d) => d.id === 'jungle-1')!;
+  const OWNER = 'owner-7731';
+  const WORLD = 'world-7f3k';
+  /** the portal handler awaits a world lookup: let it finish */
+  const settle = () => new Promise((r) => setTimeout(r, 0));
+  let store: MemoryStore;
+  let room: SpaceRoom;
+  let co: FakeConn, cc: FakeConn, cb: FakeConn;
+  let owner: Player, c: Player;
+
+  const enter = async (p: Player, id = 'desk:jungle-1') => {
+    room.handle(p, { t: 'portal:enter', id });
+    await settle();
+  };
+  const reasonOf = (conn: FakeConn) => conn.of('portal:refused').at(-1)?.reason;
+
+  beforeEach(async () => {
+    store = new MemoryStore();
+    room = makeRoom(store);
+    await room.init();
+    co = new FakeConn();
+    cc = new FakeConn();
+    cb = new FakeConn();
+    owner = (await room.join(co, { uid: OWNER, name: 'Alice' }))!;
+    c = (await room.join(cc, { uid: 'uc', name: 'Chloé' }))!;
+    await room.join(cb, { uid: 'ub', name: 'Benoît' });
+    place(room, owner, cellPos(map, spot.chair), 'sit');
+    room.handle(owner, { t: 'desk:claim', deskId: 'jungle-1' });
+    await store.worlds.createWorld({
+      id: WORLD,
+      ownerId: OWNER,
+      seed: 3560865791,
+      genVersion: 1,
+      createdAt: 0,
+      lastDay: 0,
+      settings: {},
+    });
+  });
+
+  it('refused outside the trigger, even for the owner, and answered only to the person who asked', async () => {
+    place(room, owner, cellPos(map, spot.entrance));
+    const seen = [cc.msgs.length, cb.msgs.length];
+    await enter(owner);
+    expect(reasonOf(co)).toBe('outside');
+    expect(co.of('portal:go')).toHaveLength(0);
+    expect([cc.msgs.length, cb.msgs.length]).toEqual(seen);
+  });
+
+  it('the owner steps through to their own world at the origin; nobody moves, links or hears of it', async () => {
+    const links = [...room.links];
+    const seen = [cc.msgs.length, cb.msgs.length];
+    const at = { x: owner.x, y: owner.y };
+    await enter(owner);
+    expect(co.of('portal:go')).toEqual([
+      { t: 'portal:go', id: 'desk:jungle-1', worldId: WORLD, spawn: WORLD_SPAWN },
+    ]);
+    expect([cc.msgs.length, cb.msgs.length]).toEqual(seen);
+    expect([...room.links]).toEqual(links);
+    expect({ x: owner.x, y: owner.y }).toEqual(at);
+    // the owner's user id never leaves the server
+    expect(JSON.stringify(co.of('portal:go'))).not.toContain(OWNER);
+  });
+
+  it('refused with no_world when the owner has no world (none made, or removed)', async () => {
+    await store.worlds.deleteWorldOf(OWNER);
+    await enter(owner);
+    expect(reasonOf(co)).toBe('no_world');
+    expect(co.of('portal:go')).toHaveLength(0);
+  });
+
+  it('an unclaimed pod has no world, and ids that name no desk are unknown', async () => {
+    const free = map.desks.find((d) => d.id === 'jungle-2')!;
+    place(room, c, cellPos(map, free.guest));
+    await enter(c, 'desk:jungle-2');
+    expect(reasonOf(cc)).toBe('no_world');
+    await enter(c, 'desk:nope');
+    expect(reasonOf(cc)).toBe('unknown');
+    await enter(c, 'portal-hub-jungle');
+    expect(reasonOf(cc)).toBe('unknown');
+  });
+
+  it('knock: a visitor is refused until admitted, goes through once admitted, and loses access when they walk out', async () => {
+    room.handle(owner, { t: 'desk:update', access: 'knock' });
+    place(room, c, cellPos(map, spot.entrance));
+    room.handle(c, { t: 'knock', deskId: 'jungle-1' });
+    room.handle(owner, { t: 'knock:answer', visitor: c.id, accept: true });
+    expect(walk(room, c, cellPos(map, spot.guest))).toBe(true);
+    await enter(c);
+    expect(cc.of('portal:go')).toHaveLength(1);
+    // walking out ends the admission: the trigger refuses, and the pod does not let them back in
+    expect(walk(room, c, cellPos(map, spot.entrance))).toBe(true);
+    await enter(c);
+    expect(reasonOf(cc)).toBe('outside');
+    expect(walk(room, c, cellPos(map, spot.guest))).toBe(false);
+  });
+
+  it('refused without permission inside a knock-only pod for someone not admitted; the refusal carries no world', async () => {
+    place(room, c, cellPos(map, spot.guest)); // standing inside while the pod was open
+    room.handle(owner, { t: 'desk:update', access: 'knock' });
+    await enter(c);
+    expect(reasonOf(cc)).toBe('no_permission');
+    expect(cc.msgs.some((m) => 'worldId' in m)).toBe(false);
+  });
+
+  it('a closed pod takes the owner only: a visitor inside is refused, the owner goes through', async () => {
+    place(room, c, cellPos(map, spot.guest));
+    room.handle(owner, { t: 'desk:update', access: 'closed' });
+    await enter(c);
+    expect(reasonOf(cc)).toBe('no_permission');
+    await enter(owner);
+    expect(co.of('portal:go')).toHaveLength(1);
+    expect(cb.of('portal:go')).toHaveLength(0);
   });
 });

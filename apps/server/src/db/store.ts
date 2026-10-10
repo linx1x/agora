@@ -15,7 +15,13 @@ import type {
 } from '@agora/shared';
 import { HISTORY_SIZE, inviteState, isPlatformRole, ticketStatus } from '@agora/shared';
 import { withTimeout } from '../startup';
-import { MemoryWorldStore, PgWorldStore, WORLD_SCHEMA, type WorldStore } from '../worlds/worldStore';
+import {
+  MemoryWorldStore,
+  PgWorldStore,
+  WORLD_SCHEMA,
+  type StoredWorld,
+  type WorldStore,
+} from '../worlds/worldStore';
 
 export interface StoredUser {
   uid: string;
@@ -168,6 +174,8 @@ export interface RoomStore {
   loadMap(id: string): Promise<StoredMap | null>;
   saveMap(m: StoredMap): Promise<void>;
   deleteMap(id: string): Promise<void>;
+  /** the world a desk portal leads to: the owner's world (P17.8) */
+  worldOf(uid: string): Promise<StoredWorld | null>;
 }
 
 export interface Store {
@@ -284,6 +292,7 @@ export function roomStore(s: Store, spaceId: string): RoomStore {
     loadMap: (id) => s.loadMap(id),
     saveMap: (m) => s.saveMap(m),
     deleteMap: (id) => s.deleteMap(id),
+    worldOf: (uid) => s.worlds.worldOf(uid),
   };
 }
 

@@ -57,6 +57,14 @@ import { Bucket } from './rate';
 import { OfficeCat } from './pets';
 import type { ScoreWeights } from '@agora/shared';
 import {
+  checkPortal,
+  deskGate,
+  deskOfPortal,
+  inPortal,
+  WORLD_SPAWN,
+  type PortalRefusal,
+} from '@agora/shared';
+import {
   NpcDirector,
   type Npc,
   type NpcBrainLink,
@@ -608,6 +616,8 @@ export class SpaceRoom {
         return this.onRtc(p, m);
       case 'teleport':
         return this.onTeleport(p, m.to);
+      case 'portal:enter':
+        return this.onPortalEnter(p, m.id);
       case 'desk:claim':
         return this.onClaim(p, m.deskId);
       case 'desk:release':
@@ -770,6 +780,49 @@ export class SpaceRoom {
     this.onZoneChange(p, before, p.zone);
     this.correct(p, 0, 'teleport');
     this.recomputeLinks();
+  }
+
+  /**
+   * The server's verdict on a step into a desk portal: the pod's rectangle, the pod's access and
+   * the visitor's own position and admission. `ownerUid` is the desk owner's (never sent).
+   */
+  private portalVerdict(
+    p: Player,
+    deskId: string,
+  ): { result: 'ok'; ownerUid: string } | { result: PortalRefusal } {
+    const spot = this.spots.get(deskId);
+    if (!spot) return { result: 'unknown' };
+    if (!inPortal(spot.zone, p.x, p.y)) return { result: 'outside' };
+    const d = this.desks.get(deskId);
+    if (!d) return { result: 'no_world' }; // an unclaimed pod has no owner, so no world
+    const verdict = checkPortal(
+      deskGate(deskId, spot.zone, d.access),
+      { x: p.x, y: p.y },
+      { isOwner: d.ownerUid === p.uid, admitted: p.admitted.has(deskId) },
+    );
+    if (verdict !== 'ok') return { result: verdict };
+    return { result: 'ok', ownerUid: d.ownerUid };
+  }
+
+  /**
+   * P17.8 (ADR-053): step through a portal. Only the server's position and rights count. The
+   * answer goes to the person who asked and nobody else; nobody moves here (the transfer is
+   * P17.9), so presence, media links, pods and chat do not change. The rights are checked again
+   * after the world lookup, in case the person moved or the desk changed meanwhile.
+   */
+  private async onPortalEnter(p: Player, id: string) {
+    if (!p.buckets.misc.take()) return;
+    const refuse = (reason: PortalRefusal) => p.conn?.send({ t: 'portal:refused', id, reason });
+    const deskId = deskOfPortal(id);
+    const first = deskId ? this.portalVerdict(p, deskId) : undefined;
+    if (!deskId || !first) return refuse('unknown');
+    if (first.result !== 'ok') return refuse(first.result);
+    const world = await this.store.worldOf(first.ownerUid).catch(() => null);
+    if (!world) return refuse('no_world');
+    const again = this.portalVerdict(p, deskId);
+    if (again.result !== 'ok') return refuse(again.result);
+    if (again.ownerUid !== first.ownerUid) return refuse('no_world'); // the desk changed hands meanwhile
+    p.conn?.send({ t: 'portal:go', id, worldId: world.id, spawn: WORLD_SPAWN });
   }
 
   private onClaim(p: Player, deskId: string) {

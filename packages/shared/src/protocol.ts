@@ -17,6 +17,7 @@ import type { NpcMindView } from './npc-mind';
 import { NPC_TALK_MAX_LEN, type NpcConsentState, type NpcEmote, type NpcRefusal } from './npc-talk';
 import { DESK_ACCESS, DeskDecorSchema, type DeskState } from './desks';
 import { MAX_EDIT_CELLS, MapChangeSchema, type EditRefusal, type MapChange } from './edit';
+import { PORTAL_ID, type PortalRefusal } from './portals';
 
 /** Client → server messages, all validated with zod on the server. */
 export const C2S = z.discriminatedUnion('t', [
@@ -32,6 +33,8 @@ export const C2S = z.discriminatedUnion('t', [
   }),
   /** Teleport from a portal pad to another region (hub or biome). */
   z.object({ t: z.literal('teleport'), to: z.string().min(1).max(32) }),
+  /** P17.8 (ADR-053): step through a portal by id. The server decides from its own position. */
+  z.object({ t: z.literal('portal:enter'), id: z.string().regex(PORTAL_ID) }),
   z.object({ t: z.literal('desk:claim'), deskId: z.string().min(1).max(32) }),
   z.object({ t: z.literal('desk:release') }),
   z.object({
@@ -232,6 +235,10 @@ export type S2CMsg =
   | { t: 'peers'; peers: string[] }
   | { t: 'myDesk'; deskId: string | null }
   | { t: 'admitted'; deskIds: string[] }
+  /** P17.8: the portal was entered; only the person who asked receives this (never broadcast) */
+  | { t: 'portal:go'; id: string; worldId: string; spawn: { x: number; y: number } }
+  /** P17.8: the portal was not entered, and why */
+  | { t: 'portal:refused'; id: string; reason: PortalRefusal }
   /**
    * SFU backend (ADR-031): the media rooms the server places me in, with fresh
    * tokens (used when (re)connecting; a live connection is kept). `zone` null =
