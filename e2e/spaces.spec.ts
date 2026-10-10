@@ -1,5 +1,21 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
 
+/** The pages this file opened: each is left and its context closed after its test (no ghost person in a shared space). */
+const opened: Page[] = [];
+test.afterEach(async () => {
+  for (const p of opened.splice(0)) {
+    await p
+      .evaluate(() =>
+        (window as unknown as { __agoraWorld?: { leave?: () => void } }).__agoraWorld?.leave?.(),
+      )
+      .catch(() => {});
+    await p
+      .context()
+      .close()
+      .catch(() => {});
+  }
+});
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const st = (p: Page) => p.evaluate(() => (window as any).__agora.store.get());
 const online = (p: Page) =>
@@ -22,6 +38,7 @@ async function signIn(browser: Browser, devUser: number): Promise<Page> {
     }
   });
   const page = await ctx.newPage();
+  opened.push(page);
   page.on('pageerror', (e) => console.log(`[pageerror ${devUser}]`, e.message));
   await page.goto('/');
   await page

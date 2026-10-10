@@ -11,18 +11,17 @@ import Phaser from 'phaser';
 import {
   BLEND_RADIUS,
   TILE,
-  TILE_DEFS,
-  TILESET_COLUMNS,
   furnitureKey,
   groundKey,
   mapReader,
-  markAnimated,
   type CellChange,
   type TileReader,
   type WorldMap,
 } from '@agora/shared';
-import { animatedTiles, tilesetCanvas } from '../tiles';
-import { T, composeFurniture, composeGround, type TileSource } from './compose';
+import { T } from './compose';
+import { composeCell, tileSource, type Kind } from './source';
+
+export { composeCell, tileSource };
 
 /**
  * The atlas is split into 512 px pages (256 variants each), each its own texture: an edit
@@ -38,47 +37,6 @@ const SLOTS = PAGE_SLOTS * MAX_PAGES;
 const FIRST = 1;
 /** time spent composing per frame during the first build */
 const BUDGET_MS = 8;
-
-type Kind = 'g' | 'f';
-
-let sourceCache: TileSource | null = null;
-/** Tile pixels read once from the game's tileset canvas (art, Kenney or procedural). */
-export function tileSource(): TileSource {
-  if (sourceCache) return sourceCache;
-  const cv = tilesetCanvas();
-  const all = cv
-    .getContext('2d', { willReadFrequently: true })!
-    .getImageData(0, 0, cv.width, cv.height);
-  const index = new Map(TILE_DEFS.map((d, i) => [d.name, i]));
-  const tiles = new Map<string, Uint8ClampedArray>();
-  sourceCache = {
-    tile(name) {
-      const hit = tiles.get(name);
-      if (hit) return hit;
-      const i = index.get(name);
-      if (i === undefined) return null;
-      const px = new Uint8ClampedArray(T * T * 4);
-      const sx = (i % TILESET_COLUMNS) * T;
-      const sy = Math.floor(i / TILESET_COLUMNS) * T;
-      for (let y = 0; y < T; y++)
-        px.set(
-          all.data.subarray(((sy + y) * all.width + sx) * 4, ((sy + y) * all.width + sx + T) * 4),
-          y * T * 4,
-        );
-      tiles.set(name, px);
-      return px;
-    },
-  };
-  markAnimated(animatedTiles().map((a) => a.name));
-  return sourceCache;
-}
-
-/** Compose one cell's variant pixels for a reader (live map or a build preview). */
-export function composeCell(r: TileReader, kind: Kind, x: number, y: number): Uint8ClampedArray {
-  return kind === 'g'
-    ? composeGround(r, tileSource(), x, y)
-    : composeFurniture(r, tileSource(), x, y);
-}
 
 interface Page {
   key: string;

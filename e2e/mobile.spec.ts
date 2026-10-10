@@ -4,6 +4,23 @@
  * touch prompts. Real touches go through CDP so the browser makes the pointer events.
  */
 import { expect, test, type Browser, type CDPSession, type Page } from '@playwright/test';
+import { entryPath, runView } from './views';
+
+/** The pages this file opened: each is left and its context closed after its test (no ghost person in a shared space). */
+const opened: Page[] = [];
+test.afterEach(async () => {
+  for (const p of opened.splice(0)) {
+    await p
+      .evaluate(() =>
+        (window as unknown as { __agoraWorld?: { leave?: () => void } }).__agoraWorld?.leave?.(),
+      )
+      .catch(() => {});
+    await p
+      .context()
+      .close()
+      .catch(() => {});
+  }
+});
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const S = (p: Page) => p.evaluate(() => (window as any).__agora.store.get());
@@ -27,22 +44,29 @@ const touch = (cdp: CDPSession, type: string, pts: Pt[]) =>
     touchPoints: pts.map((p, i) => ({ x: p.x, y: p.y, id: p.id ?? i, radiusX: 4, radiusY: 4 })),
   });
 
+/** The `2.5d` project (playwright.config.ts) runs this spec in the 2.5D view (P16.12), as world.spec.ts does. */
 async function enterPhone(browser: Browser): Promise<{ page: Page; cdp: CDPSession }> {
+  const view = runView();
   const ctx = await browser.newContext({
     viewport: { width: 390, height: 844 },
     deviceScaleFactor: 2,
     isMobile: true,
     hasTouch: true,
   });
-  await ctx.addInitScript(() =>
-    localStorage.setItem(
-      'agora.settings',
-      JSON.stringify({ lighting: false, sounds: false, autoSit: false, precheck: false }),
-    ),
+  await ctx.addInitScript(
+    ([v]) => {
+      localStorage.setItem(
+        'agora.settings',
+        JSON.stringify({ lighting: false, sounds: false, autoSit: false, precheck: false }),
+      );
+      if (v === '2.5d') localStorage.setItem('agora.worldView', v);
+    },
+    [view] as const,
   );
   const page = await ctx.newPage();
+  opened.push(page);
   page.on('pageerror', (e) => console.log('[pageerror]', e.message));
-  await page.goto('/');
+  await page.goto(entryPath(view));
   await page.getByRole('button', { name: 'Chloé Roy' }).click();
   const enterBtn = page
     .getByRole('dialog')
@@ -53,6 +77,9 @@ async function enterPhone(browser: Browser): Promise<{ page: Page; cdp: CDPSessi
     const s = a.store.get();
     return s.conn === 'online' && !!s.me && a.rendered.has(s.me);
   });
+  expect(await page.evaluate(() => (window as any).__agora.view.engine)).toBe(
+    view === '2.5d' ? '2.5d' : '2d',
+  );
   await page.waitForTimeout(500);
   return { page, cdp: await ctx.newCDPSession(page) };
 }
@@ -158,8 +185,14 @@ test('joystick walks, a drag on the map does not, a tap does, pinch zooms', asyn
   const still = await myPos(page);
   expect(Math.hypot(still.x - walked.x, still.y - walked.y)).toBeLessThan(2);
 
-  // a tap walks there
-  await page.touchscreen.tap(me.x, me.y - 96);
+  // a tap walks there: the floor three tiles north of me, where the view draws it (the 2.5D tilt
+  // foreshortens the screen, so a fixed screen offset is not a fixed distance on the floor)
+  const north = await page.evaluate(() => {
+    const a = (window as any).__agora;
+    const pos = a.rendered.get(a.store.get().me);
+    return a.view.toClient(pos.x, pos.y - 96);
+  });
+  await page.touchscreen.tap(north.x, north.y);
   await page.waitForFunction(
     (y0) => {
       const a = (window as any).__agora;

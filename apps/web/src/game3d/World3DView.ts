@@ -5,8 +5,9 @@
  * `clickTo`. Visual only: nothing here changes the server, the protocol or the map maths.
  *
  * People and characters are paper cut-outs (P16.8, `paperFigures.ts`) with screen-space names,
- * status, emotes and bubbles (`overlays.ts`). Not yet: lights and lamps (P16.10), blended tiles
- * (P16.12), props (P16.14), pets (checkpoint J).
+ * status, emotes and bubbles (`overlays.ts`). Lights (P16.10) and blended tiles and animated
+ * tiles (P16.12) are drawn. Not yet: placed props (P16.14), build mode (P16.13: 2D while it is on),
+ * pets (checkpoint J).
  */
 import * as THREE from 'three';
 import {
@@ -14,6 +15,7 @@ import {
   LAMP_COLORS,
   TILE,
   cellPos,
+  mapReader,
   type Cell,
   type Emote,
   type S2CMsg,
@@ -25,7 +27,8 @@ import { zoomStep } from '../ui/Minimap';
 import { AV_H } from '../game/avatars';
 import { WorldController, rendered } from '../game/controller';
 import { quebecHour } from '../game/lighting';
-import { tilesetCanvas } from '../game/tiles';
+import { animatedTiles, tilesetCanvas } from '../game/tiles';
+import { composeCell } from '../game/blend/source';
 import { exposeTestApi, type ViewTestApi, type WorldView } from '../game/view';
 import {
   FOV,
@@ -43,7 +46,15 @@ import {
   type Rect,
 } from './camera';
 import { DEFAULT_SCENE, buildScene, regionTiles } from './scene';
-import { buildRegionMesh, disposeTree, makeAtlas, pixelTexture, scanExtents } from './meshes';
+import {
+  buildRegionMesh,
+  disposeTree,
+  makeRegionAtlas,
+  pixelTexture,
+  scanExtents,
+  type RegionAnim,
+} from './meshes';
+import { blendSlots, type BlendSlot } from './atlasMath';
 import { Occlusion, FADE_ATTR } from './occlusion';
 import { hits, occluderObjects, screenBox, type Subject } from './occlusionMath';
 import { blobShadows } from './blobs';
@@ -143,8 +154,15 @@ export class World3DView implements WorldView {
   private deskLamps: { src: LampSource; deskId: string }[] = [];
   private ctl: WorldController;
   private cam: Cam = { tx: 0, tz: 0, tilt: TILT, dist: 10, fov: FOV, w: 1, h: 1 };
-  private atlas: ReturnType<typeof makeAtlas>;
-  private atlasTex: THREE.Texture;
+  /** the tileset, and its animated tiles: the region's atlas is made from them (P16.12) */
+  private tileset: HTMLCanvasElement;
+  private animTiles: ReturnType<typeof animatedTiles>;
+  /** the texture of the region's atlas (rebuilt with the region) */
+  private atlasTex: THREE.Texture | null = null;
+  /** the frames of the region's animated tiles, moved on the mesh every frame */
+  private anim: RegionAnim | null = null;
+  /** composed blend variants by key (a key always composes to the same pixels) */
+  private blendArt = new Map<string, Uint8ClampedArray>();
   private extents: ReturnType<typeof scanExtents>;
 
   private region: THREE.Group | null = null;
@@ -199,8 +217,8 @@ export class World3DView implements WorldView {
 
   constructor(private parent: HTMLElement) {
     const tileset = tilesetCanvas();
-    this.atlas = makeAtlas(tileset);
-    this.atlasTex = pixelTexture(this.atlas.canvas);
+    this.tileset = tileset;
+    this.animTiles = animatedTiles();
     this.extents = scanExtents(tileset);
 
     this.renderer = new THREE.WebGLRenderer({ antialias: false });
@@ -294,7 +312,6 @@ export class World3DView implements WorldView {
     this.clearPath();
     this.pointMat.dispose();
     this.goalMat.dispose();
-    this.atlasTex.dispose();
     this.renderer.dispose();
     this.renderer.forceContextLoss();
     this.canvas.remove();
@@ -379,8 +396,16 @@ export class World3DView implements WorldView {
     const map = s.map!;
     const r = id ? map.regions.find((q) => q.id === id) : undefined;
     const scene = buildScene(map, regionTiles(map, r), this.extents, DEFAULT_SCENE);
+    const { slots } = blendSlots(scene.faces);
+    const reader = mapReader(map);
+    const atlas = makeRegionAtlas(this.tileset, this.animTiles, slots, (slot) =>
+      this.blendPixels(reader, slot),
+    );
+    this.atlasTex = pixelTexture(atlas.canvas);
     const group = new THREE.Group();
-    const mesh = buildRegionMesh(scene, this.atlas, this.atlasTex);
+    const built = buildRegionMesh(scene, atlas, this.atlasTex);
+    const mesh = built.mesh;
+    this.anim = built.anim;
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     group.add(mesh);
@@ -399,6 +424,16 @@ export class World3DView implements WorldView {
       ...scene.lights.map((l) => ({ x: l.x, y: l.y, z: l.z, kind: l.kind, biome: l.biome })),
       ...this.deskLamps.map((d) => d.src),
     ]);
+  }
+
+  /** The composed pixels of a blend slot, from the map (cached: a key always composes the same). */
+  private blendPixels(reader: ReturnType<typeof mapReader>, slot: BlendSlot): Uint8ClampedArray {
+    let px = this.blendArt.get(slot.key);
+    if (!px) {
+      px = composeCell(reader, slot.kind, slot.cx, slot.cy);
+      this.blendArt.set(slot.key, px);
+    }
+    return px;
   }
 
   /** The desk lamps in this region: a lamp head per pod, lit by its desk's state (P9.16). */
@@ -437,6 +472,9 @@ export class World3DView implements WorldView {
     this.deskLamps = [];
     this.rig.setLamps([]);
     this.rig.setBlobs(null);
+    this.anim = null;
+    this.atlasTex?.dispose();
+    this.atlasTex = null;
     if (!this.region) return;
     this.scene.remove(this.region);
     disposeTree(this.region);
@@ -604,6 +642,7 @@ export class World3DView implements WorldView {
     }
     this.overlays.keep(shown);
     this.occlude(s, drawn, dtMs);
+    this.anim?.tick(now, reducedMotion());
     this.rig.frame(now, reducedMotion());
     this.watchFps(s, now);
     // the post-processing is part of the lit look: with Lighting off it is skipped too
