@@ -1,0 +1,19 @@
+{
+  "tools": [
+    { "id": "hoe_1", "tool": "hoe", "tier": 1, "energy": 2, "power": 1, "speed": 1, "radius": 0 },
+    { "id": "hoe_2", "tool": "hoe", "tier": 2, "energy": 3, "power": 2, "speed": 1, "radius": 1 },
+    { "id": "hoe_3", "tool": "hoe", "tier": 3, "energy": 4, "power": 3, "speed": 1.5, "radius": 1 },
+    { "id": "can_1", "tool": "can", "tier": 1, "energy": 2, "power": 1, "speed": 1, "radius": 0 },
+    { "id": "can_2", "tool": "can", "tier": 2, "energy": 3, "power": 2, "speed": 1, "radius": 1 },
+    { "id": "can_3", "tool": "can", "tier": 3, "energy": 4, "power": 3, "speed": 1.5, "radius": 1 },
+    { "id": "axe_1", "tool": "axe", "tier": 1, "energy": 3, "power": 1, "speed": 1, "radius": 0 },
+    { "id": "axe_2", "tool": "axe", "tier": 2, "energy": 4, "power": 2, "speed": 1, "radius": 0 },
+    { "id": "axe_3", "tool": "axe", "tier": 3, "energy": 5, "power": 3, "speed": 1.5, "radius": 0 },
+    { "id": "pick_1", "tool": "pick", "tier": 1, "energy": 3, "power": 1, "speed": 1, "radius": 0 },
+    { "id": "pick_2", "tool": "pick", "tier": 2, "energy": 4, "power": 2, "speed": 1, "radius": 0 },
+    { "id": "pick_3", "tool": "pick", "tier": 3, "energy": 5, "power": 3, "speed": 1.5, "radius": 0 },
+    { "id": "rod_1", "tool": "rod", "tier": 1, "energy": 2, "power": 1, "speed": 1, "radius": 0, "barBonus": 0 },
+    { "id": "rod_2", "tool": "rod", "tier": 2, "energy": 2, "power": 2, "speed": 1, "radius": 0, "barBonus": 8 },
+    { "id": "rod_3", "tool": "rod", "tier": 3, "energy": 2, "power": 3, "speed": 1.2, "radius": 0, "barBonus": 16 }
+  ]
+}

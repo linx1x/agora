@@ -6,6 +6,9 @@ dist
 test-results
 playwright-report
 data/
+# World game data is source (ADR-053, P17.18)
+!packages/shared/data/
+!packages/shared/data/worlds/
 uploads/
 *.log
 .DS_Store

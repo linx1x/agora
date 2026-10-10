@@ -1,0 +1,27 @@
+{
+  "points": { "love": 80, "like": 45, "neutral": 20, "talk": 20, "dislike": -20, "hate": -40 },
+  "limits": { "perDay": 1, "perWeek": 2, "weeklyBonus": 10 },
+  "npcs": [
+    {
+      "npc": "zoe",
+      "love": ["honey_bread", "cloud_cake", "sun_jam"],
+      "like": ["dawn_salad", "pearl_soup", "meadow_herb", "glow_moss"],
+      "dislike": ["stone", "fiber"],
+      "hate": ["fallen_nut"]
+    },
+    {
+      "npc": "felix",
+      "love": ["trout_grill", "ember_stew", "sun_bass"],
+      "like": ["river_pie", "reed_pike", "ember_pepper", "dull_bar"],
+      "dislike": ["sun_jam", "pearl_anchovy"],
+      "hate": ["shore_shell"]
+    },
+    {
+      "npc": "theo",
+      "love": ["cloud_wool", "fresh_milk", "rune_cheese"],
+      "like": ["maize_cakes", "root_roast", "mountain_thyme", "hardwood"],
+      "dislike": ["meadow_herb", "pine_resin"],
+      "hate": ["dull_ore"]
+    }
+  ]
+}
