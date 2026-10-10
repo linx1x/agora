@@ -84,6 +84,12 @@ describe('schemas', () => {
     ).toBe(false);
   });
 
+  it('allows a sprinkler effect only on buildings', () => {
+    const effect = { kind: 'sprinkler', radius: 1 };
+    expect(ItemSchema.safeParse({ id: 'pot', kind: 'building', category: 'open', buy: null, value: 5, effect }).success).toBe(true);
+    expect(ItemSchema.safeParse({ id: 'pot', kind: 'material', category: 'open', buy: null, value: 5, effect }).success).toBe(false);
+  });
+
   it('rejects ids that are not lower_snake', () => {
     expect(ItemSchema.safeParse({ id: 'Bad-Id', kind: 'fish', category: 'open', buy: null, value: 5 }).success).toBe(false);
   });

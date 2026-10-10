@@ -61,6 +61,8 @@ export const ItemSchema = z
     stack: int(1, 999).default(99),
     /** Food only: energy restore basis (research section 9). */
     edibility: int(1, 100).optional(),
+    /** Buildings only: what the building does each night. */
+    effect: z.object({ kind: z.literal('sprinkler'), radius: int(0, 2) }).optional(),
   })
   .superRefine((item, ctx) => {
     if (item.kind === 'food' && item.edibility === undefined) {
@@ -68,6 +70,9 @@ export const ItemSchema = z
     }
     if (item.kind !== 'food' && item.edibility !== undefined) {
       ctx.addIssue({ code: 'custom', path: ['edibility'], message: 'only food has edibility' });
+    }
+    if (item.effect !== undefined && item.kind !== 'building') {
+      ctx.addIssue({ code: 'custom', path: ['effect'], message: 'only buildings have an effect' });
     }
   });
 export type Item = z.infer<typeof ItemSchema>;
