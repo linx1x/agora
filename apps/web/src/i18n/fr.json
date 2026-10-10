@@ -959,5 +959,95 @@
     "web": {
       "sources": "Sources : {{sites}}"
     }
+  },
+  "worlds": {
+    "tuning": {
+      "open": "Réglages du monde",
+      "title": "Réglages du monde (aperçu)",
+      "intro": "Aperçu seulement : chaque monde garde les valeurs de sa version de génération. Copiez le JSON pour mettre à jour worldgen.json.",
+      "seed": "Graine",
+      "reset": "Valeurs par défaut",
+      "copy": "Copier le JSON",
+      "copied": "JSON copié.",
+      "copyFailed": "Copie impossible ici : sélectionnez le texte du champ JSON.",
+      "summary": "Aperçu de {{size}} × {{size}} cases, {{water}} % d'eau.",
+      "legend": "Légende",
+      "json": "JSON des paramètres"
+    },
+    "group": {
+      "elevation": "Altitude",
+      "temperature": "Température",
+      "humidity": "Humidité",
+      "shape": "Forme du terrain",
+      "rivers": "Rivières et lacs"
+    },
+    "param": {
+      "elevation": {
+        "scale": "Échelle de l'altitude (cases)",
+        "octaves": "Octaves de l'altitude",
+        "contrast": "Contraste de l'altitude"
+      },
+      "temperature": {
+        "scale": "Échelle de la température (cases)",
+        "octaves": "Octaves de la température",
+        "contrast": "Contraste de la température"
+      },
+      "humidity": {
+        "scale": "Échelle de l'humidité (cases)",
+        "octaves": "Octaves de l'humidité",
+        "contrast": "Contraste de l'humidité"
+      },
+      "seaElevation": "Niveau de la mer",
+      "beachWidth": "Largeur de la plage",
+      "alpineElevation": "Altitude alpine",
+      "rivers": {
+        "sourceGrid": "Grille des sources",
+        "sourceChance": "Chance d'une source",
+        "sourceHeight": "Hauteur minimale d'une source",
+        "maxSteps": "Longueur maximale d'une rivière",
+        "lakeRadius": "Rayon d'un lac",
+        "lakeRise": "Montée d'un lac"
+      }
+    },
+    "block": {
+      "stone": "Pierre",
+      "gravel": "Gravier",
+      "sand": "Sable",
+      "water": "Eau",
+      "meadow_grass": "Herbe de prairie",
+      "meadow_dirt": "Terre de prairie",
+      "jungle_grass": "Herbe de jungle",
+      "jungle_mud": "Boue de jungle",
+      "desert_sand": "Sable du désert",
+      "desert_sandstone": "Grès du désert",
+      "taiga_moss": "Mousse de taïga",
+      "taiga_podzol": "Podzol de taïga",
+      "taiga_snow": "Neige de taïga",
+      "tilled_soil": "Sol labouré",
+      "tall_grass": "Herbe haute",
+      "flower": "Fleur",
+      "fern": "Fougère",
+      "dead_bush": "Buisson mort",
+      "oak_tree": "Chêne",
+      "jungle_tree": "Arbre de jungle",
+      "palm": "Palmier",
+      "spruce": "Épinette",
+      "cactus": "Cactus",
+      "boulder": "Rocher",
+      "wood_wall": "Mur de bois",
+      "torch": "Torche",
+      "stone_stairs": "Escalier de pierre",
+      "wood_floor": "Plancher de bois",
+      "return_pad": "Plateforme de retour",
+      "bed": "Lit",
+      "shipping_bin": "Caisse d'expédition",
+      "shop_board": "Tableau de la boutique"
+    },
+    "biome": {
+      "meadow": "Prairie",
+      "jungle": "Jungle",
+      "desert": "Désert",
+      "taiga": "Taïga"
+    }
   }
 }

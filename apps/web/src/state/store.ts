@@ -190,6 +190,7 @@ export interface AppState {
     | 'shortcuts'
     | 'settings'
     | 'desk'
+    | 'worldTuning'
     | 'buildReset'
     | 'spaces'
     | 'spaceSettings'

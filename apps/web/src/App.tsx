@@ -15,6 +15,7 @@ import { Settings } from './ui/Settings';
 import { SidePanel } from './ui/SidePanel';
 import { VideoStrip } from './ui/VideoStrip';
 import { DeskDialog } from './ui/DeskDialog';
+import { WorldTuning } from './worlds/WorldTuning';
 import { Minimap, zoomStep } from './ui/Minimap';
 import { PromptBar } from './ui/PromptBar';
 import { TalkBox } from './ui/TalkBox';
@@ -293,6 +294,7 @@ function SpaceApp({ slug }: { slug: string }) {
       {dialog === 'account' && <Account onClose={() => store.set({ dialog: null })} />}
       {dialog === 'people' && <People onClose={() => store.set({ dialog: null })} />}
       {dialog === 'desk' && <DeskDialog onClose={() => store.set({ dialog: null })} />}
+      {dialog === 'worldTuning' && <WorldTuning onClose={() => store.set({ dialog: null })} />}
       {dialog === 'privacy' && <Privacy onClose={() => store.set({ dialog: null })} />}
       {dialog === 'shortcuts' && <Shortcuts onClose={() => store.set({ dialog: null })} />}
       {dialog === 'buildReset' && <BuildResetDialog onClose={() => store.set({ dialog: null })} />}
