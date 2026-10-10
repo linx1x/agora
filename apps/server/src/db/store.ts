@@ -15,6 +15,7 @@ import type {
 } from '@agora/shared';
 import { HISTORY_SIZE, inviteState, isPlatformRole, ticketStatus } from '@agora/shared';
 import { withTimeout } from '../startup';
+import { MemoryWorldStore, PgWorldStore, WORLD_SCHEMA, type WorldStore } from '../worlds/worldStore';
 
 export interface StoredUser {
   uid: string;
@@ -171,6 +172,8 @@ export interface RoomStore {
 
 export interface Store {
   kind: 'postgres' | 'memory';
+  /** personal worlds (ADR-053, P17.7) */
+  worlds: WorldStore;
   init(): Promise<void>;
   saveMessage(spaceId: string, m: ChatMsg): Promise<void>;
   recentMessages(spaceId: string, n?: number): Promise<ChatMsg[]>;
@@ -286,6 +289,7 @@ export function roomStore(s: Store, spaceId: string): RoomStore {
 
 export class MemoryStore implements Store {
   kind = 'memory' as const;
+  worlds: WorldStore = new MemoryWorldStore();
   private msgs: (ChatMsg & { spaceId: string })[] = [];
   private users = new Map<string, StoredUser>();
   /** `${spaceId}/${deskId}` → desk */
@@ -538,6 +542,7 @@ export class MemoryStore implements Store {
     this.npcStates.set(`${space}|${npcId}`, json);
   }
   async deleteUser(uid: string) {
+    await this.worlds.deleteWorldOf(uid);
     await this.deleteNpcMemories(uid);
     this.npcConsent.delete(uid);
     this.users.delete(uid);
@@ -920,11 +925,14 @@ const passkeyParams = (p: StoredPasskey) => [
 export class PgStore implements Store {
   kind = 'postgres' as const;
   private pool: pg.Pool;
+  worlds: WorldStore;
   constructor(url: string) {
     this.pool = new pg.Pool({ connectionString: url, max: 5, connectionTimeoutMillis: 5000 });
+    this.worlds = new PgWorldStore(this.pool);
   }
   async init() {
     await this.pool.query(SCHEMA);
+    await this.pool.query(WORLD_SCHEMA);
   }
   async saveMessage(spaceId: string, m: ChatMsg) {
     await this.pool.query(
