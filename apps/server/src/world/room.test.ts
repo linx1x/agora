@@ -34,7 +34,12 @@ class FakeConn {
   }
 }
 
-function makeRoom(store = new MemoryStore(), capacity = 4, sfu?: RoomOptions['sfu']) {
+function makeRoom(
+  store = new MemoryStore(),
+  capacity = 4,
+  sfu?: RoomOptions['sfu'],
+  flags: Record<string, boolean> = { worlds: true },
+) {
   return new SpaceRoom(
     map,
     {
@@ -48,7 +53,7 @@ function makeRoom(store = new MemoryStore(), capacity = 4, sfu?: RoomOptions['sf
         connectR: 5,
         disconnectR: 6,
         videoCap: 9,
-        flags: {} as never,
+        flags: flags as never,
       },
       reconnectGraceMs: 50,
       sfu,
@@ -631,6 +636,20 @@ describe('SpaceRoom: portals into worlds (P17.8, ADR-053)', () => {
       lastDay: 0,
       settings: {},
     });
+  });
+
+  it('refused as disabled while the worlds flag is off, even for the owner at the desk', async () => {
+    const off = makeRoom(store, 4, undefined, {});
+    await off.init();
+    const conn = new FakeConn();
+    const me = (await off.join(conn, { uid: OWNER, name: 'Alice' }))!;
+    place(off, me, cellPos(map, spot.chair), 'sit');
+    off.handle(me, { t: 'desk:claim', deskId: 'jungle-1' });
+    off.handle(me, { t: 'portal:enter', id: 'desk:jungle-1' });
+    await settle();
+    expect(conn.of('portal:refused').at(-1)?.reason).toBe('disabled');
+    expect(conn.of('portal:go')).toHaveLength(0);
+    expect(off.players.has(me.id)).toBe(true);
   });
 
   it('refused outside the trigger, even for the owner, and answered only to the person who asked', async () => {

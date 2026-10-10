@@ -832,6 +832,8 @@ export class SpaceRoom {
   private async onPortalEnter(p: Player, id: string) {
     if (!p.buckets.misc.take()) return;
     const refuse = (reason: PortalRefusal) => p.conn?.send({ t: 'portal:refused', id, reason });
+    // ADR-053: personal worlds stay closed until the `worlds` flag is on (checkpoint O)
+    if (this.opts.clientConfig.flags.worlds !== true) return refuse('disabled');
     const deskId = deskOfPortal(id);
     const first = deskId ? this.portalVerdict(p, deskId) : undefined;
     if (!deskId || !first) return refuse('unknown');

@@ -88,7 +88,7 @@ describe('desk portals', () => {
   it('a desk portal is a valid Portal that arrives at the origin cell of its world', () => {
     expect(PortalSchema.parse(portal)).toEqual(portal);
     expect(portal.target).toEqual({ worldId: 'world-7f3k', spawn: WORLD_SPAWN });
-    expect(PORTAL_REFUSALS).toEqual(['unknown', 'outside', 'no_permission', 'no_world']);
+    expect(PORTAL_REFUSALS).toEqual(['disabled', 'unknown', 'outside', 'no_permission', 'no_world']);
   });
 
   it('the schema rejects a bad id, an empty trigger, an unknown access, an empty world and an extra field', () => {

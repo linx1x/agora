@@ -39,7 +39,7 @@ export const PortalSchema = z.strictObject({
 export type Portal = z.infer<typeof PortalSchema>;
 
 /** Why a step through a portal is refused (`portal:refused`). */
-export const PORTAL_REFUSALS = ['unknown', 'outside', 'no_permission', 'no_world'] as const;
+export const PORTAL_REFUSALS = ['disabled', 'unknown', 'outside', 'no_permission', 'no_world'] as const;
 export type PortalRefusal = (typeof PORTAL_REFUSALS)[number];
 
 /**
