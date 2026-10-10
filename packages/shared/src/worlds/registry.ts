@@ -44,6 +44,8 @@ export const BlockSchema = z
     /** Block height in levels above its cell (0 = flat ground). */
     height: z.number().int().min(0).max(LEVEL_MAX),
     placeable: z.boolean().default(false),
+    /** Stairs or a ramp: walking may change level by 2 onto or off it (walk.ts). */
+    ramp: z.boolean().default(false),
     light: z.number().int().min(0).max(15).default(0),
     states: z.array(z.string().regex(STATE_NAME)).max(8).default([]),
     /** Biome ids where this block may appear. Empty means every biome. */
@@ -56,6 +58,9 @@ export const BlockSchema = z
     }
     if (block.layer === 'ground' && block.height !== 0) {
       ctx.addIssue({ code: 'custom', path: ['height'], message: 'ground blocks have height 0' });
+    }
+    if (block.ramp && (block.layer !== 'decor' || block.solid || block.liquid)) {
+      ctx.addIssue({ code: 'custom', path: ['ramp'], message: 'a ramp is a walkable decor block' });
     }
     if (block.layer === 'ground' && block.harvest) {
       ctx.addIssue({ code: 'custom', path: ['harvest'], message: 'only decor blocks are harvested' });

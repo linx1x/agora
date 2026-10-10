@@ -5,3 +5,5 @@ export * from './biomes';
 export * from './gen';
 export * from './terrain';
 export * from './rivers';
+export * from './cells';
+export * from './walk';

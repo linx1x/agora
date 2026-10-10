@@ -123,6 +123,13 @@ describe('parseBlockRegistry errors', () => {
     ).toContain('min must be <= max');
   });
 
+  it('rejects a ramp that is not walkable decor', () => {
+    expect(messageOf(file(row({ ramp: true, solid: true })))).toContain('a ramp is a walkable decor block');
+    expect(messageOf(file(row({ ramp: true, layer: 'ground', solid: false, height: 0 })))).toContain(
+      'a ramp is a walkable decor block',
+    );
+  });
+
   it('rejects unknown keys so typos do not pass silently', () => {
     expect(messageOf(file(row({ solidd: true })))).toContain('blocks.0');
   });
