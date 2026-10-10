@@ -176,6 +176,8 @@ export interface RoomStore {
   deleteMap(id: string): Promise<void>;
   /** the world a desk portal leads to: the owner's world (P17.8) */
   worldOf(uid: string): Promise<StoredWorld | null>;
+  /** personal worlds, shared by every space in this process (P17.9, see `worldHubFor`) */
+  worlds: WorldStore;
 }
 
 export interface Store {
@@ -293,6 +295,7 @@ export function roomStore(s: Store, spaceId: string): RoomStore {
     saveMap: (m) => s.saveMap(m),
     deleteMap: (id) => s.deleteMap(id),
     worldOf: (uid) => s.worlds.worldOf(uid),
+    worlds: s.worlds,
   };
 }
 

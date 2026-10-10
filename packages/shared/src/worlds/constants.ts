@@ -13,3 +13,5 @@ export const WORLD_COORD_LIMIT = 1 << 20;
  * storage is a risk, so edits are capped). Tunable; checked when a delta is saved.
  */
 export const WORLD_DELTA_CELL_CAP = 40000;
+/** Chunks streamed to a person around the one under their feet (square radius, P17.9). */
+export const WORLD_VIEW_CHUNKS = 2;

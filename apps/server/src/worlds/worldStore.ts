@@ -41,6 +41,8 @@ export interface WorldStore {
   setLastDay(id: string, day: number): Promise<void>;
   /** the stored chunks among `keys` (chunks never edited are absent) */
   loadChunks(worldId: string, keys: readonly { cx: number; cy: number }[]): Promise<StoredChunk[]>;
+  /** every stored chunk of a world: the room loads them all when it opens (P17.9) */
+  loadAllChunks(worldId: string): Promise<StoredChunk[]>;
   /**
    * Replace one chunk's delta when `expectedRev` is the stored revision (0 for none). Refused when
    * the world's other chunks plus this one would exceed `cap` patched cells.
@@ -115,6 +117,10 @@ export class MemoryWorldStore implements WorldStore {
       if (c) out.push(c);
     }
     return out;
+  }
+
+  async loadAllChunks(worldId: string): Promise<StoredChunk[]> {
+    return [...(this.chunks.get(worldId)?.values() ?? [])].map((c) => structuredClone(c));
   }
 
   async saveChunk(
@@ -209,6 +215,14 @@ export class PgWorldStore implements WorldStore {
        JOIN unnest($2::int[], $3::int[]) AS k(cx, cy) ON k.cx = c.cx AND k.cy = c.cy
        WHERE c.world_id = $1`,
       [worldId, keys.map((k) => k.cx), keys.map((k) => k.cy)],
+    );
+    return r.rows.map((row) => ({ cx: row.cx, cy: row.cy, delta: row.delta, cells: row.cells, rev: row.rev }));
+  }
+
+  async loadAllChunks(worldId: string): Promise<StoredChunk[]> {
+    const r = await this.pool.query<{ cx: number; cy: number; delta: ChunkDelta; cells: number; rev: number }>(
+      'SELECT cx, cy, delta, cells, rev FROM world_chunks WHERE world_id = $1',
+      [worldId],
     );
     return r.rows.map((row) => ({ cx: row.cx, cy: row.cy, delta: row.delta, cells: row.cells, rev: row.rev }));
   }

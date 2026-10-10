@@ -8,3 +8,4 @@ export * from './rivers';
 export * from './cells';
 export * from './walk';
 export * from './delta';
+export * from './view';

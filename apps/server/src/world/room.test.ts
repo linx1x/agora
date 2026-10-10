@@ -3,10 +3,11 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
   C2S,
   TILE,
-  WORLD_SPAWN,
+  WORLDGEN,
   cellPos,
   parseMap,
   remapTmj,
+  worldGenParamsFor,
   type S2CMsg,
   type Tmj,
 } from '@agora/shared';
@@ -639,19 +640,19 @@ describe('SpaceRoom: portals into worlds (P17.8, ADR-053)', () => {
     expect([cc.msgs.length, cb.msgs.length]).toEqual(seen);
   });
 
-  it('the owner steps through to their own world at the origin; nobody moves, links or hears of it', async () => {
-    const links = [...room.links];
-    const seen = [cc.msgs.length, cb.msgs.length];
-    const at = { x: owner.x, y: owner.y };
+  it('the owner steps through to their own world; the office sees them leave and no office link stays', async () => {
     await enter(owner);
-    expect(co.of('portal:go')).toEqual([
-      { t: 'portal:go', id: 'desk:jungle-1', worldId: WORLD, spawn: WORLD_SPAWN },
+    expect(co.of('portal:go')).toMatchObject([
+      { t: 'portal:go', id: 'desk:jungle-1', worldId: WORLD },
     ]);
-    expect([cc.msgs.length, cb.msgs.length]).toEqual(seen);
-    expect([...room.links]).toEqual(links);
-    expect({ x: owner.x, y: owner.y }).toEqual(at);
+    expect(co.of('world:welcome')).toHaveLength(1);
+    expect(co.of('peers').at(-1)?.peers).toEqual([]);
+    expect(cc.of('leave').at(-1)?.id).toBe(owner.id);
+    expect(cb.of('leave').at(-1)?.id).toBe(owner.id);
+    expect(room.players.has(owner.id)).toBe(false);
+    expect([...room.links].filter((key) => key.includes(owner.id))).toEqual([]);
     // the owner's user id never leaves the server
-    expect(JSON.stringify(co.of('portal:go'))).not.toContain(OWNER);
+    expect(JSON.stringify([co.of('portal:go'), co.of('world:welcome')])).not.toContain(OWNER);
   });
 
   it('refused with no_world when the owner has no world (none made, or removed)', async () => {
@@ -672,19 +673,17 @@ describe('SpaceRoom: portals into worlds (P17.8, ADR-053)', () => {
     expect(reasonOf(cc)).toBe('unknown');
   });
 
-  it('knock: a visitor is refused until admitted, goes through once admitted, and loses access when they walk out', async () => {
+  it('knock: a visitor at the door is refused, then goes through to the world once admitted', async () => {
     room.handle(owner, { t: 'desk:update', access: 'knock' });
     place(room, c, cellPos(map, spot.entrance));
+    await enter(c);
+    expect(reasonOf(cc)).toBe('outside');
     room.handle(c, { t: 'knock', deskId: 'jungle-1' });
     room.handle(owner, { t: 'knock:answer', visitor: c.id, accept: true });
     expect(walk(room, c, cellPos(map, spot.guest))).toBe(true);
     await enter(c);
     expect(cc.of('portal:go')).toHaveLength(1);
-    // walking out ends the admission: the trigger refuses, and the pod does not let them back in
-    expect(walk(room, c, cellPos(map, spot.entrance))).toBe(true);
-    await enter(c);
-    expect(reasonOf(cc)).toBe('outside');
-    expect(walk(room, c, cellPos(map, spot.guest))).toBe(false);
+    expect(room.players.has(c.id)).toBe(false);
   });
 
   it('refused without permission inside a knock-only pod for someone not admitted; the refusal carries no world', async () => {
@@ -703,5 +702,113 @@ describe('SpaceRoom: portals into worlds (P17.8, ADR-053)', () => {
     await enter(owner);
     expect(co.of('portal:go')).toHaveLength(1);
     expect(cb.of('portal:go')).toHaveLength(0);
+  });
+});
+
+describe('SpaceRoom: personal worlds (P17.9, ADR-053)', () => {
+  const spot = map.desks.find((d) => d.id === 'jungle-1')!;
+  const OWNER = 'owner-7731';
+  const WORLD = 'world-7f3k';
+  const SEED = 3560865791;
+  const settle = () => new Promise((r) => setTimeout(r, 0));
+  let store: MemoryStore;
+  let room: SpaceRoom;
+  let co: FakeConn, cc: FakeConn, cb: FakeConn;
+  let owner: Player, c: Player;
+
+  const enter = async (p: Player, id = 'desk:jungle-1') => {
+    room.handle(p, { t: 'portal:enter', id });
+    await settle();
+  };
+
+  beforeEach(async () => {
+    store = new MemoryStore();
+    room = makeRoom(store);
+    await room.init();
+    co = new FakeConn();
+    cc = new FakeConn();
+    cb = new FakeConn();
+    owner = (await room.join(co, { uid: OWNER, name: 'Alice' }))!;
+    c = (await room.join(cc, { uid: 'uc', name: 'Chloé' }))!;
+    await room.join(cb, { uid: 'ub', name: 'Benoît' });
+    place(room, owner, cellPos(map, spot.chair), 'sit');
+    room.handle(owner, { t: 'desk:claim', deskId: 'jungle-1' });
+    await store.worlds.createWorld({
+      id: WORLD,
+      ownerId: OWNER,
+      seed: SEED,
+      genVersion: 1,
+      createdAt: 0,
+      lastDay: 0,
+      settings: {},
+    });
+  });
+
+  it('the welcome names the seed and the generator, and lists people without their user ids', async () => {
+    await enter(owner);
+    const welcome = co.of('world:welcome').at(-1)!;
+    expect(welcome).toMatchObject({ worldId: WORLD, you: owner.id, seed: SEED, genVersion: 1 });
+    expect(welcome.params).toEqual(worldGenParamsFor(WORLDGEN, 1));
+    expect(welcome.people).toEqual([expect.objectContaining({ id: owner.id, name: 'Alice' })]);
+    expect(welcome.people[0]).not.toHaveProperty('uid');
+    // the chunks around the person come with the welcome
+    expect(co.of('world:chunks').at(-1)?.add.length).toBe(25);
+  });
+
+  it('people in the same world see each other; office people and other worlds see nothing of it', async () => {
+    await enter(owner);
+    place(room, c, cellPos(map, spot.guest)); // an open pod: the visitor steps in too
+    await enter(c);
+    expect(co.of('world:join').at(-1)?.person.id).toBe(c.id);
+    expect(cc.of('world:welcome')).toHaveLength(1);
+    const before = cb.msgs.length;
+    // the world knows the person at its arrival point (the office position stays the office's)
+    const me = co.of('world:welcome').at(-1)!.people.find((q) => q.id === owner.id)!;
+    room.handle(owner, { t: 'move', x: me.x, y: me.y, dir: 'down', moving: false, pose: 'stand', seq: 1 });
+    expect(cc.of('world:pos').at(-1)).toMatchObject({ id: owner.id });
+    expect(co.of('world:pos').at(-1)).toMatchObject({ id: owner.id });
+    expect(cb.msgs.slice(before).filter((m) => m.t.startsWith('world:'))).toEqual([]);
+  });
+
+  it('a person in a world hears no office chat, and office people hear nothing said in the world', async () => {
+    await enter(owner);
+    room.handle(c, { t: 'chat', scope: 'everyone', body: 'office only' });
+    expect(co.of('chat').map((m) => m.msg.body)).not.toContain('office only');
+    room.handle(owner, { t: 'chat', scope: 'everyone', body: 'from the world' });
+    expect(cc.of('chat').map((m) => m.msg.body)).not.toContain('from the world');
+    expect(cb.of('chat').map((m) => m.msg.body)).not.toContain('from the world');
+  });
+
+  it('office-only messages do nothing inside a world', async () => {
+    await enter(owner);
+    const seen = cc.msgs.length;
+    room.handle(owner, { t: 'status', status: 'dnd', msg: '' });
+    expect(owner.profile.status).toBe('available');
+    expect(cc.msgs.length).toBe(seen); // nothing is broadcast from inside the world
+  });
+
+  it('world:leave brings the person back to their desk, where the office sees them again', async () => {
+    await enter(owner);
+    room.handle(owner, { t: 'world:leave' });
+    expect(co.of('world:exit')).toHaveLength(1);
+    expect(room.players.has(owner.id)).toBe(true);
+    expect(owner.zone?.id).toBe('jungle-1');
+    expect(cc.of('profile').at(-1)?.profile.id).toBe(owner.id);
+  });
+
+  it('a socket that closes inside a world returns the person to the office seat until the grace ends', async () => {
+    await enter(owner);
+    room.disconnect(owner);
+    expect(room.players.has(owner.id)).toBe(true);
+    expect(owner.conn).toBeNull();
+    expect(owner.world).toBeUndefined();
+  });
+
+  it('leaving the space from inside a world takes the person out of the office as well', async () => {
+    await enter(owner);
+    room.remove(owner);
+    expect(room.players.has(owner.id)).toBe(false);
+    expect(cc.of('leave').at(-1)?.id).toBe(owner.id);
+    expect(owner.world).toBeUndefined();
   });
 });

@@ -106,6 +106,16 @@ function worldStoreContract(
       expect((await store.worlds.loadChunks('u:w-race', [{ cx: 2, cy: 2 }]))[0]?.rev).toBe(1);
     });
 
+    it('loads every stored chunk of one world, and none of another', async () => {
+      await user('w-all');
+      await store.worlds.createWorld(worldOf('w-all'));
+      await store.worlds.saveChunk('u:w-all', -1, 4, patches(1), 0);
+      await store.worlds.saveChunk('u:w-all', 2, 2, patches(2), 0);
+      const all = await store.worlds.loadAllChunks('u:w-all');
+      expect(all.map((c) => `${c.cx},${c.cy}`).sort()).toEqual(['-1,4', '2,2']);
+      expect(await store.worlds.loadAllChunks('u:nobody')).toEqual([]);
+    });
+
     it('deleting the owner removes the world and its chunks', async () => {
       await user('w-gone');
       await store.worlds.createWorld(worldOf('w-gone'));
