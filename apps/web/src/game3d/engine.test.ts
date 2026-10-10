@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { chooseEngine, rememberViewFromUrl, VIEW_KEY, type WorldEngine } from './engine';
+import {
+  chooseEngine,
+  rememberView,
+  rememberViewFromUrl,
+  VIEW_KEY,
+  type WorldEngine,
+} from './engine';
 
 const ON = { world25d: true };
 const OFF = { world25d: false };
@@ -27,6 +33,17 @@ describe('chooseEngine (ADR-052)', () => {
     expect(chooseEngine(ON, '', '2d', false)).toBe('2d');
     expect(chooseEngine(ON, '', null, false)).toBe('2d');
     expect(chooseEngine(ON, '', '', false)).toBe('2d');
+  });
+
+  it('a choice made in this session wins over the URL and the stored view', () => {
+    expect(chooseEngine(ON, '?view=2.5d', '2.5d', false, '2d')).toBe('2d');
+    expect(chooseEngine(ON, '', '2d', false, '2.5d')).toBe('2.5d');
+    expect(chooseEngine(ON, '?view=2d', '2d', false, '2.5d')).toBe('2.5d');
+    // an unknown choice is no choice
+    expect(chooseEngine(ON, '?view=2.5d', null, false, 'nope')).toBe('2.5d');
+    // the flag and build mode still decide first
+    expect(chooseEngine(OFF, '', null, false, '2.5d')).toBe('2d');
+    expect(chooseEngine(ON, '', null, true, '2.5d')).toBe('2d');
   });
 
   it('ignores an unknown ?view= and falls back to the stored choice', () => {
@@ -57,6 +74,28 @@ describe('chooseEngine (ADR-052)', () => {
             n++;
           }
     expect(n).toBe(2 * SEARCHES.length * STORED.length * 2);
+  });
+});
+
+describe('rememberView', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('saves either view, and does not throw when storage is blocked', () => {
+    const mem = new Map<string, string>();
+    vi.stubGlobal('localStorage', {
+      getItem: (k: string) => mem.get(k) ?? null,
+      setItem: (k: string, v: string) => void mem.set(k, v),
+    });
+    rememberView('2d');
+    expect(mem.get(VIEW_KEY)).toBe('2d');
+    rememberView('2.5d');
+    expect(mem.get(VIEW_KEY)).toBe('2.5d');
+    vi.stubGlobal('localStorage', {
+      setItem: () => {
+        throw new Error('blocked');
+      },
+    });
+    expect(() => rememberView('2d')).not.toThrow();
   });
 });
 

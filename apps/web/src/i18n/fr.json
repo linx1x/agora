@@ -175,6 +175,8 @@
     "reconnected": "Reconnecté",
     "rateLimited": "Doucement : trop de messages en peu de temps.",
     "lightingOff": "Éclairage désactivé pour garder l'affichage fluide (Réglages pour le réactiver)",
+    "worldViewSlow": "Cet appareil est trop lent pour la vue 2.5D : passage à la vue 2D (Réglages pour changer)",
+    "worldViewNoGpu": "Aucune carte graphique disponible : vue 2D (Réglages pour changer)",
     "mapReloadFailed": "Impossible de recharger la carte."
   },
   "a11y": {
@@ -193,6 +195,10 @@
     "logout": "Se déconnecter",
     "lighting": "Effets d'éclairage",
     "lightingHint": "Lampes, ombres et heure du jour au Québec.",
+    "worldView": "Vue du monde",
+    "worldView25d": "2.5D (personnages en papier, lumière)",
+    "worldView2d": "2D (à plat, plus léger)",
+    "worldViewHint": "Retenu sur cet appareil. La vue 2D reste active sur les appareils lents.",
     "sounds": "Sons de notification",
     "soundsHint": "Visiteur, coup à la porte, invitation.",
     "autoSit": "S'asseoir automatiquement",

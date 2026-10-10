@@ -222,6 +222,8 @@ export interface AppState {
   npcs: NpcState[];
   /** P15.3 brain view (development, space admins): needs and why, per character id */
   npcMinds: Record<string, NpcMindView>;
+  /** the world view chosen this session (Settings, or the switch to 2D on a slow device, P16.11) */
+  viewChoice: string | null;
   /** whether the characters' decisions come from Clef right now (null: no brain view) */
   npcBrain: 'off' | 'up' | 'down' | null;
   /** P15.4: the character whose Talk box is open */
@@ -325,6 +327,7 @@ const initial: AppState = {
   pets: [],
   npcs: [],
   npcMinds: {},
+  viewChoice: null,
   npcBrain: null,
   talkTo: null,
   npcConsent: null,

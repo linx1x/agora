@@ -11,6 +11,19 @@ const T = 32;
 
 type Viewport = { width: number; height: number };
 
+/** The pages this file opened: closed after each test, so a later test does not meet a ghost person. */
+const opened: Page[] = [];
+
+test.afterEach(async () => {
+  for (const p of opened.splice(0)) {
+    await p.evaluate(() => (window as any).__agoraWorld?.leave()).catch(() => {});
+    await p
+      .context()
+      .close()
+      .catch(() => {});
+  }
+});
+
 async function enter(
   browser: Browser,
   opts: { user: string; viewport?: Viewport; phone?: boolean; view?: '2.5d' | null; hour?: number },
@@ -40,6 +53,7 @@ async function enter(
     [view] as const,
   );
   const page = await ctx.newPage();
+  opened.push(page);
   page.on('pageerror', (e) => console.log(`[pageerror ${opts.user}]`, e.message));
   await page.goto(`/?hour=${opts.hour ?? 13}`);
   await page.getByRole('button', { name: opts.user }).click();
@@ -273,4 +287,22 @@ test('a portal moves me to another region and only that region is built', async 
   });
   expect(built.myRegion).not.toBe('hub');
   expect(built.built).toBe(built.myRegion);
+});
+
+test('forced low fps switches to 2D after 15 s under 20 fps: remembered, with a toast (P16.11)', async ({
+  browser,
+}) => {
+  // the 15 s hold on top of the entry, on a busy host (the portal test uses the same budget)
+  test.setTimeout(120_000);
+  const a = await enter(browser, { user: 'Alice Tremblay' });
+  // the fallback timer reads this frame rate instead of the measured one (`?hour=` pins the device checks)
+  await a.evaluate(() => (window as any).__agora.view3d.forceFps(5));
+  await a.waitForFunction(() => (window as any).__agora.view?.engine === '2d', undefined, {
+    timeout: 40_000,
+    polling: 250,
+  });
+  await expect(a.getByRole('status').filter({ hasText: /trop lent|too slow/ })).toBeVisible();
+  expect(await a.evaluate(() => localStorage.getItem('agora.worldView'))).toBe('2d');
+  // the 2.5D view is torn down (its test hook is removed with it)
+  expect(await a.evaluate(() => !(window as any).__agora.view3d)).toBe(true);
 });

@@ -58,7 +58,7 @@ interface Slot {
 export class LightRig {
   private readonly scene: THREE.Scene;
   private readonly renderer: THREE.WebGLRenderer;
-  private readonly tier: Tier;
+  private tier: Tier;
   readonly hemi = new THREE.HemisphereLight(0xffffff, 0x000000, 1);
   readonly sun = new THREE.DirectionalLight(0xffffff, 1);
   private readonly slots: Slot[] = [];
@@ -74,13 +74,7 @@ export class LightRig {
     this.renderer = renderer;
     this.tier = tier;
     scene.add(this.hemi, this.sun, this.sun.target);
-    for (let i = 0; i < POINT_LIGHTS[tier]; i++) {
-      const light = new THREE.PointLight(0xffffff, 0, 1, 1.4);
-      scene.add(light);
-      this.slots.push({ light, seed: i * 1.7, src: null, base: 0 });
-    }
-    const shadows = sunShadows(tier);
-    this.sun.castShadow = shadows;
+    this.makeSlots();
     this.sun.shadow.mapSize.set(2048, 2048);
     Object.assign(this.sun.shadow.camera, {
       left: -SHADOW_HALF,
@@ -93,8 +87,33 @@ export class LightRig {
     this.sun.shadow.camera.updateProjectionMatrix();
     this.sun.shadow.bias = -0.0008;
     this.sun.shadow.normalBias = 0.02;
-    renderer.shadowMap.enabled = shadows;
     renderer.shadowMap.type = THREE.PCFShadowMap;
+    this.applyShadows();
+  }
+
+  /** The pool of point lights for a tier (replaces the old pool). */
+  private makeSlots(): void {
+    for (const s of this.slots) s.light.removeFromParent();
+    this.slots.length = 0;
+    for (let i = 0; i < POINT_LIGHTS[this.tier]; i++) {
+      const light = new THREE.PointLight(0xffffff, 0, 1, 1.4);
+      this.scene.add(light);
+      this.slots.push({ light, seed: i * 1.7, src: null, base: 0 });
+    }
+  }
+
+  private applyShadows(): void {
+    const shadows = sunShadows(this.tier);
+    this.renderer.shadowMap.enabled = shadows;
+    this.sun.castShadow = shadows;
+  }
+
+  /** Switch the tier at runtime (the probe, P16.11): the pool and the shadows follow it. */
+  setTier(tier: Tier): void {
+    if (tier === this.tier) return;
+    this.tier = tier;
+    this.makeSlots();
+    this.applyShadows();
   }
 
   /** The region's lights (rebuilt when the region changes). */
@@ -204,7 +223,7 @@ export class LightRig {
   dispose(): void {
     this.setBlobs(null);
     for (const slot of this.slots) slot.light.removeFromParent();
-    this.scene.remove(this.hemi, this.sun, this.sun.target);
     this.slots.length = 0;
+    this.scene.remove(this.hemi, this.sun, this.sun.target);
   }
 }

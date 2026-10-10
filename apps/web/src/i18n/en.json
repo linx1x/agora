@@ -175,6 +175,8 @@
     "reconnected": "Reconnected",
     "rateLimited": "Slow down: too many messages at once.",
     "lightingOff": "Lighting turned off to keep things smooth (turn it back on in Settings)",
+    "worldViewSlow": "This device is too slow for the 2.5D view: switched to 2D (change it in Settings)",
+    "worldViewNoGpu": "No graphics card available: using the 2D view (change it in Settings)",
     "mapReloadFailed": "Couldn't reload the map."
   },
   "a11y": {
@@ -193,6 +195,10 @@
     "logout": "Sign out",
     "lighting": "Lighting effects",
     "lightingHint": "Lamps, shadows and Québec time of day.",
+    "worldView": "World view",
+    "worldView25d": "2.5D (paper figures and light)",
+    "worldView2d": "2D (flat, lighter)",
+    "worldViewHint": "Remembered on this device. The 2D view stays on for slow devices.",
     "sounds": "Notification sounds",
     "soundsHint": "Visitor, knock, invitation.",
     "autoSit": "Sit down automatically",
