@@ -5,6 +5,7 @@
  * here when the module loads, so a bad row fails at startup with its file and path.
  */
 import { z } from 'zod';
+import biomesJson from '../../data/worlds/biomes.json';
 import blocksJson from '../../data/worlds/blocks.json';
 import { LEVEL_MAX } from './constants';
 
@@ -122,6 +123,115 @@ export const BLOCKS: BlockRegistry = parseBlockRegistry(blocksJson);
 export function getBlock(registry: BlockRegistry, id: string): Block | undefined {
   return registry.byId.get(id);
 }
+
+/** Office wing palettes (art-src/palettes.json) a biome borrows: Zen, Oasis, Jungle, Boreal. */
+export const BIOME_PALETTES = ['zen', 'oasis', 'jungle', 'boreal'] as const;
+const UNIT = z.number().min(0).max(1);
+
+export const WorldBiomeSchema = z
+  .strictObject({
+    id: z.string().regex(CONTENT_ID, 'lower_snake id, 2 to 40 characters'),
+    palette: z.enum(BIOME_PALETTES),
+    /** Centre in (temperature, humidity) space, both 0..1. Cold is 0, dry is 0. */
+    centre: z.strictObject({ temperature: UNIT, humidity: UNIT }),
+    surface: z.string().regex(CONTENT_ID),
+    subsurface: z.string().regex(CONTENT_ID),
+    deep: z.string().regex(CONTENT_ID),
+    /** Surface used above the snowline (P17.4). Optional. */
+    alpine: z.string().regex(CONTENT_ID).optional(),
+    /** Per-cell chance of each decor block, tested with a hash; densities add up to at most 1. */
+    decor: z
+      .array(z.strictObject({ block: z.string().regex(CONTENT_ID), density: UNIT }))
+      .max(8)
+      .default([]),
+  })
+  .superRefine((biome, ctx) => {
+    const total = biome.decor.reduce((sum, entry) => sum + entry.density, 0);
+    if (total > 1) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['decor'],
+        message: `decor densities add up to ${total.toFixed(3)}, above 1`,
+      });
+    }
+  });
+export type WorldBiome = z.infer<typeof WorldBiomeSchema>;
+
+export const WorldBiomesFileSchema = z
+  .strictObject({
+    version: z.literal(1),
+    blend: z.strictObject({ radius: z.number().min(0.05).max(0.9) }),
+    biomes: z.array(WorldBiomeSchema).min(1).max(8),
+  })
+  .superRefine((file, ctx) => {
+    const seen = new Set<string>();
+    file.biomes.forEach((biome, index) => {
+      if (seen.has(biome.id)) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['biomes', index, 'id'],
+          message: `duplicate id "${biome.id}"`,
+        });
+      }
+      seen.add(biome.id);
+    });
+  });
+
+export interface WorldBiomeRegistry {
+  readonly list: readonly WorldBiome[];
+  readonly byId: ReadonlyMap<string, WorldBiome>;
+  /** Half-width of the blend kernel in (temperature, humidity) units. */
+  readonly blendRadius: number;
+}
+
+/**
+ * Validate biome data and check every block reference against the block registry:
+ * surface, subsurface, deep and alpine must be ground blocks that are not liquid; decor
+ * entries must be decor blocks; a block's `biomes` must name biomes that exist.
+ */
+export function parseWorldBiomeRegistry(
+  raw: unknown,
+  blocks: BlockRegistry,
+  file = 'biomes.json',
+): WorldBiomeRegistry {
+  const parsed = WorldBiomesFileSchema.safeParse(raw);
+  if (!parsed.success) throw new WorldDataError(formatWorldDataIssues(file, parsed.error));
+
+  const problems: string[] = [];
+  const biomeIds = new Set(parsed.data.biomes.map((biome) => biome.id));
+  const checkBlock = (path: string, id: string, layer: Block['layer']) => {
+    const block = blocks.byId.get(id);
+    if (!block) problems.push(`${file}: ${path}: unknown block "${id}"`);
+    else if (block.layer !== layer) {
+      problems.push(`${file}: ${path}: "${id}" is a ${block.layer} block, expected ${layer}`);
+    } else if (block.liquid) problems.push(`${file}: ${path}: "${id}" is liquid; water comes from sea level and rivers`);
+  };
+  parsed.data.biomes.forEach((biome, i) => {
+    const at = `biomes.${i}`;
+    checkBlock(`${at}.surface`, biome.surface, 'ground');
+    checkBlock(`${at}.subsurface`, biome.subsurface, 'ground');
+    checkBlock(`${at}.deep`, biome.deep, 'ground');
+    if (biome.alpine) checkBlock(`${at}.alpine`, biome.alpine, 'ground');
+    biome.decor.forEach((entry, j) => checkBlock(`${at}.decor.${j}.block`, entry.block, 'decor'));
+  });
+  blocks.list.forEach((block, i) => {
+    block.biomes.forEach((biomeId, j) => {
+      if (!biomeIds.has(biomeId)) {
+        problems.push(`blocks.json: blocks.${i}.biomes.${j}: unknown biome "${biomeId}"`);
+      }
+    });
+  });
+  if (problems.length > 0) throw new WorldDataError(problems.join('\n'));
+
+  return {
+    list: parsed.data.biomes,
+    byId: new Map(parsed.data.biomes.map((biome) => [biome.id, biome] as const)),
+    blendRadius: parsed.data.blend.radius,
+  };
+}
+
+/** The shipped biome registry, checked against the shipped blocks. */
+export const WORLD_BIOMES: WorldBiomeRegistry = parseWorldBiomeRegistry(biomesJson, BLOCKS);
 
 export interface SpriteSource {
   /** `file` when the registry has an art file for the key, `placeholder` when code draws it. */
