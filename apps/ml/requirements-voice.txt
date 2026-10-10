@@ -1,0 +1,6 @@
+# apps/ml voices (P15.6): only for `--voice chatterbox`. Install into the same venv after setup-wsl.sh:
+#   pip install -r requirements-voice.txt
+# Chatterbox pins its own torch; if it replaces the CUDA build, reinstall torch from the CUDA index.
+# The model runs on the CPU by default (--voice-device cuda to use the GPU; Clef needs most of 10 GB).
+# ffmpeg with libopus is needed for the Opus clips (sudo apt install ffmpeg).
+chatterbox-tts

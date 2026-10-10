@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { BellRing, DoorOpen, Footprints, Sparkles, X } from 'lucide-react';
+import { BellRing, DoorOpen, Footprints, MessageCircle, Sparkles, X } from 'lucide-react';
 import { world } from '../net/client';
 import { store, useStore } from '../state/store';
 import { useTouchControls } from './layout';
@@ -10,6 +10,7 @@ export function PromptBar() {
   const prompt = useStore((s) => s.prompt);
   const knocks = useStore((s) => s.knocks);
   const callover = useStore((s) => s.callover);
+  const talking = useStore((s) => s.talkTo !== null);
   const map = useStore((s) => s.map);
   const fr = i18n.language.startsWith('fr');
   /** no X key on a touch screen: prompts get a button instead (P8.2) */
@@ -80,7 +81,7 @@ export function PromptBar() {
           </button>
         </div>
       )}
-      {prompt && (
+      {prompt && !(prompt.kind === 'talk' && talking) && (
         <div className="prompt-card hint">
           {(prompt.kind === 'sit' || prompt.kind === 'stand') &&
             (touch ? (
@@ -112,6 +113,15 @@ export function PromptBar() {
                 onClick={() => world.send({ t: 'knock', deskId: prompt.deskId })}
               >
                 {t('knock.knock')}
+              </button>
+            </>
+          )}
+          {prompt.kind === 'talk' && (
+            <>
+              <MessageCircle size={16} aria-hidden />
+              <span>{t(touch ? 'prompt.talkTouch' : 'prompt.talk', { name: prompt.name })}</span>
+              <button type="button" className="btn primary small-btn" onClick={act}>
+                {t('talk.open')}
               </button>
             </>
           )}

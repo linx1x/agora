@@ -12,9 +12,12 @@ import {
   mapReader,
   propRestX,
   propRestY,
+  snapSpots,
+  surfaceTop,
 } from './blend';
 import { applyChanges, ensureEditLayers, type CellChange } from './edit';
 import { parseMap, type Tmj, type WorldMap } from './map';
+import { writePropsLayer } from './props';
 import { TILE_DEFS } from './tileset';
 
 const raw = readFileSync(new URL('../../maps/hq.tmj', import.meta.url), 'utf8');
@@ -32,10 +35,11 @@ function openJungleCell(map: WorldMap): { x: number; y: number } {
   for (let dy = -4; dy <= 4; dy++)
     for (let dx = -4; dx <= 4; dx++) {
       clear.push({ l: 'floor', x: x + dx, y: y + dy, t: 'jungle.floor' });
-      for (const l of ['walls', 'furniture', 'props', 'above'] as const)
+      for (const l of ['walls', 'furniture', 'above'] as const)
         clear.push({ l, x: x + dx, y: y + dy, t: null });
     }
   applyChanges(map, clear);
+  map.props = [];
   return { x, y };
 }
 
@@ -199,7 +203,6 @@ describe('edits change only the blend neighbourhood', () => {
   it.each<[string, CellChange[]]>([
     ['desk next to a desk', [{ l: 'furniture', x: 0, y: 0, t: 'jungle.deskH' }]],
     ['dirt in grass', [{ l: 'floor', x: 0, y: 0, t: 'jungle.dirt' }]],
-    ['prop on a desk', [{ l: 'props', x: 0, y: 0, t: 'prop.lampOn' }]],
   ])('%s', (_name, rel) => {
     const map = fresh();
     const { x, y } = openJungleCell(map);
@@ -210,7 +213,6 @@ describe('edits change only the blend neighbourhood', () => {
     ]);
     const before = keys(map);
     const edit = rel.map((c) => ({ ...c, x: c.x + x + 1, y: c.y + y }));
-    if (edit[0]!.l === 'props') edit[0]!.x = x; // props go on the desk
     applyChanges(map, edit);
     const after = keys(map);
     const near = new Set(
@@ -227,18 +229,85 @@ describe('edits change only the blend neighbourhood', () => {
   });
 });
 
+describe('props never change a blend key (ADR-039)', () => {
+  it('a lamp on a merged desk leaves every variant as it was', () => {
+    const map = fresh();
+    const { x, y } = openJungleCell(map);
+    applyChanges(map, [
+      { l: 'furniture', x: x - 1, y, t: 'jungle.deskH' },
+      { l: 'furniture', x, y, t: 'jungle.deskH' },
+    ]);
+    const before = keys(map);
+    applyChanges(map, [
+      {
+        l: 'prop',
+        id: 'lamp1',
+        p: { t: 'prop.lampOn', x: x * 32 + 9, y: y * 32 + 15, z: 0, f: false },
+      },
+    ]);
+    expect(keys(map)).toEqual(before);
+  });
+});
+
+describe('top faces and snap spots (P9.16, P9.17)', () => {
+  it('a lone desk holds props around its surface row, not on its front or above it', () => {
+    const map = fresh();
+    const { x, y } = openJungleCell(map);
+    applyChanges(map, [{ l: 'furniture', x, y, t: 'jungle.deskH' }]);
+    const r = mapReader(map);
+    const X = x * 32;
+    const Y = y * 32;
+    expect(surfaceTop(r, X + 16, Y + 17)).toBe(true);
+    expect(surfaceTop(r, X + 4, Y + 11)).toBe(true);
+    expect(surfaceTop(r, X + 2, Y + 17)).toBe(false);
+    expect(surfaceTop(r, X + 16, Y + 26)).toBe(false);
+    expect(surfaceTop(r, X + 16, Y + 3)).toBe(false);
+    expect(surfaceTop(r, X + 48, Y + 17)).toBe(false); // the floor next to it
+    expect(snapSpots(r, x, y)).toEqual([
+      { x: X + 8, y: Y + 17 },
+      { x: X + 16, y: Y + 17 },
+      { x: X + 24, y: Y + 17 },
+    ]);
+    expect(snapSpots(r, x + 1, y)).toEqual([]);
+  });
+
+  it('a merged run is one top face across the joint; an arm holds props on its width only', () => {
+    const map = fresh();
+    const { x, y } = openJungleCell(map);
+    // an L: run x..x+1 on row y, arm going down from x
+    applyChanges(map, [
+      { l: 'furniture', x, y, t: 'jungle.deskH' },
+      { l: 'furniture', x: x + 1, y, t: 'jungle.deskH' },
+      { l: 'furniture', x, y: y + 1, t: 'jungle.deskH' },
+    ]);
+    const r = mapReader(map);
+    const X = x * 32;
+    const Y = y * 32;
+    expect(surfaceTop(r, X + 31, Y + 15)).toBe(true); // across the east joint
+    expect(surfaceTop(r, X + 32, Y + 15)).toBe(true);
+    expect(surfaceTop(r, X + 1, Y + 15)).toBe(false); // the run's open west end keeps an inset
+    const arm = armSpan(r, x, y + 1)!;
+    expect(surfaceTop(r, X + arm[0] + 4, Y + 32 + 10)).toBe(true);
+    expect(surfaceTop(r, X + arm[1] + 4, Y + 32 + 10)).toBe(false);
+    expect(snapSpots(r, x, y + 1)).toEqual([
+      { x: X + Math.round((arm[0] + arm[1]) / 2), y: Y + 32 + 17 },
+    ]);
+  });
+});
+
 describe('maps saved before the props layer', () => {
-  it('get an empty props layer after furniture', () => {
+  it('get an empty props object layer after furniture', () => {
     const tmj = JSON.parse(raw) as Tmj;
     tmj.layers = tmj.layers.filter((l) => l.name !== 'props');
     ensureEditLayers(tmj);
+    writePropsLayer(tmj, parseMap(tmj).props);
     const names = tmj.layers.map((l) => l.name);
     expect(names.indexOf('props')).toBe(names.indexOf('furniture') + 1);
     const p = tmj.layers.find((l) => l.name === 'props')!;
-    expect(p.data!.length).toBe(tmj.width * tmj.height);
-    expect(p.data!.every((g) => g === 0)).toBe(true);
+    expect(p.type).toBe('objectgroup');
+    expect(p.objects).toEqual([]);
     // idempotent
-    ensureEditLayers(tmj);
+    writePropsLayer(tmj, []);
     expect(tmj.layers.filter((l) => l.name === 'props')).toHaveLength(1);
   });
 });

@@ -95,7 +95,7 @@ export class BlendPreview {
     const differs = (
       r1: TileReader,
       r2: TileReader,
-      l: 'floor' | 'furniture' | 'props',
+      l: 'floor' | 'furniture',
       x: number,
       y: number,
     ) => r1.def(l, x, y)?.name !== r2.def(l, x, y)?.name;

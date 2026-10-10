@@ -1,0 +1,23 @@
+{
+  "name": "@agora/spike-world25d",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "P16.1/P16.2 spike (ADR-052): the Jungle in 2.5D, Three.js vs Phaser 4 faking depth, and three art styles. Not part of the app.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "bench": "node bench.mjs"
+  },
+  "dependencies": {
+    "phaser": "4.2.1",
+    "three": "0.186.1",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/three": "0.186.0",
+    "vite": "^8.3.2",
+    "vite-plugin-singlefile": "^2.3.0",
+    "typescript": "~5.9.3"
+  }
+}

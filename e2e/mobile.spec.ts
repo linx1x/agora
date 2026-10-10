@@ -17,11 +17,7 @@ const myScreen = (p: Page) =>
   p.evaluate(() => {
     const a = (window as any).__agora;
     const pos = a.rendered.get(a.store.get().me);
-    const cam = (window as any).__agoraGame.scene.scenes[0].cameras.main;
-    return {
-      x: cam.x + (pos.x - cam.worldView.x) * cam.zoom,
-      y: cam.y + (pos.y - cam.worldView.y) * cam.zoom,
-    };
+    return a.view.toClient(pos.x, pos.y);
   });
 
 type Pt = { x: number; y: number; id?: number };
@@ -174,9 +170,7 @@ test('joystick walks, a drag on the map does not, a tap does, pinch zooms', asyn
   );
 
   // pinch out: one zoom step in
-  const z0 = await page.evaluate(
-    () => (window as any).__agoraGame.scene.scenes[0].cameras.main.zoom,
-  );
+  const z0 = await page.evaluate(() => (window as any).__agora.view.zoom());
   const mid = { x: 195, y: 380 };
   await touch(cdp, 'touchStart', [
     { x: mid.x - 30, y: mid.y, id: 1 },
@@ -190,7 +184,7 @@ test('joystick walks, a drag on the map does not, a tap does, pinch zooms', asyn
   }
   await touch(cdp, 'touchEnd', []);
   await expect
-    .poll(() => page.evaluate(() => (window as any).__agoraGame.scene.scenes[0].cameras.main.zoom))
+    .poll(() => page.evaluate(() => (window as any).__agora.view.zoom()))
     .toBeGreaterThan(z0);
   await leave(page);
 });

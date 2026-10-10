@@ -25,3 +25,11 @@ CLAUDE.md
 docs/PLAN.md
 docs/DECISIONS.md
 docs/BUILD-KIT.md
+docs/BACKLOG.md
+docs/DECISIONS-INDEX.md
+docs/archive/
+
+# Python (apps/ml)
+__pycache__/
+*.pyc
+.venv/

@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { world } from '../net/client';
+import { stopNpcVoices } from '../media/npcVoice';
 import { media } from '../media/MediaManager';
 import { Dialog, LanguageSwitcher } from './common';
 import { useTouchControls } from './layout';
@@ -27,6 +29,8 @@ export function Settings({
   const { t } = useTranslation();
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const settings = useStore((s) => s.settings);
+  const npcTalkOn = useStore((s) => s.config?.flags.npcTalk === true);
+  const npcVoiceOn = useStore((s) => s.config?.flags.npcVoice === true);
   const canUnlock = useStore(
     (s) => (s.builderCodeAvailable && !s.builder) || (s.adminCodeAvailable && !s.admin),
   );
@@ -114,6 +118,8 @@ export function Settings({
             'audioOnly',
             'pushToTalk',
             ...(touch ? ['joystick'] : []),
+            ...(npcTalkOn ? ['npcBubbles'] : []),
+            ...(npcVoiceOn ? ['npcVoices'] : []),
           ] as BoolKey[]
         ).map((k) => (
           <label key={k} className="check">
@@ -124,6 +130,10 @@ export function Settings({
                 const next = { ...settings, [k]: e.target.checked };
                 saveSettings(next);
                 store.set({ settings: next });
+                if (k === 'npcVoices') {
+                  world.send({ t: 'npc:voice', on: e.target.checked });
+                  if (!e.target.checked) stopNpcVoices();
+                }
               }}
             />
             <span>

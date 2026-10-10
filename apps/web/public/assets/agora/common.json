@@ -1,262 +1,278 @@
 {
- "sheet": "common.png",
- "cell": 32,
- "sprites": {
-  "chairDown": {
-   "x": 0,
-   "y": 0,
-   "w": 32,
-   "h": 32,
-   "frames": 1,
-   "fps": 0
-  },
-  "chairUp": {
-   "x": 32,
-   "y": 0,
-   "w": 32,
-   "h": 32,
-   "frames": 1,
-   "fps": 0
-  },
-  "chairLeft": {
-   "x": 64,
-   "y": 0,
-   "w": 32,
-   "h": 32,
-   "frames": 1,
-   "fps": 0
-  },
-  "chairRight": {
-   "x": 96,
-   "y": 0,
-   "w": 32,
-   "h": 32,
-   "frames": 1,
-   "fps": 0
-  },
-  "chairBackOverlay": {
-   "x": 128,
-   "y": 0,
-   "w": 32,
-   "h": 32,
-   "frames": 1,
-   "fps": 0
-  },
-  "stool": {
-   "x": 160,
-   "y": 0,
-   "w": 32,
-   "h": 32,
-   "frames": 1,
-   "fps": 0
-  },
-  "prop.coffee": {
-   "x": 192,
-   "y": 0,
-   "w": 32,
-   "h": 32,
-   "frames": 1,
-   "fps": 0
-  },
-  "prop.matcha": {
-   "x": 224,
-   "y": 0,
-   "w": 32,
-   "h": 32,
-   "frames": 1,
-   "fps": 0
-  },
-  "prop.icedCoffee": {
-   "x": 256,
-   "y": 0,
-   "w": 32,
-   "h": 32,
-   "frames": 1,
-   "fps": 0
-  },
-  "prop.juice": {
-   "x": 288,
-   "y": 0,
-   "w": 32,
-   "h": 32,
-   "frames": 1,
-   "fps": 0
-  },
-  "prop.dates": {
-   "x": 320,
-   "y": 0,
-   "w": 32,
-   "h": 32,
-   "frames": 1,
-   "fps": 0
-  },
-  "prop.herbalTea": {
-   "x": 352,
-   "y": 0,
-   "w": 32,
-   "h": 32,
-   "frames": 1,
-   "fps": 0
-  },
-  "ui.leaf16": {
-   "x": 384,
-   "y": 0,
-   "w": 16,
-   "h": 16,
-   "frames": 1,
-   "fps": 0
-  },
-  "ui.leaf32": {
-   "x": 400,
-   "y": 0,
-   "w": 32,
-   "h": 32,
-   "frames": 1,
-   "fps": 0
-  },
-  "ui.sun16": {
-   "x": 432,
-   "y": 0,
-   "w": 16,
-   "h": 16,
-   "frames": 1,
-   "fps": 0
-  },
-  "ui.sun32": {
-   "x": 448,
-   "y": 0,
-   "w": 32,
-   "h": 32,
-   "frames": 1,
-   "fps": 0
-  },
-  "ui.pine16": {
-   "x": 480,
-   "y": 0,
-   "w": 16,
-   "h": 16,
-   "frames": 1,
-   "fps": 0
-  },
-  "ui.pine32": {
-   "x": 0,
-   "y": 32,
-   "w": 32,
-   "h": 32,
-   "frames": 1,
-   "fps": 0
-  },
-  "ui.lotus16": {
-   "x": 32,
-   "y": 32,
-   "w": 16,
-   "h": 16,
-   "frames": 1,
-   "fps": 0
-  },
-  "ui.lotus32": {
-   "x": 48,
-   "y": 32,
-   "w": 32,
-   "h": 32,
-   "frames": 1,
-   "fps": 0
-  },
-  "ui.lobby16": {
-   "x": 80,
-   "y": 32,
-   "w": 16,
-   "h": 16,
-   "frames": 1,
-   "fps": 0
-  },
-  "ui.lobby32": {
-   "x": 96,
-   "y": 32,
-   "w": 32,
-   "h": 32,
-   "frames": 1,
-   "fps": 0
-  },
-  "ui.compass": {
-   "x": 128,
-   "y": 32,
-   "w": 32,
-   "h": 32,
-   "frames": 1,
-   "fps": 0
-  },
-  "prop.laptopOpen": {
-   "x": 160,
-   "y": 32,
-   "w": 32,
-   "h": 32,
-   "frames": 1,
-   "fps": 0
-  },
-  "prop.laptopClosed": {
-   "x": 192,
-   "y": 32,
-   "w": 32,
-   "h": 32,
-   "frames": 1,
-   "fps": 0
-  },
-  "prop.monitorFront": {
-   "x": 224,
-   "y": 32,
-   "w": 32,
-   "h": 32,
-   "frames": 1,
-   "fps": 0
-  },
-  "prop.monitorBack": {
-   "x": 256,
-   "y": 32,
-   "w": 32,
-   "h": 32,
-   "frames": 1,
-   "fps": 0
-  },
-  "prop.keyboard": {
-   "x": 288,
-   "y": 32,
-   "w": 32,
-   "h": 32,
-   "frames": 1,
-   "fps": 0
-  },
-  "prop.notebook": {
-   "x": 320,
-   "y": 32,
-   "w": 32,
-   "h": 32,
-   "frames": 1,
-   "fps": 0
-  },
-  "prop.headset": {
-   "x": 352,
-   "y": 32,
-   "w": 32,
-   "h": 32,
-   "frames": 1,
-   "fps": 0
-  },
-  "prop.lampOn": {
-   "x": 384,
-   "y": 32,
-   "w": 32,
-   "h": 32,
-   "frames": 1,
-   "fps": 0
-  },
-  "prop.lampOff": {
-   "x": 416,
-   "y": 32,
-   "w": 32,
-   "h": 32,
-   "frames": 1,
-   "fps": 0
+  "sheet": "common.png",
+  "cell": 32,
+  "sprites": {
+    "chairDown": {
+      "x": 0,
+      "y": 0,
+      "w": 32,
+      "h": 32,
+      "frames": 1,
+      "fps": 0
+    },
+    "chairUp": {
+      "x": 32,
+      "y": 0,
+      "w": 32,
+      "h": 32,
+      "frames": 1,
+      "fps": 0
+    },
+    "chairLeft": {
+      "x": 64,
+      "y": 0,
+      "w": 32,
+      "h": 32,
+      "frames": 1,
+      "fps": 0
+    },
+    "chairRight": {
+      "x": 96,
+      "y": 0,
+      "w": 32,
+      "h": 32,
+      "frames": 1,
+      "fps": 0
+    },
+    "chairBackOverlay": {
+      "x": 128,
+      "y": 0,
+      "w": 32,
+      "h": 32,
+      "frames": 1,
+      "fps": 0
+    },
+    "stool": {
+      "x": 160,
+      "y": 0,
+      "w": 32,
+      "h": 32,
+      "frames": 1,
+      "fps": 0
+    },
+    "prop.coffee": {
+      "x": 192,
+      "y": 0,
+      "w": 32,
+      "h": 32,
+      "frames": 1,
+      "fps": 0
+    },
+    "prop.matcha": {
+      "x": 224,
+      "y": 0,
+      "w": 32,
+      "h": 32,
+      "frames": 1,
+      "fps": 0
+    },
+    "prop.icedCoffee": {
+      "x": 256,
+      "y": 0,
+      "w": 32,
+      "h": 32,
+      "frames": 1,
+      "fps": 0
+    },
+    "prop.juice": {
+      "x": 288,
+      "y": 0,
+      "w": 32,
+      "h": 32,
+      "frames": 1,
+      "fps": 0
+    },
+    "prop.dates": {
+      "x": 320,
+      "y": 0,
+      "w": 32,
+      "h": 32,
+      "frames": 1,
+      "fps": 0
+    },
+    "prop.herbalTea": {
+      "x": 352,
+      "y": 0,
+      "w": 32,
+      "h": 32,
+      "frames": 1,
+      "fps": 0
+    },
+    "ui.leaf16": {
+      "x": 384,
+      "y": 0,
+      "w": 16,
+      "h": 16,
+      "frames": 1,
+      "fps": 0
+    },
+    "ui.leaf32": {
+      "x": 400,
+      "y": 0,
+      "w": 32,
+      "h": 32,
+      "frames": 1,
+      "fps": 0
+    },
+    "ui.sun16": {
+      "x": 432,
+      "y": 0,
+      "w": 16,
+      "h": 16,
+      "frames": 1,
+      "fps": 0
+    },
+    "ui.sun32": {
+      "x": 448,
+      "y": 0,
+      "w": 32,
+      "h": 32,
+      "frames": 1,
+      "fps": 0
+    },
+    "ui.pine16": {
+      "x": 480,
+      "y": 0,
+      "w": 16,
+      "h": 16,
+      "frames": 1,
+      "fps": 0
+    },
+    "ui.pine32": {
+      "x": 0,
+      "y": 32,
+      "w": 32,
+      "h": 32,
+      "frames": 1,
+      "fps": 0
+    },
+    "ui.lotus16": {
+      "x": 32,
+      "y": 32,
+      "w": 16,
+      "h": 16,
+      "frames": 1,
+      "fps": 0
+    },
+    "ui.lotus32": {
+      "x": 48,
+      "y": 32,
+      "w": 32,
+      "h": 32,
+      "frames": 1,
+      "fps": 0
+    },
+    "ui.lobby16": {
+      "x": 80,
+      "y": 32,
+      "w": 16,
+      "h": 16,
+      "frames": 1,
+      "fps": 0
+    },
+    "ui.lobby32": {
+      "x": 96,
+      "y": 32,
+      "w": 32,
+      "h": 32,
+      "frames": 1,
+      "fps": 0
+    },
+    "ui.compass": {
+      "x": 128,
+      "y": 32,
+      "w": 32,
+      "h": 32,
+      "frames": 1,
+      "fps": 0
+    },
+    "prop.laptopOpen": {
+      "x": 160,
+      "y": 32,
+      "w": 32,
+      "h": 32,
+      "frames": 1,
+      "fps": 0
+    },
+    "prop.laptopClosed": {
+      "x": 192,
+      "y": 32,
+      "w": 32,
+      "h": 32,
+      "frames": 1,
+      "fps": 0
+    },
+    "prop.monitorFront": {
+      "x": 224,
+      "y": 32,
+      "w": 32,
+      "h": 32,
+      "frames": 1,
+      "fps": 0
+    },
+    "prop.monitorBack": {
+      "x": 256,
+      "y": 32,
+      "w": 32,
+      "h": 32,
+      "frames": 1,
+      "fps": 0
+    },
+    "prop.keyboard": {
+      "x": 288,
+      "y": 32,
+      "w": 32,
+      "h": 32,
+      "frames": 1,
+      "fps": 0
+    },
+    "prop.notebook": {
+      "x": 320,
+      "y": 32,
+      "w": 32,
+      "h": 32,
+      "frames": 1,
+      "fps": 0
+    },
+    "prop.headset": {
+      "x": 352,
+      "y": 32,
+      "w": 32,
+      "h": 32,
+      "frames": 1,
+      "fps": 0
+    },
+    "prop.lampOn": {
+      "x": 384,
+      "y": 32,
+      "w": 32,
+      "h": 32,
+      "frames": 1,
+      "fps": 0
+    },
+    "prop.lampOff": {
+      "x": 416,
+      "y": 32,
+      "w": 32,
+      "h": 32,
+      "frames": 1,
+      "fps": 0
+    },
+    "prop.books": {
+      "x": 448,
+      "y": 32,
+      "w": 32,
+      "h": 32,
+      "frames": 1,
+      "fps": 0
+    },
+    "waterBowl": {
+      "x": 480,
+      "y": 32,
+      "w": 32,
+      "h": 32,
+      "frames": 1,
+      "fps": 0
+    }
   }
- }
 }

@@ -19,6 +19,51 @@ describe('config', () => {
     expect(c.authMode).toBe('access-code');
     expect(c.iceServers[0]?.username).toBe('u');
   });
+  it('reads the characters settings; their dev clock never applies in production (ADR-043)', () => {
+    const dev = loadConfig({ NPC_CLOCK: '10:30', NPC_TIME_SCALE: '60', NPC_SPACES: 'hq, demo' });
+    expect(dev.npc).toMatchObject({
+      spaces: ['hq', 'demo'],
+      clock: '10:30',
+      timeScale: 60,
+      dir: 'data/npcs',
+    });
+    expect(loadConfig({ NPC_SPACES: '', NPC_CLOCK: '' }).npc).toMatchObject({ spaces: ['hq'] });
+    expect(() => loadConfig({ NPC_CLOCK: '25:00' })).toThrow();
+    const prod = loadConfig({
+      NODE_ENV: 'production',
+      SESSION_SECRET: 'x'.repeat(40),
+      NPC_CLOCK: '10:30',
+      NPC_TIME_SCALE: '60',
+    });
+    expect(prod.npc).toMatchObject({ clock: undefined, timeScale: 1, dir: undefined });
+  });
+  it('reads Clef and the decision log for the characters (P15.3, ADR-044)', () => {
+    const off = loadConfig({});
+    expect(off.npc.decide).toBeUndefined();
+    expect(off.npc.minP).toBe(0.7);
+    expect(off.npc.log).toEqual({ dir: 'data/npc-log', days: 30 });
+    const on = loadConfig({
+      NPC_DECIDE_URL: 'http://127.0.0.1:8790',
+      NPC_DECIDE_MIN_P: '0.8',
+      NPC_DECIDE_TOKEN: 'secret',
+      NPC_LOG_DIR: 'off',
+    });
+    expect(on.npc.decide).toEqual({
+      url: 'http://127.0.0.1:8790',
+      minP: 0.8,
+      timeoutMs: 1500,
+      token: 'secret',
+    });
+    expect(on.npc.log).toBeUndefined();
+    // body decisions never go to the cloud model: llm or off means scoring only
+    for (const p of ['llm', 'off'])
+      expect(
+        loadConfig({ NPC_DECIDE_PROVIDER: p, NPC_DECIDE_URL: 'http://127.0.0.1:8790' }).npc.decide,
+      ).toBeUndefined();
+    expect(() => loadConfig({ NPC_DECIDE_MIN_P: '2' })).toThrow();
+    const prod = loadConfig({ NODE_ENV: 'production', SESSION_SECRET: 'x'.repeat(40) });
+    expect(prod.npc.log).toBeUndefined();
+  });
   it('validates admin and builder codes and space creation policy', () => {
     expect(() => loadConfig({ ADMIN_CODE: 'short' })).toThrow(ConfigError);
     expect(() =>

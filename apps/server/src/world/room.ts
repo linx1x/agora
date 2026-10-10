@@ -3,7 +3,14 @@ import {
   C2S,
   DEFAULT_DECOR,
   HISTORY_SIZE,
+  ACTION_ACTIVITY,
+  NPC_FORBIDDEN,
+  NPC_GROUP_TILES,
+  NPC_TALK_SLACK_TILES,
+  NPC_TALK_TILES,
+  TILE,
   TICK_HZ,
+  cellOf,
   cellPos,
   chairAt,
   chatReaches,
@@ -17,9 +24,10 @@ import {
   parseMap,
   planEdit,
   applyChanges,
+  writePropsLayer,
   collides,
   peersOf,
-  podAllows,
+  podOpenAt,
   randomAvatar,
   regionAt,
   regionSpawn,
@@ -37,12 +45,26 @@ import {
   type PlayerPos,
   type PlayerProfile,
   type S2CMsg,
+  type NpcPersona,
+  type NpcPerson,
+  type NpcRefusal,
   type Tmj,
   type WorldMap,
   type Zone,
 } from '@agora/shared';
 import type { RoomStore, StoredDesk } from '../db/store';
 import { Bucket } from './rate';
+import { OfficeCat } from './pets';
+import type { ScoreWeights } from '@agora/shared';
+import {
+  NpcDirector,
+  type Npc,
+  type NpcBrainLink,
+  type NpcEvent,
+  type NpcSay,
+  type NpcSocialLink,
+  type NpcTalkLink,
+} from './npcs';
 import { MediaGate, type GatePlayer, type SfuApi } from '../media/gate';
 
 export interface Conn {
@@ -67,6 +89,25 @@ export interface RoomOptions {
   baseTmj?: () => Tmj;
   /** Debounce for persisting map edits (ms). */
   mapSaveMs?: number;
+  /** Random source for the cat's choices (tests pass a seeded one). */
+  petRng?: () => number;
+  /**
+   * Characters of this space (ADR-042, flag `npcs`, NPC_SPACES): the cast (re-read when its files
+   * change), their clock (minutes since midnight) and a random source (tests pass a seeded one).
+   */
+  npcs?: {
+    personas: () => NpcPersona[];
+    clock: (now: number) => number;
+    rng?: () => number;
+    /** Clef and the decision log (P15.3); absent = the characters' own scoring only */
+    link?: NpcBrainLink;
+    /** talking (P15.4, flag `npcTalk`); absent = the characters do not talk */
+    talk?: NpcTalkLink;
+    /** moods, saved days and characters chatting with each other (P15.5, flag `npcSocial`) */
+    social?: NpcSocialLink & { space?: string };
+    /** fitted score weights (P15.3b); absent = the hand-set ones */
+    weights?: () => ScoreWeights;
+  };
   /** SFU media rooms (ADR-031); absent = peer-to-peer media with signalling relay (ADR-009). */
   sfu?: { api: SfuApi; url: string; prefix: string; reconcileMs?: number };
 }
@@ -92,6 +133,16 @@ export interface Player {
   conn: Conn | null;
   /** may edit the map (BUILDER_IDS / BUILDER_CODE) */
   builder: boolean;
+  /** sees the characters' brain view (development, or a space admin; P15.3) */
+  npcDebug: boolean;
+  /** when this person joined (characters greet newcomers) */
+  joinedAt: number;
+  /** accepted the AI notice (P15.4), or none applies */
+  npcConsent: boolean;
+  /** asked to hear characters' voices (P15.6) */
+  npcVoice: boolean;
+  /** characters with a reply on its way to this person (one at a time each) */
+  talking: Set<string>;
   disconnectedAt?: number;
   peers: string;
   /** desk pods this visitor was let into (cleared when they walk out) */
@@ -107,6 +158,7 @@ export interface Player {
     misc: Bucket;
     social: Bucket;
     edit: Bucket;
+    talk: Bucket;
   };
 }
 
@@ -139,6 +191,14 @@ export class SpaceRoom {
   private dirty = false;
   /** SFU access (ADR-031); undefined with the peer-to-peer backend */
   readonly gate?: MediaGate;
+  /** the space's cat (ADR-040, flag `pets`); not a Player, so never placed, linked or listed */
+  private officeCat?: OfficeCat;
+  /**
+   * the space's characters (ADR-042, flag `npcs`); like the cat they are not Players: never in
+   * placed(), links, peers, the media gate or `state` positions, and never in a private room,
+   * desk pod or quiet zone
+   */
+  private npcDirector?: NpcDirector;
 
   constructor(
     public map: WorldMap,
@@ -157,6 +217,47 @@ export class SpaceRoom {
         scopeOf: (id) => this.players.get(id)?.scope,
         log,
       });
+    if (opts.clientConfig.flags.pets === true)
+      this.officeCat = new OfficeCat(
+        {
+          map: () => this.map,
+          rev: () => this.mapRev,
+          // an office cat is a guest: no pod it was not invited to, ever
+          podOpen: (x, y) =>
+            podOpenAt(
+              this.map,
+              x,
+              y,
+              (id) => this.podState(id),
+              false,
+              () => false,
+            ),
+        },
+        opts.petRng,
+      );
+    if (opts.clientConfig.flags.npcs === true && opts.npcs)
+      this.npcDirector = new NpcDirector(
+        {
+          map: () => this.map,
+          rev: () => this.mapRev,
+          takenByPeople: () => {
+            const out = new Set<string>();
+            for (const p of this.players.values())
+              if (p.conn && p.pose === 'sit') {
+                const c = cellOf(this.map, p.x, p.y);
+                out.add(`seat:${c.cx},${c.cy}`);
+              }
+            return out;
+          },
+          people: () => this.npcPeople(),
+        },
+        opts.npcs.personas(),
+        opts.npcs.clock,
+        opts.npcs.rng,
+        opts.npcs.link,
+        opts.clientConfig.flags.npcSocial === true ? opts.npcs.social : undefined,
+        opts.npcs.weights,
+      );
   }
 
   /** The gate's view of a player: always the live name and scope. */
@@ -176,12 +277,16 @@ export class SpaceRoom {
   /** Current map as Tiled JSON (cached per revision). */
   tmjJson(): string {
     if (!this.tmj) return '';
-    if (this.tmjCache?.rev !== this.mapRev)
+    if (this.tmjCache?.rev !== this.mapRev) {
+      // props live in map.props (P9.16); the tile layers share their arrays with the tmj
+      writePropsLayer(this.tmj, this.map.props);
       this.tmjCache = { rev: this.mapRev, json: JSON.stringify(this.tmj) };
+    }
     return this.tmjCache.json;
   }
 
   async init() {
+    await this.npcDirector?.load(this.opts.npcs?.personas().map((p) => p.id) ?? []);
     this.history = await this.store.recentMessages(HISTORY_SIZE);
     for (const d of await this.store.loadDesks())
       if (this.spots.has(d.deskId)) this.desks.set(d.deskId, d);
@@ -272,21 +377,24 @@ export class SpaceRoom {
     this.broadcast({ t: 'desks', desks: this.deskStates() });
   }
 
+  /** The pod state `podAllows` judges, from the stored desk (null owner id: never sent to clients). */
+  private podState(id: string): DeskState | undefined {
+    const d = this.desks.get(id);
+    return d && { id, ownerName: d.ownerName, ownerId: null, access: d.access, decor: d.decor };
+  }
+
   /** May this player stand inside the pod at (x, y)? */
   private allowedAt(p: Player, x: number, y: number): boolean {
     const z = zoneAt(this.map, x, y);
-    if (!z || z.kind !== 'desk') return true;
-    if (p.zone?.id === z.id) return true; // already inside: may move around and leave
-    const d = this.desks.get(z.id);
-    if (!d) return true;
-    const state: DeskState = {
-      id: z.id,
-      ownerName: d.ownerName,
-      ownerId: null,
-      access: d.access,
-      decor: d.decor,
-    };
-    return podAllows(state, d.ownerUid === p.uid, p.admitted.has(z.id));
+    if (z?.kind === 'desk' && p.zone?.id === z.id) return true; // already inside: may move around and leave
+    return podOpenAt(
+      this.map,
+      x,
+      y,
+      (id) => this.podState(id),
+      !!z && this.desks.get(z.id)?.ownerUid === p.uid,
+      (id) => p.admitted.has(id),
+    );
   }
 
   // ───────────────────────────────────────────── lifecycle
@@ -294,7 +402,13 @@ export class SpaceRoom {
   async join(
     conn: Conn,
     /** `name` is shown in this space; `accountName` (default: name) is what gets saved */
-    user: { uid: string; name: string; accountName?: string; builder?: boolean },
+    user: {
+      uid: string;
+      name: string;
+      accountName?: string;
+      builder?: boolean;
+      npcDebug?: boolean;
+    },
     resumeId?: string,
     avatar?: Avatar,
   ): Promise<Player | null> {
@@ -304,6 +418,7 @@ export class SpaceRoom {
       p = resumed;
       p.conn = conn;
       p.builder = !!user.builder;
+      p.npcDebug = !!user.npcDebug;
       p.disconnectedAt = undefined;
       p.peers = '';
       p.profile.online = true;
@@ -351,6 +466,11 @@ export class SpaceRoom {
         conn,
         scope: { kind: 'floor' },
         builder: !!user.builder,
+        npcDebug: !!user.npcDebug,
+        joinedAt: Date.now(),
+        npcConsent: false,
+        npcVoice: false,
+        talking: new Set(),
         peers: '',
         admitted: new Set(),
         lastCallover: new Map(),
@@ -362,6 +482,8 @@ export class SpaceRoom {
           misc: new Bucket(2, 10),
           social: new Bucket(0.5, 3),
           edit: new Bucket(8, 30),
+          /** Talk-box messages to characters: one every 2 s, a burst of 4 */
+          talk: new Bucket(0.5, 4),
         },
       };
       p.profile.id = p.id;
@@ -393,6 +515,9 @@ export class SpaceRoom {
       mapRev: this.mapRev,
       builder: p.builder && this.opts.clientConfig.flags.builder !== false && !!this.tmj,
     });
+    if (this.officeCat) conn.send({ t: 'pet:state', pets: [this.officeCat.snapshot()] });
+    if (this.npcDirector) conn.send({ t: 'npc:state', npcs: this.npcDirector.snapshot() });
+    this.sendNpcConsent(p);
     if (this.deskOf(p.uid)) this.broadcastDesks();
     void this.gate?.joined(this.gp(p));
     return p;
@@ -412,6 +537,7 @@ export class SpaceRoom {
 
   remove(p: Player) {
     if (!this.players.delete(p.id)) return;
+    this.opts.npcs?.talk?.engine.end(p.uid);
     void this.gate?.left(p.id, p.scope);
     void this.store.presence(p.uid, 'leave').catch(() => {});
     this.broadcast({ t: 'leave', id: p.id });
@@ -467,6 +593,17 @@ export class SpaceRoom {
         }
         return;
       }
+      case 'npc:talk':
+        return this.onNpcTalk(p, m);
+      case 'npc:consent':
+        return this.onNpcConsent(p, m.accept);
+      case 'npc:recall':
+        return this.onNpcRecall(p, m.npcId);
+      case 'npc:forget':
+        return this.onNpcForget(p);
+      case 'npc:voice':
+        p.npcVoice = m.on;
+        return;
       case 'rtc':
         return this.onRtc(p, m);
       case 'teleport':
@@ -566,6 +703,7 @@ export class SpaceRoom {
       clearTimeout(this.saveTimer);
       this.saveTimer = undefined;
     }
+    writePropsLayer(this.tmj, this.map.props);
     await this.store
       .saveMap({ id: this.opts.mapId, tmj: this.tmj, rev: this.mapRev, updatedBy: this.lastEditor })
       .catch((err) => this.log.warn({ err: String(err) }, 'saveMap failed'));
@@ -838,6 +976,244 @@ export class SpaceRoom {
     this.recomputeLinks();
     const positions = [...this.players.values()].map((p) => this.pos(p));
     this.broadcast({ t: 'state', positions, at: now });
+    // The cat sleeps while nobody is here; it is sent only when it changed.
+    if (this.officeCat && this.connectedCount && this.officeCat.tick(now))
+      this.broadcast({ t: 'pet:state', pets: [this.officeCat.snapshot()] });
+    // Characters too: asleep while nobody is here (no ticks, no decisions), sent on change.
+    if (this.npcDirector && this.connectedCount) {
+      this.npcDirector.setPersonas(this.opts.npcs!.personas());
+      if (this.npcDirector.tick(now))
+        this.broadcast({ t: 'npc:state', npcs: this.npcDirector.snapshot() });
+      for (const e of this.npcDirector.takeEvents()) this.sendNpcEmote(e);
+      for (const l of this.npcDirector.takeSays()) this.sendNpcChat(l);
+      this.sendNpcMinds(now);
+    }
+  }
+
+  /**
+   * The people characters may see (P15.3): connected, on the open floor. Anyone in a private
+   * room, desk pod or quiet zone is left out, so no character approaches them and Clef never hears
+   * of them. First names only; the key is the account id, which stays on the server.
+   */
+  private npcPeople(): NpcPerson[] {
+    const open: Player[] = [];
+    for (const p of this.players.values())
+      if (p.conn && !NPC_FORBIDDEN.includes(this.placed(p).zoneKind ?? 'area')) open.push(p);
+    const near = (a: Player, b: Player) =>
+      Math.hypot(a.x - b.x, a.y - b.y) <= NPC_GROUP_TILES * TILE;
+    return open.map((p) => ({
+      key: p.uid,
+      name: p.profile.name.trim().split(/\s+/)[0] ?? '',
+      x: p.x,
+      y: p.y,
+      status: p.profile.status,
+      sitting: p.pose === 'sit',
+      joinedAt: p.joinedAt,
+      group: open.filter((q) => q !== p && near(p, q)).length,
+    }));
+  }
+
+  // ───────────────────────────────────────────── talking with characters (P15.4, ADR-045)
+  private get talkLink(): NpcTalkLink | undefined {
+    return this.npcDirector && this.opts.clientConfig.flags.npcTalk === true
+      ? this.opts.npcs?.talk
+      : undefined;
+  }
+
+  /** Tell a person whether Talk needs the AI notice and whether they accepted it. */
+  private sendNpcConsent(p: Player) {
+    const t = this.talkLink;
+    if (!t) return;
+    void t.consent
+      .has(p.uid)
+      .then((has) => {
+        p.npcConsent = !t.notice.needed || has;
+        p.conn?.send({ t: 'npc:consent', consent: { ...t.notice, ok: p.npcConsent } });
+      })
+      .catch((err) => this.log.warn({ err: String(err) }, 'npc consent lookup failed'));
+  }
+
+  private onNpcConsent(p: Player, accept: boolean) {
+    const t = this.talkLink;
+    if (!t || !p.buckets.misc.take()) return;
+    // withdrawing the AI notice also drops what is being said and every note kept about the person
+    if (!accept) {
+      t.engine.end(p.uid, { keep: false });
+      void t.memory?.forget(p.uid).catch(() => {});
+    }
+    void t.consent
+      .set(p.uid, accept)
+      .then(() => {
+        p.npcConsent = !t.notice.needed || accept;
+        p.conn?.send({ t: 'npc:consent', consent: { ...t.notice, ok: p.npcConsent } });
+      })
+      .catch((err) => this.log.warn({ err: String(err) }, 'npc consent save failed'));
+  }
+
+  /** What does this character remember about me? Only ever sent to the person it is about. */
+  private onNpcRecall(p: Player, npcId: string) {
+    const t = this.talkLink;
+    if (!t?.memory || !p.buckets.misc.take()) return;
+    const id = npcId.replace(/^npc:/, '');
+    void t.memory
+      .recall(p.uid, id)
+      .then((summary) => p.conn?.send({ t: 'npc:memory', id: npcId, summary }))
+      .catch((err) => this.log.warn({ err: String(err) }, 'npc recall failed'));
+  }
+
+  /** "Forget me": every note every character keeps about this person, and any chat still open. */
+  private onNpcForget(p: Player) {
+    const t = this.talkLink;
+    if (!t || !p.buckets.misc.take()) return;
+    t.engine.end(p.uid, { keep: false });
+    void (t.memory?.forget(p.uid) ?? Promise.resolve())
+      .then(() => p.conn?.send({ t: 'npc:forgot' }))
+      .catch((err) => this.log.warn({ err: String(err) }, 'npc forget failed'));
+  }
+
+  /** Everyone a line said by `from` would reach, like a line of nearby chat. */
+  private hearers(from: Placed): Player[] {
+    return [...this.players.values()].filter((q) => q.conn && chatReaches(from, this.placed(q)));
+  }
+
+  /**
+   * A Talk-box message (P15.4). The server decides: the flag, the character being here, the
+   * speaker on the open floor (never inside a private room, desk pod or quiet zone) and within
+   * talking range, the AI notice accepted, and the rate. Only then does the message reach the brain.
+   */
+  private onNpcTalk(p: Player, m: Extract<C2SMsg, { t: 'npc:talk' }>) {
+    const refuse = (reason: NpcRefusal) => p.conn?.send({ t: 'npc:refused', id: m.npcId, reason });
+    const link = this.talkLink;
+    if (!link) return refuse('off');
+    if (!p.buckets.talk.take() || p.talking.has(m.npcId)) return refuse('rate');
+    const npc = this.npcDirector!.get(m.npcId);
+    if (!npc) return refuse('gone');
+    if (NPC_FORBIDDEN.includes(this.placed(p).zoneKind ?? 'area')) return refuse('zone');
+    const reach = (NPC_TALK_TILES + NPC_TALK_SLACK_TILES) * TILE;
+    if (Math.hypot(npc.state.x - p.x, npc.state.y - p.y) > reach) return refuse('range');
+    if (link.notice.needed && !p.npcConsent) return refuse('consent');
+    npc.attend(p, Date.now());
+    void this.runTalk(p, npc, m.body, link);
+  }
+
+  private async runTalk(p: Player, npc: Npc, body: string, link: NpcTalkLink) {
+    const id = npc.state.id;
+    p.talking.add(id);
+    let typing = false;
+    const at = () => ({ id, x: npc.state.x, y: npc.state.y }) satisfies Placed;
+    try {
+      const minute = Math.floor(this.opts.npcs!.clock(Date.now()));
+      const memory = await link.memory?.recall(p.uid, npc.persona.id).catch(() => null);
+      const res = await link.engine.handle(
+        {
+          persona: npc.persona,
+          memory: memory ?? undefined,
+          cast: this.npcDirector!.all.map((n) => ({ id: n.persona.id, name: n.persona.name })),
+          speaker: { key: p.uid, name: p.profile.name },
+          body,
+          place: regionAt(this.map, npc.state.x, npc.state.y)?.nameFr ?? '',
+          time: `${String(Math.floor(minute / 60) % 24).padStart(2, '0')}:${String(minute % 60).padStart(2, '0')}`,
+          mapNames: this.map.regions.flatMap((r) => [r.nameFr, r.nameEn]),
+        },
+        {
+          thinking: () => {
+            typing = true;
+            for (const q of this.hearers(at())) q.conn!.send({ t: 'npc:typing', id, on: true });
+          },
+        },
+      );
+      if (typing)
+        for (const q of this.hearers(at())) q.conn!.send({ t: 'npc:typing', id, on: false });
+      // Recipients are decided now, when the line is said: exactly the people nearby chat from the
+      // character would reach. Someone who walked into a private room while it was thinking gets nothing.
+      if (res.say) {
+        const mid = randomUUID();
+        const sentAt = Date.now();
+        const heard = this.hearers(at());
+        for (const q of heard)
+          q.conn!.send({
+            t: 'npc:say',
+            id,
+            to: p.id,
+            mid,
+            body: res.say,
+            at: sentAt,
+            ...(res.sources?.length ? { src: res.sources } : {}),
+          });
+        if (link.voice && this.opts.clientConfig.flags.npcVoice === true)
+          void this.sendNpcVoice(link, at, res.say, res.lang === 'en' ? 'en' : 'fr', mid, heard);
+      }
+      if (res.emote) npc.gesture(res.emote);
+      if (res.action !== 'none') npc.errand(ACTION_ACTIVITY[res.action], Date.now());
+      else npc.attend(p, Date.now());
+    } catch (err) {
+      this.log.warn({ npc: id, err: String(err) }, 'npc talk failed');
+      if (typing)
+        for (const q of this.hearers(at())) q.conn!.send({ t: 'npc:typing', id, on: false });
+    } finally {
+      p.talking.delete(id);
+    }
+  }
+
+  /**
+   * A line one character says to another reaches exactly the people a nearby-chat line from the
+   * speaker would reach, decided now. The chat itself only runs while someone is in earshot.
+   */
+  private sendNpcChat(l: NpcSay) {
+    const from: Placed = { id: l.from, x: l.x, y: l.y };
+    const mid = randomUUID();
+    const at = Date.now();
+    for (const p of this.hearers(from))
+      p.conn!.send({ t: 'npc:say', id: l.from, to: l.to, mid, body: l.body, at });
+  }
+
+  /**
+   * The spoken version of a line (P15.6). Only people who asked for voices, who got the line, and who
+   * are still in reach of the character (and not in a quiet zone) are sent the clip, decided when it
+   * is ready: someone who walked into a private room meanwhile gets nothing.
+   */
+  private async sendNpcVoice(
+    link: NpcTalkLink,
+    at: () => Placed,
+    text: string,
+    lang: 'fr' | 'en',
+    mid: string,
+    heard: Player[],
+  ) {
+    if (!heard.some((q) => q.npcVoice)) return; // nobody asked for voices: nothing is even synthesised
+    try {
+      const clip = await link.voice!.speak(text, lang);
+      if (!clip) return;
+      const still = new Set(this.hearers(at()).map((q) => q.id));
+      const data = clip.opus.toString('base64');
+      for (const q of heard)
+        if (q.npcVoice && q.conn && still.has(q.id) && this.placed(q).zoneKind !== 'quiet')
+          q.conn.send({ t: 'npc:voice', id: at().id, mid, data, ms: clip.ms });
+    } catch (err) {
+      this.log.warn({ err: String(err) }, 'npc voice failed');
+    }
+  }
+
+  /** A character's wave reaches exactly the people a nearby-chat line from it would reach. */
+  private sendNpcEmote(e: NpcEvent) {
+    const from: Placed = { id: e.npcId, x: e.x, y: e.y };
+    for (const p of this.players.values())
+      if (p.conn && chatReaches(from, this.placed(p)))
+        p.conn.send({ t: 'npc:emote', id: e.npcId, emote: e.emote });
+  }
+
+  private mindsSent = { at: 0, key: '' };
+  /** The brain view, about once a second when it changed, only to people allowed to see it. */
+  private sendNpcMinds(now: number) {
+    if (!this.npcDirector || now - this.mindsSent.at < 1000) return;
+    const watchers = [...this.players.values()].filter((p) => p.conn && p.npcDebug);
+    if (!watchers.length) return;
+    const minds = this.npcDirector.minds();
+    const brain = this.npcDirector.brainStatus;
+    const key = JSON.stringify([brain, minds]);
+    if (key === this.mindsSent.key) return;
+    this.mindsSent = { at: now, key };
+    for (const p of watchers) p.conn!.send({ t: 'npc:mind', brain, minds });
   }
 
   broadcast(msg: S2CMsg, exceptId?: string) {

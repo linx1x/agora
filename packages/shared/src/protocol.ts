@@ -11,8 +11,12 @@ import {
   type Status,
 } from './constants';
 import type { Flags } from './flags';
+import type { PetState } from './pets';
+import type { NpcState } from './npcs';
+import type { NpcMindView } from './npc-mind';
+import { NPC_TALK_MAX_LEN, type NpcConsentState, type NpcEmote, type NpcRefusal } from './npc-talk';
 import { DESK_ACCESS, DeskDecorSchema, type DeskState } from './desks';
-import { CellChangeSchema, MAX_EDIT_CELLS, type CellChange, type EditRefusal } from './edit';
+import { MAX_EDIT_CELLS, MapChangeSchema, type EditRefusal, type MapChange } from './edit';
 
 /** Client → server messages, all validated with zod on the server. */
 export const C2S = z.discriminatedUnion('t', [
@@ -93,10 +97,27 @@ export const C2S = z.discriminatedUnion('t', [
   z.object({
     t: z.literal('map:edit'),
     op: z.number().int().nonnegative(),
-    cells: z.array(CellChangeSchema).min(1).max(MAX_EDIT_CELLS),
+    cells: z.array(MapChangeSchema).min(1).max(MAX_EDIT_CELLS),
   }),
   /** Build mode: replace the live map with the generated hq.tmj. */
   z.object({ t: z.literal('map:reset') }),
+  /**
+   * P15.4 (ADR-045): a Talk-box message to a character within talking range. Only these reach the
+   * brain; nearby chat between people never does.
+   */
+  z.object({
+    t: z.literal('npc:talk'),
+    npcId: z.string().min(1).max(40),
+    body: z.string().trim().min(1).max(NPC_TALK_MAX_LEN),
+  }),
+  /** P15.4: accept (or refuse) the AI notice for the current provider */
+  z.object({ t: z.literal('npc:consent'), accept: z.boolean() }),
+  /** P15.5 (ADR-046): what does this character remember about me? */
+  z.object({ t: z.literal('npc:recall'), npcId: z.string().min(1).max(40) }),
+  /** P15.5: forget me, every character at once */
+  z.object({ t: z.literal('npc:forget') }),
+  /** P15.6: do I want to hear characters' voices? Only people who said yes are sent clips. */
+  z.object({ t: z.literal('npc:voice'), on: z.boolean() }),
 ]);
 export type C2SMsg = z.infer<typeof C2S>;
 /** What clients send (defaults such as `pose` may be omitted). */
@@ -180,7 +201,7 @@ export type S2CMsg =
       /** may use build mode */
       builder: boolean;
     }
-  | { t: 'map:edit'; rev: number; by: string; op: number; changes: CellChange[] }
+  | { t: 'map:edit'; rev: number; by: string; op: number; changes: MapChange[] }
   | { t: 'map:refused'; op: number; reason: EditRefusal; cell?: { cx: number; cy: number } }
   | { t: 'map:reload'; rev: number }
   /** space settings changed (radii, video cap) */
@@ -225,5 +246,42 @@ export type S2CMsg =
       publish: 'floor' | 'zone' | 'none';
     }
   | { t: 'rtc'; from: string; data: Extract<C2SMsg, { t: 'rtc' }>['data'] }
+  /** ADR-040: every pet in the space, sent whenever one of them changed (flag `pets`) */
+  | { t: 'pet:state'; pets: PetState[] }
+  /** ADR-042: the characters present in the space, sent whenever one of them changed (flag `npcs`) */
+  | { t: 'npc:state'; npcs: NpcState[] }
+  /** P15.3: a character gestured; sent only to the people a nearby-chat line from it would reach */
+  | { t: 'npc:emote'; id: string; emote: NpcEmote }
+  /**
+   * P15.4: a character said something to `to` (a player id). Sent to exactly the people a
+   * nearby-chat line from the character would reach, never `broadcast()`.
+   */
+  | {
+      t: 'npc:say';
+      id: string;
+      to: string;
+      mid: string;
+      body: string;
+      at: number;
+      /** P15.8: the sites a web lookup quoted for this line */
+      src?: string[];
+    }
+  /** P15.4: the character is thinking of an answer (the "…" bubble); same recipients as npc:say */
+  | { t: 'npc:typing'; id: string; on: boolean }
+  /** P15.4: your Talk message was not taken */
+  | { t: 'npc:refused'; id: string; reason: NpcRefusal }
+  /** P15.4: whether Talk needs the AI notice and whether you accepted it */
+  | { t: 'npc:consent'; consent: NpcConsentState }
+  /** P15.5: the character's notes about the person asking (null: nothing kept), answering `npc:recall` */
+  | { t: 'npc:memory'; id: string; summary: string | null }
+  /** P15.5: every note about me was deleted */
+  | { t: 'npc:forgot' }
+  /**
+   * P15.6: the voice for an `npc:say` line (same `mid`), only to people who asked for voices and
+   * are still within reach of the character; Ogg Opus, base64.
+   */
+  | { t: 'npc:voice'; id: string; mid: string; data: string; ms: number }
+  /** P15.3: the brain view (development, space admins): needs and why, nothing about people */
+  | { t: 'npc:mind'; brain: 'off' | 'up' | 'down'; minds: NpcMindView[] }
   | { t: 'pong'; at: number }
   | { t: 'error'; code: string };

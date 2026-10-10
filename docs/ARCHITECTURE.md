@@ -1,6 +1,7 @@
 # Architecture
 
 ## 1. Constraints that shaped this design
+
 - Self-hosted on a Mac (dev/pilot) or your organization's servers (production). No SaaS dependencies
   for core function; everything runs in docker compose plus LiveKit.
 - 10–50 concurrent people per space, reachable over the internet, staff only.
@@ -70,16 +71,16 @@ docs/
 
 **Map format.** Tiled JSON (`.tmj`). Required layers, by name:
 
-| Layer | Type | Purpose |
-|---|---|---|
-| `floor` | tile | ground |
-| `walls` | tile | walls; tiles carry `collides=true` |
-| `furniture` | tile | solid or decorative objects; `collides` per tile |
-| `props` | tile | small items resting on desks and tables (ADR-038); never collide |
-| `above` | tile | rendered above avatars (doorframes, plant tops) |
-| `zones` | object | polygons/rects with `kind` = `private` · `quiet` · `spotlight` · `broadcast` · `desk` · `door`, plus `zoneId`, `nameFr`, `nameEn` |
-| `spawns` | object | spawn points, `default=true` on one |
-| `interactables` | object | `kind` = `whiteboard` · `embed` · `note` · `poster` · `sign` · `image` · `kanban` · `game` · `portal`; `trigger` = `press` or `walkover`; JSON `props` |
+| Layer           | Type   | Purpose                                                                                                                                                                            |
+| --------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `floor`         | tile   | ground                                                                                                                                                                             |
+| `walls`         | tile   | walls; tiles carry `collides=true`                                                                                                                                                 |
+| `furniture`     | tile   | solid or decorative objects; `collides` per tile                                                                                                                                   |
+| `props`         | object | small items resting on desks, tables and stacks: point objects (`name` = id, `tile`, `z`, `flip`), base point in px, list order = stacking order (ADR-038, ADR-039); never collide |
+| `above`         | tile   | rendered above avatars (doorframes, plant tops)                                                                                                                                    |
+| `zones`         | object | polygons/rects with `kind` = `private` · `quiet` · `spotlight` · `broadcast` · `desk` · `door`, plus `zoneId`, `nameFr`, `nameEn`                                                  |
+| `spawns`        | object | spawn points, `default=true` on one                                                                                                                                                |
+| `interactables` | object | `kind` = `whiteboard` · `embed` · `note` · `poster` · `sign` · `image` · `kanban` · `game` · `portal`; `trigger` = `press` or `walkover`; JSON `props`                             |
 
 The in-app editor (Phase 9) reads and writes the same format, so hand-made Tiled
 maps and editor-made maps are interchangeable.
@@ -96,6 +97,7 @@ load time. Avatars use a small feet hitbox (e.g. 16×10 px) for natural movement
 around furniture. Same code on client (prediction) and server (validation).
 
 **Movement and sync.**
+
 - Client simulates movement locally at frame rate (speed ≈ 4 tiles/s) and sends
   `{x, y, dir, anim, seq}` at up to 15 Hz.
 - Server (Colyseus `SpaceRoom`) validates each update: max distance per elapsed
@@ -118,12 +120,14 @@ LiveKit is the SFU: each person uploads once; the server forwards to subscribers
 Simulcast on; adaptive stream on; `autoSubscribe: false`.
 
 **Media rooms per space**
+
 - `space:{spaceId}:floor` — every client in the space is always connected.
   Open-floor conversation happens here via **proximity subscription**.
 - `space:{spaceId}:zone:{zoneId}` — one per private zone. Joined only while the
   server says you're inside it.
 
 **Open floor (client-side proximity)**
+
 - Each client computes distance to every other avatar on the floor (not in a
   private zone) using shared math.
 - Subscribe when distance ≤ `CONNECT_R` (default 5 tiles); unsubscribe when
@@ -137,6 +141,7 @@ Simulcast on; adaptive stream on; `autoSubscribe: false`.
   acceptable there. Document this in PRIVACY.md.
 
 **Private zones (server-enforced)**
+
 - Entering a private zone: server sets your floor-room permission
   `canPublish=false` (via LiveKit RoomService `updateParticipant`), so nothing you
   say leaks to the floor. Client requests a token for the zone room; the server
@@ -151,6 +156,7 @@ Simulcast on; adaptive stream on; `autoSubscribe: false`.
 chat works; enforced the same way (no publish anywhere while inside).
 
 **Spotlight and broadcast** (Phase 7)
+
 - Spotlight zone inside a private room: nothing special needed (already full-room).
 - Spotlight on the floor: the speaker standing on the spot gets publish permission
   on the floor room and every floor client subscribes to them regardless of
@@ -235,22 +241,26 @@ Nearby chat is ephemeral by default (not stored), per PRIVACY.md; everyone-chat,
 DMs and groups are stored with configurable retention.
 
 ## 9. Uploads
+
 Stored on a mounted volume (`/data/uploads`), served through the API with
 permission checks (never as public static files). Limits: 25 MB default, MIME
 sniffing, images re-encoded server-side (sharp) to strip metadata. Optional
 ClamAV container if your IT team requires scanning.
 
 ## 10. i18n
+
 i18next with `fr` (default) and `en` JSON files, ICU plurals, locale from user
 profile → browser → `fr`. Map labels (zone/object names) have `nameFr`/`nameEn`.
 Dates via `Intl`. `pnpm i18n:check` in CI.
 
 ## 11. Observability and ops
+
 Structured JSON logs (pino), `/healthz` and `/readyz`, Prometheus metrics endpoint
 (players per space, media rooms, message rates). Optional Grafana in compose.
 Nightly `pg_dump` + uploads rsync with 14-day retention (see DEPLOYMENT.md).
 
 ## 12. Security checklist (enforced in Phase 13, practiced throughout)
+
 CSP with explicit `frame-src` allowlist for embeds; rate limits on chat, emotes,
 moves, uploads, knocks; zod validation on every inbound message; CSRF protection on
 cookie-auth POSTs; server-side permission check on every mutation; dependency audit

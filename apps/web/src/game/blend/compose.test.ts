@@ -10,7 +10,7 @@ import {
   type Tmj,
   type WorldMap,
 } from '@agora/shared';
-import { T, composeFurniture, composeGround, type TileSource } from './compose';
+import { T, composeFurniture, composeGround, placedSprite, type TileSource } from './compose';
 import { materialLook } from './ramps';
 
 const raw = readFileSync(new URL('../../../../../packages/maps/hq.tmj', import.meta.url), 'utf8');
@@ -50,10 +50,11 @@ function patch(map: WorldMap) {
   for (let dy = -4; dy <= 4; dy++)
     for (let dx = -4; dx <= 4; dx++) {
       clear.push({ l: 'floor', x: x + dx, y: y + dy, t: 'jungle.floor' });
-      for (const l of ['walls', 'furniture', 'props', 'above'] as const)
+      for (const l of ['walls', 'furniture', 'above'] as const)
         clear.push({ l, x: x + dx, y: y + dy, t: null });
     }
   applyChanges(map, clear);
+  map.props = [];
   return { x, y };
 }
 
@@ -89,7 +90,6 @@ describe('blend compositor', () => {
     ]);
     const edits: CellChange[] = [
       { l: 'furniture', x, y, t: 'jungle.deskMonitor' },
-      { l: 'props', x: x - 1, y, t: 'prop.lampOn' },
       { l: 'floor', x: x + 1, y: y + 1, t: 'jungle.dirt' },
     ];
     const over = new Map(edits.map((c) => [`${c.l}:${c.x}:${c.y}`, c.t]));
@@ -173,7 +173,7 @@ describe('blend compositor', () => {
     expect(rgbAt(b, 16, 14)[3]).toBe(255);
   });
 
-  it('a prop on a merged desk darkens the surface under it', () => {
+  it('placed props leave the desk variant alone (ADR-039) and sit on their base point', () => {
     const map = fresh();
     const { x, y } = patch(map);
     applyChanges(map, [
@@ -181,8 +181,22 @@ describe('blend compositor', () => {
       { l: 'furniture', x: x + 1, y, t: 'jungle.deskH' },
     ]);
     const plain = composeFurniture(mapReader(map), src, x, y);
-    applyChanges(map, [{ l: 'props', x, y, t: 'prop.coffee' }]);
-    const withProp = composeFurniture(mapReader(map), src, x, y);
-    expect(same(plain, withProp)).toBe(false);
+    applyChanges(map, [
+      {
+        l: 'prop',
+        id: 'mug001',
+        p: { t: 'prop.coffee', x: x * 32 + 9, y: y * 32 + 16, z: 0, f: false },
+      },
+    ]);
+    expect(same(plain, composeFurniture(mapReader(map), src, x, y))).toBe(true);
+    // the sprite's opaque bottom row is the base point, raised by lift and z; f mirrors it
+    const px = src.tile('prop.coffee')!;
+    const p = { x: x * 32 + 9, y: y * 32 + 16, z: 2, f: false };
+    const s0 = placedSprite(px, p, 5);
+    expect(s0.baseY).toBe(p.y - 7);
+    expect(Math.abs((s0.x0 + s0.x1 + 1) / 2 - p.x)).toBeLessThanOrEqual(0.5);
+    const s1 = placedSprite(px, { ...p, f: true }, 5);
+    expect(s1.x1 - s1.x0).toBe(s0.x1 - s0.x0);
+    expect(Math.abs((s1.x0 + s1.x1 + 1) / 2 - p.x)).toBeLessThanOrEqual(0.5);
   });
 });

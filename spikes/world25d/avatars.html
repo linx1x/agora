@@ -1,0 +1,22 @@
+<!doctype html><html><body style="margin:0;background:#6f8a5a"><script type="module">
+import { paperSheet } from './src/paper-avatar';
+import { randomAvatar } from '@agora/shared';
+import { rng } from './src/sim';
+const r = rng(11);
+const avs = Array.from({ length: 4 }, () => randomAvatar(r));
+avs[0].accessory = 1; avs[1].hair = 1; avs[2].accessory = 3; avs[3].hair = 3;
+const out = document.createElement('canvas'); out.width = 1600; out.height = 1250;
+const c = out.getContext('2d'); c.fillStyle = '#7d9a66'; c.fillRect(0, 0, 1600, 1250);
+c.imageSmoothingEnabled = false;
+let y = 10;
+for (const [w, h, look, z] of [[48, 64, 'pixel', 3], [64, 96, 'pixel', 2], [48, 64, 'smooth', 0.75], [64, 96, 'smooth', 0.5]]) {
+  let x = 10;
+  for (const a of avs.slice(0, 2)) {
+    const s = paperSheet(a, w, h, look);
+    c.drawImage(s.canvas, x, y, s.canvas.width * z, s.canvas.height * z);
+    x += s.canvas.width * z + 20;
+  }
+  y += Math.max(...[1]) * 0 + (look === 'pixel' ? (h + 4) * z : (h * 4 + 32) * z) + 14;
+}
+window.__dump = out.toDataURL();
+</script></body></html>

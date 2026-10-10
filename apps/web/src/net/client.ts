@@ -10,6 +10,7 @@ import {
   type Tmj,
 } from '@agora/shared';
 import { store, toast } from '../state/store';
+import { playNpcVoice } from '../media/npcVoice';
 import { chime } from '../ui/sound';
 import { ack, clearHistory, refused } from '../game/build';
 
@@ -219,6 +220,13 @@ export class WorldClient {
           config: m.config,
           chat: wasReconnect ? s.chat : m.history,
           desks: m.desks,
+          pets: [],
+          npcs: [],
+          npcMinds: {},
+          npcBrain: null,
+          talkTo: null,
+          npcLog: wasReconnect ? s.npcLog : [],
+          npcTyping: {},
           myDesk: m.myDesk,
           admitted: [],
           builder: m.builder,
@@ -226,6 +234,8 @@ export class WorldClient {
           spaceName: m.spaceName,
         }));
         if (wasReconnect) toast('toast.reconnected');
+        // voices are opt-in: the server sends clips only to people who said yes
+        if (store.get().settings.npcVoices) this.send({ t: 'npc:voice', on: true });
         this.seenRev = Math.max(this.seenRev, m.mapRev);
         if (m.mapRev !== this.mapRev) void this.reloadMap();
         break;
@@ -234,6 +244,54 @@ export class WorldClient {
         for (const p of m.positions) this.push(p, now);
         for (const id of [...this.samples.keys()])
           if (!m.positions.some((p) => p.id === id)) this.samples.delete(id);
+        break;
+      case 'pet:state':
+        store.set({ pets: m.pets });
+        break;
+      case 'npc:state':
+        store.set({ npcs: m.npcs });
+        break;
+      case 'npc:say':
+        // the log keeps what was said near me, for the Talk box; the scene draws the bubble
+        store.set((s) => ({
+          npcLog: [
+            ...s.npcLog.slice(-59),
+            {
+              id: m.mid,
+              npcId: m.id,
+              from: 'npc' as const,
+              ...(m.to === s.me ? {} : { to: m.to }),
+              body: m.body,
+              at: m.at,
+              ...(m.src?.length ? { src: m.src } : {}),
+            },
+          ],
+        }));
+        break;
+      case 'npc:voice':
+        playNpcVoice(m);
+        break;
+      case 'npc:typing':
+        store.set((s) => ({ npcTyping: { ...s.npcTyping, [m.id]: m.on } }));
+        break;
+      case 'npc:refused':
+        store.set({ npcRefused: { id: m.id, reason: m.reason, at: Date.now() } });
+        break;
+      case 'npc:memory':
+        store.set((s) => ({ npcMemory: { ...s.npcMemory, [m.id]: m.summary } }));
+        break;
+      case 'npc:forgot':
+        store.set({ npcMemory: {} });
+        toast('talk.memory.forgot');
+        break;
+      case 'npc:consent':
+        store.set({ npcConsent: m.consent });
+        break;
+      case 'npc:mind':
+        store.set({
+          npcBrain: m.brain,
+          npcMinds: Object.fromEntries(m.minds.map((x) => [x.id, x])),
+        });
         break;
       case 'profile':
         store.set((s) => ({ profiles: { ...s.profiles, [m.profile.id]: m.profile } }));

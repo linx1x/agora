@@ -5,11 +5,16 @@ import type {
   Avatar,
   ChatMsg,
   ClientConfig,
+  PetState,
   PlayerProfile,
   PlatformRole,
   Status,
   WorldMap,
   Zone,
+  NpcState,
+  NpcMindView,
+  NpcConsentState,
+  NpcRefusal,
 } from '@agora/shared';
 
 export type ConnState =
@@ -45,7 +50,22 @@ export type Prompt =
   | { kind: 'claim'; deskId: string; moving: boolean }
   | { kind: 'knock'; deskId: string; owner: string }
   | { kind: 'closed'; deskId: string; owner: string }
-  | { kind: 'teleport'; region: string; to: string };
+  | { kind: 'teleport'; region: string; to: string }
+  /** a character within talking range (P15.4): X opens the Talk box */
+  | { kind: 'talk'; npcId: string; name: string };
+
+/** One line in a Talk box: mine (kept only in this browser) or a character's (P15.4). */
+export interface NpcLogLine {
+  id: string;
+  npcId: string;
+  from: 'me' | 'npc';
+  /** a character's line meant for someone else who was near (shown as overheard) */
+  to?: string;
+  body: string;
+  at: number;
+  /** P15.8: the sites a web lookup quoted for this line */
+  src?: string[];
+}
 
 export interface Settings {
   lighting: boolean;
@@ -61,6 +81,10 @@ export interface Settings {
   audioOnly: boolean;
   /** show the virtual joystick on touch screens (P8.2) */
   joystick: boolean;
+  /** show characters' replies as speech bubbles over their heads (P15.4) */
+  npcBubbles: boolean;
+  /** hear the characters' voices (P15.6), off until asked for */
+  npcVoices: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -72,6 +96,8 @@ export const DEFAULT_SETTINGS: Settings = {
   pttKey: 'Space',
   audioOnly: false,
   joystick: true,
+  npcBubbles: true,
+  npcVoices: false,
 };
 
 const loadSettings = (): Settings => {
@@ -96,7 +122,7 @@ export function saveSettings(s: Settings) {
 /** Build mode UI state (ADR-021). */
 export type BuildGroup = 'objects' | 'props' | 'floor' | 'walls' | 'overhead';
 export interface BuildState {
-  tool: 'paint' | 'erase' | 'pick';
+  tool: 'paint' | 'erase' | 'pick' | 'select';
   group: BuildGroup;
   /** selected base per group */
   base: Record<BuildGroup, string>;
@@ -104,7 +130,26 @@ export interface BuildState {
   theme: Biome | 'auto';
   grid: boolean;
   collision: boolean;
+  /** props snap to spots (P9.17); Alt inverts it while held */
+  snap: boolean;
+  /** new props are mirrored (P9.20) */
+  flip: boolean;
 }
+
+/** What the Select tool holds (P9.17–P9.20), as the build panel shows it. */
+export type BuildSel =
+  | {
+      kind: 'prop';
+      id: string;
+      t: string;
+      x: number;
+      y: number;
+      z: number;
+      f: boolean;
+      turn: boolean;
+    }
+  | { kind: 'run'; t: string; axes: ('h' | 'v')[]; len: number }
+  | { kind: 'cell'; t: string; turn: boolean };
 
 export interface AppState {
   conn: ConnState;
@@ -171,6 +216,26 @@ export interface AppState {
   /** switched to audio-only because the connection is poor (P3.9) */
   autoAudioOnly: boolean;
   desks: DeskState[];
+  /** the space's cats as the server last described them (ADR-040, flag `pets`) */
+  pets: PetState[];
+  /** the space's characters as the server last described them (ADR-042, flag `npcs`) */
+  npcs: NpcState[];
+  /** P15.3 brain view (development, space admins): needs and why, per character id */
+  npcMinds: Record<string, NpcMindView>;
+  /** whether the characters' decisions come from Clef right now (null: no brain view) */
+  npcBrain: 'off' | 'up' | 'down' | null;
+  /** P15.4: the character whose Talk box is open */
+  talkTo: string | null;
+  /** P15.4: does Talk need the AI notice, and did I accept it (null until the server says) */
+  npcConsent: NpcConsentState | null;
+  /** P15.4: the last lines said to and by characters (not stored anywhere) */
+  npcLog: NpcLogLine[];
+  /** P15.4: characters writing a reply right now, by id */
+  npcTyping: Record<string, boolean>;
+  /** P15.4: why the server refused my last message, to show once */
+  npcRefused: { id: string; reason: NpcRefusal; at: number } | null;
+  /** P15.5: what each character told me it remembers about me (undefined: not asked yet) */
+  npcMemory: Record<string, string | null>;
   myDesk: string | null;
   admitted: string[];
   prompt: Prompt | null;
@@ -204,6 +269,8 @@ export interface AppState {
   cursorBiome: Biome;
   /** last build mode options, restored when it is turned on again */
   buildPrefs: BuildState;
+  /** current Select-tool selection (P9.17) */
+  buildSel: BuildSel | null;
   /** live map revision (bumped by every applied edit) */
   mapRev: number;
   /** bumped when the whole map is replaced: the world view remounts */
@@ -255,6 +322,16 @@ const initial: AppState = {
   chatTab: 'nearby',
   locate: null,
   desks: [],
+  pets: [],
+  npcs: [],
+  npcMinds: {},
+  npcBrain: null,
+  talkTo: null,
+  npcConsent: null,
+  npcLog: [],
+  npcTyping: {},
+  npcRefused: null,
+  npcMemory: {},
   myDesk: null,
   admitted: [],
   prompt: null,
@@ -283,7 +360,10 @@ const initial: AppState = {
     theme: 'auto',
     grid: true,
     collision: false,
+    snap: true,
+    flip: false,
   },
+  buildSel: null,
   mapRev: 0,
   mapGen: 0,
   undoCount: 0,

@@ -1,0 +1,6 @@
+node_modules/
+dist/
+dist-single/
+dist-split/
+# stills.mjs writes PNGs; the committed copies are the WebP versions
+stills/*.png

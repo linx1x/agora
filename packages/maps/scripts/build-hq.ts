@@ -27,7 +27,8 @@ const floor: Layer = new Array(W * H).fill(0);
 const walls: Layer = new Array(W * H).fill(0);
 const furniture: Layer = new Array(W * H).fill(0);
 const above: Layer = new Array(W * H).fill(0);
-const propLayer: Layer = new Array(W * H).fill(0); // P9.11: items resting on desks and tables
+// P9.16 (ADR-039): items resting on desks and tables are point objects; the template has none
+const propObjects: TmjObject[] = [];
 
 const zones: TmjObject[] = [];
 const spawns: TmjObject[] = [];
@@ -1941,7 +1942,7 @@ const tmj: Tmj = {
     tl(1, 'floor', floor),
     tl(2, 'walls', walls),
     tl(3, 'furniture', furniture),
-    tl(11, 'props', propLayer),
+    ol(11, 'props', propObjects),
     tl(4, 'above', above),
     ol(5, 'zones', zones),
     ol(6, 'spawns', spawns),

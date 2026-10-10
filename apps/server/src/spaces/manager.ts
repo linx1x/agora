@@ -2,6 +2,8 @@ import { randomBytes } from 'node:crypto';
 import {
   DEFAULT_SPACE,
   can,
+  consentVersion,
+  npcClock,
   parseMap,
   remapTmj,
   spaceCan,
@@ -17,6 +19,18 @@ import {
 import type { Config } from '../config';
 import { roomStore, type Store, type StoredSpace } from '../db/store';
 import { SpaceRoom } from '../world/room';
+import { NpcPersonas } from '../world/npc-personas';
+import type { NpcTalkLink } from '../world/npcs';
+import { Brain, clefDecider, probeClef } from '../npc-brain/decide';
+import { DecisionLog } from '../npc-brain/log';
+import { createCompleter, type Completer } from '../npc-brain/llm';
+import { e2eCompleter } from '../npc-brain/fake';
+import { NpcLineBanks } from '../npc-brain/lines';
+import { MemoryKeeper } from '../npc-brain/memory';
+import { VoiceClient } from '../npc-brain/voice';
+import { WebClient } from '../npc-brain/web';
+import { NpcWeights } from '../npc-brain/weights';
+import { TalkBudget, TalkEngine } from '../npc-brain/talk';
 import type { SfuApi } from '../media/gate';
 
 interface Logger {
@@ -58,6 +72,20 @@ export class SpaceManager {
   private loaded = new Map<string, SpaceRoom>();
   private idleSince = new Map<string, number>();
   private sweeper?: NodeJS.Timeout;
+  /** the characters' files (ADR-042), shared by every space that has them */
+  private npcPersonas?: NpcPersonas;
+  /** Clef (or nothing) and the decision log, shared by every space (P15.3) */
+  private npcBrain?: Brain;
+  private npcLog?: DecisionLog;
+  /** the Talk engine, its AI notice and consent (P15.4), shared by every space */
+  private npcTalk?: NpcTalkLink;
+  /** P15.5: what characters remember about people (flag `npcMemory`) */
+  private npcMemory?: MemoryKeeper;
+  /** prepared lines of the characters, shared by Talk and by their chats with each other */
+  private npcBanks?: NpcLineBanks;
+  /** fitted score weights, if a fit was adopted (P15.3b) */
+  private npcWeights?: NpcWeights;
+  private memoryPrunedAt = Date.now();
 
   constructor(
     private cfg: Config,
@@ -67,7 +95,127 @@ export class SpaceManager {
     private template: (id: string) => Tmj,
     /** SFU API shared by every space (MEDIA_BACKEND=livekit, ADR-031) */
     private sfu?: SfuApi,
-  ) {}
+  ) {
+    if (cfg.flags.npcs === true && cfg.npc) {
+      this.npcPersonas = new NpcPersonas(cfg.npc.dir, log, {
+        writeDefaults: cfg.env === 'development',
+      });
+      const d = cfg.npc.decide;
+      this.npcBrain = new Brain(
+        d ? clefDecider(d.url, { timeoutMs: d.timeoutMs, token: d.token }) : null,
+        cfg.npc.minP,
+        log,
+      );
+      if (d) void probeClef(d.url, log, { token: d.token });
+      else log.info({}, 'NPC_DECIDE_URL not set: characters decide with their own scoring');
+      if (cfg.npc.log) this.npcLog = new DecisionLog(cfg.npc.log.dir, cfg.npc.log.days, log);
+      this.npcWeights = new NpcWeights(cfg.npc.dir, log);
+      this.npcBanks = new NpcLineBanks(cfg.npc.dir, log, {
+        writeDefaults: cfg.env === 'development',
+      });
+      if (cfg.flags.npcTalk === true) this.npcTalk = this.buildTalk(cfg, log);
+    }
+  }
+
+  /**
+   * Talking (P15.4, ADR-045). With a cloud model configured, the AI notice applies and names the
+   * provider and its country; without one, prepared lines answer and nothing leaves the machine.
+   */
+  private buildTalk(cfg: Config, log: Logger): NpcTalkLink {
+    const s = cfg.npc.llm;
+    const llm: Completer | undefined = s
+      ? s.fake
+        ? e2eCompleter()
+        : createCompleter(s.cfg)
+      : undefined;
+    const banks = this.npcBanks!;
+    const budget = new TalkBudget(cfg.npc.callsPerHour, cfg.npc.dailyUsd);
+    const timeoutMs = s?.cfg.timeoutMs ?? 8000;
+    // P15.5 (ADR-046): notes about people, only with the flag and only written by a cloud model
+    if (cfg.flags.npcMemory === true) {
+      this.npcMemory = new MemoryKeeper({
+        store: this.store,
+        brain: this.npcBrain!,
+        llm,
+        budget,
+        log,
+        days: cfg.npc.memoryDays,
+        timeoutMs,
+      });
+      void this.npcMemory.prune().catch(() => {});
+      if (!llm) log.info({}, 'no cloud model: characters will not keep notes about people');
+    }
+    const keeper = this.npcMemory;
+    // P15.8 (ADR-049): lookups need the cloud model to write the answer; the notice then says so
+    const web =
+      cfg.flags.npcWeb === true && cfg.npc.web && llm ? new WebClient(cfg.npc.web, log) : undefined;
+    if (cfg.npc.web && !web)
+      log.info({}, 'NPC_WEB set but the npcWeb flag or the cloud model is missing: no web lookups');
+    const engine = new TalkEngine({
+      brain: this.npcBrain!,
+      llm,
+      banks,
+      budget,
+      cfg: { minP: cfg.npc.minP, llmTimeoutMs: timeoutMs },
+      rng: Math.random,
+      log,
+      onEnd: keeper ? (c) => void keeper.consider(c) : undefined,
+      web,
+    });
+    if (s)
+      log.info(
+        { provider: s.label, country: s.country, model: s.cfg.model },
+        'characters may use a cloud model for words no prepared line covers (AI notice applies)',
+      );
+    else log.info({}, 'NPC_LLM_API_KEY not set: characters answer with prepared lines only');
+    const version = consentVersion(s?.label ?? '', s?.country ?? '', !!web);
+    const voice =
+      cfg.flags.npcVoice === true && cfg.npc.voice
+        ? new VoiceClient(cfg.npc.voice, log)
+        : undefined;
+    if (cfg.flags.npcVoice === true && !voice)
+      log.info({}, 'NPC_VOICE_URL not set: characters stay silent (text only)');
+    return {
+      engine,
+      memory: keeper,
+      voice,
+      notice: {
+        needed: !!s,
+        provider: s?.label ?? '',
+        country: s?.country ?? '',
+        version,
+        ...(web ? { web: true } : {}),
+      },
+      consent: {
+        has: async (uid) => (await this.store.getNpcConsent(uid)) === version,
+        set: (uid, accept) => this.store.setNpcConsent(uid, accept ? version : null),
+      },
+    };
+  }
+
+  /** Characters for this space when the flag is on and NPC_SPACES lists it. */
+  private npcsFor(s: StoredSpace) {
+    const list = this.cfg.npc?.spaces ?? [];
+    if (!this.npcPersonas || !(list.includes(s.id) || list.includes(s.slug))) return undefined;
+    const personas = this.npcPersonas;
+    return {
+      personas: () => personas.list(),
+      clock: npcClock({ start: this.cfg.npc.clock, scale: this.cfg.npc.timeScale }),
+      link: this.npcBrain ? { brain: this.npcBrain, log: this.npcLog, space: s.id } : undefined,
+      talk: this.npcTalk,
+      weights: this.npcWeights ? () => this.npcWeights!.get() : undefined,
+      social:
+        this.cfg.flags.npcSocial === true && this.npcBanks
+          ? {
+              bank: (id: string) => this.npcBanks!.get(id),
+              state: {
+                get: (npcId: string) => this.store.getNpcState(s.id, npcId),
+                set: (npcId: string, json: string) => this.store.setNpcState(s.id, npcId, json),
+              },
+            }
+          : undefined,
+    };
+  }
 
   /** Create the default space on first boot (its data predates spaces). */
   async init() {
@@ -300,6 +448,7 @@ export class SpaceManager {
         tmj,
         mapRev,
         baseTmj: base,
+        npcs: this.npcsFor(s),
         sfu:
           this.sfu && this.cfg.livekit
             ? { api: this.sfu, url: this.cfg.livekit.url, prefix: this.cfg.livekit.prefix }
@@ -316,6 +465,12 @@ export class SpaceManager {
 
   /** Unload rooms nobody has used for a while (never the default space). */
   async sweep(now = Date.now()) {
+    // conversations quiet for too long end (and may leave notes), expired notes are deleted daily
+    this.npcTalk?.engine.sweep();
+    if (this.npcMemory && now - this.memoryPrunedAt > 86_400_000) {
+      this.memoryPrunedAt = now;
+      void this.npcMemory.prune().catch(() => {});
+    }
     for (const [id, room] of this.loaded) {
       if (id === DEFAULT_SPACE || !room.idle) {
         this.idleSince.delete(id);

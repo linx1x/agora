@@ -17,6 +17,7 @@ import { VideoStrip } from './ui/VideoStrip';
 import { DeskDialog } from './ui/DeskDialog';
 import { Minimap, zoomStep } from './ui/Minimap';
 import { PromptBar } from './ui/PromptBar';
+import { TalkBox } from './ui/TalkBox';
 import { BuildPanel, BuildResetDialog } from './ui/BuildPanel';
 import { setBuild } from './game/build';
 import { DEFAULT_SPACE } from '@agora/shared';
@@ -62,6 +63,9 @@ function useShortcuts(active: boolean) {
       }
       // build mode owns Enter, Space, arrows, Q/E/I/G/O and Escape
       if (building && e.key === 'Enter') return;
+      // Enter on a focused <summary> (the characters' brain view) opens it, not the chat
+      const target = e.target instanceof Element ? e.target : null;
+      if (e.key === 'Enter' && target?.closest('summary')) return;
       const n = Number(e.key);
       if (n >= 1 && n <= EMOTES.length) world.send({ t: 'emote', emote: EMOTES[n - 1]! });
       else if (e.key === 'm' || e.key === 'M') void media.setMic(!store.get().mic);
@@ -254,6 +258,7 @@ function SpaceApp({ slug }: { slug: string }) {
       <ControlBar />
       <Hud />
       <PromptBar />
+      <TalkBox />
       {showMinimap && <Minimap />}
       {touch && <TouchControls />}
       {conn === 'full' && (

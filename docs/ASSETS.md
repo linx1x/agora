@@ -4,6 +4,7 @@ Rule: use existing free-licensed art; do not draw new sprites. Every file is
 recorded in `apps/web/public/assets/registry.json` and shown on the Credits page.
 
 ## Allowed licenses
+
 - **CC0** — no obligations (credit appreciated).
 - **CC-BY 3.0/4.0, OGA-BY 3.0** — attribution required.
 - **CC-BY-SA 3.0/4.0** — attribution required; modified art (e.g. recoloured
@@ -16,16 +17,18 @@ Not allowed: "free for personal use", "non-commercial", licenses that forbid
 redistribution of the files in a repo, anything with unclear provenance, AI-
 generated packs without a clear license. When unsure, leave it out and flag it.
 
-*This is engineering guidance, not legal advice; your organization may want its legal team to
-glance at the final registry.*
+_This is engineering guidance, not legal advice; your organization may want its legal team to
+glance at the final registry._
 
 ## Primary choice: LPC (Liberated Pixel Cup) family
+
 Why: one consistent 32 px style for both tiles and characters, and the character
 art is **layered** (body, hair, clothes, hats, accessories), which gives avatar
 customization and the full wardrobe without drawing anything.
 
 **Characters** — Universal LPC Spritesheet Character Generator
 (github.com/LiberatedPixelCup/Universal-LPC-Spritesheet-Character-Generator).
+
 - Use the individual layer PNGs from its `spritesheets/` folder, not baked
   characters, so the client can composite layers.
 - Its `CREDITS.csv` lists author, license and URL per image. Copy the rows for
@@ -39,6 +42,7 @@ customization and the full wardrobe without drawing anything.
 "LPC - Indoor Tiles" and "LPC Compatible Terrain/Tiles" collections). LPC is
 fantasy-leaning, so modern office pieces (monitors, office chairs, whiteboards,
 meeting tables) may be thin. Survey procedure (task P0.9):
+
 1. Collect LPC-compatible 32 px interior/modern packs with allowed licenses.
 2. If office furniture is missing, look for CC0 top-down packs whose style mixes
    acceptably (Kenney's "Roguelike Indoor" and similar are CC0 but 16 px; a 2×
@@ -55,6 +59,7 @@ freesound.org items marked CC0.
 **Fonts** — Atkinson Hyperlegible (SIL OFL) for UI; see DESIGN.md.
 
 ## registry.json shape
+
 ```json
 {
   "assets": [
@@ -70,10 +75,12 @@ freesound.org items marked CC0.
   ]
 }
 ```
+
 `pnpm assets:check` fails the build if a file under `public/assets` has no entry
 or an entry uses a license outside the allowed list.
 
 ## Current state (2026-10-01, ADR-020)
+
 In use: Kenney "Roguelike/RPG pack" and "Roguelike Indoors" (CC0) in
 `apps/web/public/assets/kenney/` for plants, trees, hedges, chairs, bookshelves,
 fireplace and water. Everything else is procedural placeholder art drawn in code.
@@ -82,6 +89,7 @@ source files, so they cannot live in the repo), LimeZu Modern Office/Interiors o
 itch.io (paid, no redistribution), GameArt2D freebies (CC0 but side-view).
 
 ## Current state (2026-10-02, ADR-022)
+
 Original Agora pixel art (CC0, `assets/agora/`): shared chairs, desk props, drinks, UI icons
 (`common`), Hub fixtures and animated tiles (`hub`), the whole Jungle biome (`jungle`), the whole Oasis biome (`oasis`) the whole Boreal biome (`boreal`) and the whole Zen biome (`zen`).
 Built from `art-src/` with `python3 scripts/art/build.py <biome>`; see `art-src/style-guide.md`.

@@ -127,3 +127,21 @@ def lamp_on(pal, seed):
 @sprite('prop.lampOff', note='desk lamp, off')
 def lamp_off(pal, seed):
     return desk_lamp(pal, seed, False)
+
+
+@sprite('prop.books', note='stack of three books (holds a lamp or a mug: stack w6 d4 h10)')
+def books(pal, seed):
+    c = new(pal, seed)
+    # bottom to top: green, blue, red; each a cover top + a front with page edges on the right
+    for (x0, x1, y0, col, colL) in ((7, 25, 22, 'green', 'greenL'), (9, 24, 19, 'blue', 'blueL'), (8, 22, 16, 'red', 'redL')):
+        c.rect(x0, y0, x1, y0 + 2, col)
+        c.hline(x0, x1, y0, colL)
+        c.rect(x1 - 3, y0 + 1, x1 - 1, y0 + 2, 'paper')
+        c.put(x1 - 2, y0 + 2, 'paperD')
+    c.rect(8, 12, 22, 15, 'pink')                 # top cover, seen from above
+    c.hline(8, 22, 12, 'white'); c.hline(9, 22, 15, 'redL')
+    c.rect(11, 13, 18, 14, 'gold')                # title plate
+    c.hline(12, 17, 13, 'paper')
+    c.outline(); c.ground_shadow(8, 25, 26)
+    return c
+

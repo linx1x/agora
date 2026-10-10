@@ -104,12 +104,7 @@ test('two people see each other move and stop, chat, and connect media nearby', 
   );
   // Regression: the remote avatar must stop its walk animation once A stops.
   await b.waitForTimeout(500);
-  const frame = await A(b)(
-    (id) =>
-      (window as unknown as AgoraWindow).__agoraGame.scene.keys.world.views.get(id).sprite.frame
-        .name,
-    aId,
-  );
+  const frame = await A(b)((id) => (window as any).__agora.view.avatarFrame(id), aId);
   expect(frame).toMatch(/-0$/);
 
   await a.waitForFunction(() => (window as any).__agora.store.get().peers.length === 1);

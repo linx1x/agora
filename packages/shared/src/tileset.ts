@@ -4,6 +4,7 @@
  * this order; the map generator, collision grid and lighting read the flags.
  */
 import type { Dir } from './constants';
+import type { Shape3D } from './shape3d';
 
 export const TILESET_NAME = 'agora-office';
 export const TILESET_COLUMNS = 8;
@@ -41,6 +42,13 @@ export interface TileDef {
   surface?: number;
   /** A small item that rests on a surface, on the `props` layer (P9.11). */
   prop?: boolean;
+  /**
+   * A prop that holds other props (P9.19, ADR-039): footprint half-width `w` and depth `d`
+   * (px on the plane it rests on, above its base point) and height `h` (px a rider is raised).
+   */
+  stack?: { w: number; d: number; h: number };
+  /** How it stands in the 2.5D view (P16.4, ADR-052); derived from the name when absent. Visual only. */
+  d3?: Shape3D;
 }
 
 export type BlendMaterial = 'desk' | 'table' | 'counter';
@@ -209,13 +217,26 @@ export const PROP_TILES = [
   'prop.matcha',
   'prop.herbalTea',
   'prop.juice',
+  // P9.19 (ADR-039): items that hold others
+  'prop.laptopClosed',
+  'prop.books',
 ] as const;
+/**
+ * Stackable props (P9.19): footprint and height measured on their art in common.png, so a
+ * rider's base lands on the drawn top (books: top cover rows 12–15 above a base row of 27).
+ */
+const STACKS: Record<string, NonNullable<TileDef['stack']>> = {
+  'prop.books': { w: 5, d: 3, h: 12 },
+  'prop.laptopClosed': { w: 10, d: 8, h: 5 },
+  'prop.notebook': { w: 4, d: 11, h: 4 },
+};
 const PROP_DEFS: TileDef[] = PROP_TILES.map((name) => ({
   name,
   base: name,
   collides: false,
   prop: true,
   ...(name === 'prop.lampOn' ? { light: 'lamp' as const } : {}),
+  ...(STACKS[name] ? { stack: STACKS[name] } : {}),
 }));
 
 export const TILE_DEFS: TileDef[] = [
@@ -225,6 +246,8 @@ export const TILE_DEFS: TileDef[] = [
   ),
   ...EXTRA_DEFS,
   ...PROP_DEFS,
+  // P14.4 (ADR-041): a bowl the office cat drinks from. Appended last so gids stay put.
+  { name: 'waterBowl', base: 'waterBowl', collides: false },
 ];
 
 // ── Blending metadata (ADR-037). Natural ground blends; paved, wooden and woven floors stay crisp.

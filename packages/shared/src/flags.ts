@@ -30,6 +30,24 @@ export const DEFAULT_FLAGS = {
   /** P9.10 (ADR-037): ground and joined furniture drawn from formulas instead of one tile per cell;
    *  FEATURE_FLAGS=blendTiles=false brings back the plain tiles */
   blendTiles: true,
+  /** Phase 9c (ADR-039): Select tool, free (Alt) placement, stretch handles, stacking, flip */
+  placement: true,
+  /** ADR-040: the office cat (and later personal cats); off until Vincent approves the art (checkpoint F) */
+  pets: false,
+  /** ADR-042: server-run characters (Zoé, Félix, Théo); off until checkpoint G. Spaces: NPC_SPACES */
+  npcs: false,
+  /** P15.4 (ADR-045): talking with the characters (the Talk box); needs `npcs` */
+  npcTalk: false,
+  /** P15.5 (ADR-046): characters remember people (summaries, "Forget me"); needs `npcTalk` */
+  npcMemory: false,
+  /** P15.5 (ADR-046): moods and characters chatting with each other when someone is listening; needs `npcs` */
+  npcSocial: false,
+  /** P15.6 (ADR-048): characters' replies can be heard (a voice service on the operator's machine); needs `npcTalk` */
+  npcVoice: false,
+  /** P15.8 (ADR-049): characters may search the public web (your own SearXNG) for some questions; needs `npcTalk` and a cloud model */
+  npcWeb: false,
+  /** Phase 16 (ADR-052): the 2.5D view (Three.js, tilted camera, paper avatars); off until checkpoint K */
+  world25d: false,
 } as const;
 
 export type Flags = { [K in keyof typeof DEFAULT_FLAGS]: boolean };

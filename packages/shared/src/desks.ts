@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { DeskSpot, WorldMap } from './map';
+import { zoneAt, type DeskSpot, type WorldMap } from './map';
 
 /** Desk pod access set by its owner (ADR-017). Unclaimed pods are always open. */
 export const DESK_ACCESS = ['open', 'knock', 'closed'] as const;
@@ -70,6 +70,24 @@ export function podAllows(
   if (desk.access === 'open') return true;
   if (desk.access === 'knock') return admitted;
   return false;
+}
+
+/**
+ * May someone stand at (x, y) as far as desk pods go? Anywhere outside a pod, yes; inside one,
+ * `podAllows`. Avatars (room.allowedAt) and cats (apps/server/src/world/pets.ts) share this, so
+ * a cat is never allowed where the same person would not be.
+ */
+export function podOpenAt(
+  map: WorldMap,
+  x: number,
+  y: number,
+  deskOf: (id: string) => DeskState | undefined,
+  isOwner: boolean,
+  admitted: (id: string) => boolean,
+): boolean {
+  const z = zoneAt(map, x, y);
+  if (!z || z.kind !== 'desk') return true;
+  return podAllows(deskOf(z.id), isOwner, admitted(z.id));
 }
 
 export function deskSpotAt(map: WorldMap, x: number, y: number): DeskSpot | undefined {

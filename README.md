@@ -108,7 +108,7 @@ BOTS=30 AGORA_URL=http://localhost:3000 pnpm bots   # load bots (access-code mod
 
 ### Environment variables
 
-Configure these in the **Settings** tab of the Marketplace app:
+Configure these as environment variables (a `.env` file, or your hosting platform's settings):
 
 | Variable                             | Required                  | Description                                                                                                                              | How to get it                                     |
 | ------------------------------------ | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
@@ -148,3 +148,8 @@ e2e/            Playwright multi-user tests
 scripts/        bots, i18n and asset checks
 docs/           plan, architecture, ADRs, privacy, design
 ```
+
+## License
+
+Code: [MIT](LICENSE). Original Agora pixel art in `apps/web/public/assets/agora/`: CC0 1.0 (public domain).
+Third-party assets keep their own licenses, listed in `apps/web/public/assets/registry.json` and the in-app Credits page.

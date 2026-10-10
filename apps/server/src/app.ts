@@ -483,10 +483,11 @@ export async function buildApp(cfg: Config): Promise<App> {
       socket.close(4405, 'space_forbidden');
       return;
     }
-    const [r, member, builder] = await Promise.all([
+    const [r, member, builder, admin] = await Promise.all([
       spaces.room(space),
       store.getMember(space.id, claims.uid).catch(() => null),
       spaces.allowed(space, actor, 'build'),
+      spaces.allowed(space, actor, 'settings'),
     ]);
     if (closed) return;
     const accountName = account.name;
@@ -497,6 +498,8 @@ export async function buildApp(cfg: Config): Promise<App> {
         name: member?.displayName || accountName,
         accountName,
         builder,
+        // the characters' brain view (P15.3): everyone in development, space admins otherwise
+        npcDebug: cfg.env !== 'production' || admin,
       },
       q.data.resume,
       avatar,

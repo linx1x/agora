@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { TILE, cellPos, parseMap, type S2CMsg, type Tmj } from '@agora/shared';
+import { C2S, TILE, cellPos, parseMap, remapTmj, type S2CMsg, type Tmj } from '@agora/shared';
 import { MemoryStore, roomStore } from '../db/store';
 import { SpaceRoom, type Player } from './room';
 
@@ -470,6 +470,55 @@ describe('SpaceRoom: build mode', () => {
     expect(JSON.parse(room.tmjJson()).layers[2].data[9 * room.map.width + 5]).toBeGreaterThan(0);
     await room.flushMap();
     expect((await store.loadMap('hq'))?.rev).toBe(1);
+  });
+
+  it('places several props on one desk cell, sends them to everyone and saves them (P9.16)', async () => {
+    const store = new MemoryStore();
+    const room = buildRoom(store);
+    await room.init();
+    const cb = new FakeConn();
+    const cv = new FakeConn();
+    const builder = (await room.join(cb, { uid: 'ub', name: 'B', builder: true }))!;
+    await room.join(cv, { uid: 'uv', name: 'V' });
+    const msg = C2S.parse({
+      t: 'map:edit',
+      op: 1,
+      cells: [
+        { l: 'furniture', x: 5, y: 9, t: 'jungle.deskH' },
+        { l: 'prop', id: 'lamp01', p: { t: 'prop.lampOn', x: 5 * TILE + 7, y: 9 * TILE + 14 } },
+        {
+          l: 'prop',
+          id: 'mug001',
+          p: { t: 'prop.coffee', x: 5 * TILE + 24, y: 9 * TILE + 18, f: true },
+        },
+      ],
+    });
+    room.handle(builder, msg);
+    expect(cb.of('map:refused')).toHaveLength(0);
+    expect(room.map.props.map((p) => p.id)).toEqual(['lamp01', 'mug001']);
+    expect(cv.of('map:edit').at(-1)!.changes).toHaveLength(3);
+    const layer = JSON.parse(room.tmjJson()).layers.find(
+      (l: { name: string }) => l.name === 'props',
+    );
+    expect(layer.type).toBe('objectgroup');
+    expect(layer.objects).toHaveLength(2);
+    await room.flushMap();
+    const saved = (await store.loadMap('hq'))!.tmj as Tmj;
+    expect(parseMap(remapTmj(saved, saved.tilesets[0]!)).props).toEqual(room.map.props);
+    // a prop in the air is refused, and nothing changes
+    room.handle(builder, {
+      t: 'map:edit',
+      op: 2,
+      cells: [
+        {
+          l: 'prop',
+          id: 'mug002',
+          p: { t: 'prop.coffee', x: 5 * TILE + 16, y: 11 * TILE + 16, z: 0, f: false },
+        },
+      ],
+    });
+    expect(cb.of('map:refused').at(-1)).toMatchObject({ op: 2, reason: 'no_surface' });
+    expect(room.map.props).toHaveLength(2);
   });
 
   it('refuses edits from non-builders and edits that block a desk', async () => {

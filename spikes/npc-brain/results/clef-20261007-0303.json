@@ -1,0 +1,588 @@
+{
+  "when": "2026-10-07T03:03:47.126276+00:00",
+  "model": "Cloudflare/clef-flash",
+  "quant": "4bit",
+  "placement": {
+    "": "0",
+    "model.language_model.embed_tokens": "cpu",
+    "model.visual": "cpu"
+  },
+  "params_gb": {
+    "backbone@meta": 0.912,
+    "backbone@cpu": 2.034,
+    "backbone@cuda": 5.496,
+    "joint_head@cuda": 0.244,
+    "of which lm_head (bf16)": 2.034
+  },
+  "versions": {
+    "torch": "2.11.0+cu128",
+    "transformers": "5.10.2",
+    "bitsandbytes": "0.50.2",
+    "cuda": "12.8",
+    "fast_kernels": "flash-linear-attention 0.5.2",
+    "python": "3.12.3"
+  },
+  "load_seconds": 26.35621477800305,
+  "gpu": {
+    "before": {
+      "gpu": "NVIDIA GeForce RTX 3080",
+      "total_mb": 10240,
+      "used_mb": 2264,
+      "driver": "610.74"
+    },
+    "loaded": {
+      "gpu": "NVIDIA GeForce RTX 3080",
+      "total_mb": 10240,
+      "used_mb": 7092,
+      "driver": "610.74"
+    },
+    "after": {
+      "gpu": "NVIDIA GeForce RTX 3080",
+      "total_mb": 10240,
+      "used_mb": 7587,
+      "driver": "610.74"
+    },
+    "torch_alloc_loaded_mb": 5857.880576,
+    "torch_peak_mb": 6219.456512
+  },
+  "moment": {
+    "p50": 186.48482000571676,
+    "p90": 187.9651070048567,
+    "answer": {
+      "next": {
+        "approach_friend": 0.06251738220453262,
+        "coffee": 0.06551764905452728,
+        "greet": 0.773611307144165,
+        "stay_desk": 0.09835363924503326
+      },
+      "approach": {
+        "ignore": 0.01993849128484726,
+        "walk_up": 0.916697084903717,
+        "wave": 0.06336439400911331
+      },
+      "busy": {
+        "yes": 0.019568676128983498,
+        "no": 0.9804313778877258
+      }
+    }
+  },
+  "three_npcs_ms": {
+    "p50": 577.3141020035837,
+    "p90": 602.9253390152007
+  },
+  "scores": {
+    "fr": {
+      "n": 20,
+      "errors": 0,
+      "kind_accuracy": 1.0,
+      "pii_accuracy": 1.0,
+      "pii_recall": 1.0,
+      "sweep": [
+        {
+          "min_p": 0.5,
+          "coverage": 1.0,
+          "accuracy": 1.0
+        },
+        {
+          "min_p": 0.6,
+          "coverage": 1.0,
+          "accuracy": 1.0
+        },
+        {
+          "min_p": 0.7,
+          "coverage": 0.95,
+          "accuracy": 1.0
+        },
+        {
+          "min_p": 0.8,
+          "coverage": 0.85,
+          "accuracy": 1.0
+        },
+        {
+          "min_p": 0.9,
+          "coverage": 0.25,
+          "accuracy": 1.0
+        }
+      ],
+      "per_kind": {
+        "greeting": {
+          "n": 20,
+          "recall": 1.0,
+          "precision": 1.0
+        }
+      },
+      "confusion": {
+        "greeting": {
+          "greeting": 20
+        }
+      },
+      "ms": {
+        "p50": 252.33680100063793,
+        "p90": 265.93692202004604,
+        "mean": 253.73272514989367
+      }
+    }
+  },
+  "rows": [
+    {
+      "id": "fr001",
+      "lang": "fr",
+      "kind": "greeting",
+      "pii": false,
+      "ms": 256.8072529975325,
+      "pred_kind": "greeting",
+      "p_kind": 0.9244945049285889,
+      "p_pii": 0.8705973029136658,
+      "pred_pii": false,
+      "probs_kind": {
+        "abusive": 0.003,
+        "agora_question": 0.0088,
+        "goodbye": 0.0037,
+        "greeting": 0.9245,
+        "injection": 0.0038,
+        "npc_question": 0.0167,
+        "other": 0.0083,
+        "request": 0.0091,
+        "small_talk": 0.0186,
+        "thanks": 0.0037
+      }
+    },
+    {
+      "id": "fr002",
+      "lang": "fr",
+      "kind": "greeting",
+      "pii": false,
+      "ms": 283.8532020105049,
+      "pred_kind": "greeting",
+      "p_kind": 0.9468373656272888,
+      "p_pii": 0.9775429368019104,
+      "pred_pii": false,
+      "probs_kind": {
+        "abusive": 0.0031,
+        "agora_question": 0.0067,
+        "goodbye": 0.0038,
+        "greeting": 0.9468,
+        "injection": 0.0035,
+        "npc_question": 0.0113,
+        "other": 0.0057,
+        "request": 0.0061,
+        "small_talk": 0.0091,
+        "thanks": 0.0039
+      }
+    },
+    {
+      "id": "fr003",
+      "lang": "fr",
+      "kind": "greeting",
+      "pii": false,
+      "ms": 260.7508240034804,
+      "pred_kind": "greeting",
+      "p_kind": 0.8095420002937317,
+      "p_pii": 0.9860442876815796,
+      "pred_pii": false,
+      "probs_kind": {
+        "abusive": 0.0067,
+        "agora_question": 0.026,
+        "goodbye": 0.0104,
+        "greeting": 0.8095,
+        "injection": 0.01,
+        "npc_question": 0.0416,
+        "other": 0.0256,
+        "request": 0.023,
+        "small_talk": 0.0403,
+        "thanks": 0.0069
+      }
+    },
+    {
+      "id": "fr004",
+      "lang": "fr",
+      "kind": "greeting",
+      "pii": false,
+      "ms": 261.55933598056436,
+      "pred_kind": "greeting",
+      "p_kind": 0.8377811312675476,
+      "p_pii": 0.8244618773460388,
+      "pred_pii": false,
+      "probs_kind": {
+        "abusive": 0.0028,
+        "agora_question": 0.0096,
+        "goodbye": 0.0029,
+        "greeting": 0.8378,
+        "injection": 0.0035,
+        "npc_question": 0.0764,
+        "other": 0.0114,
+        "request": 0.0066,
+        "small_talk": 0.046,
+        "thanks": 0.0028
+      }
+    },
+    {
+      "id": "fr005",
+      "lang": "fr",
+      "kind": "greeting",
+      "pii": false,
+      "ms": 259.7757330222521,
+      "pred_kind": "greeting",
+      "p_kind": 0.9115384817123413,
+      "p_pii": 0.8175744414329529,
+      "pred_pii": false,
+      "probs_kind": {
+        "abusive": 0.0029,
+        "agora_question": 0.0065,
+        "goodbye": 0.0029,
+        "greeting": 0.9115,
+        "injection": 0.0033,
+        "npc_question": 0.0369,
+        "other": 0.0081,
+        "request": 0.0051,
+        "small_talk": 0.0194,
+        "thanks": 0.0034
+      }
+    },
+    {
+      "id": "fr006",
+      "lang": "fr",
+      "kind": "greeting",
+      "pii": false,
+      "ms": 268.8744399929419,
+      "pred_kind": "greeting",
+      "p_kind": 0.8653910756111145,
+      "p_pii": 0.984605073928833,
+      "pred_pii": false,
+      "probs_kind": {
+        "abusive": 0.0075,
+        "agora_question": 0.0154,
+        "goodbye": 0.007,
+        "greeting": 0.8654,
+        "injection": 0.0088,
+        "npc_question": 0.027,
+        "other": 0.0164,
+        "request": 0.0144,
+        "small_talk": 0.032,
+        "thanks": 0.0062
+      }
+    },
+    {
+      "id": "fr007",
+      "lang": "fr",
+      "kind": "greeting",
+      "pii": false,
+      "ms": 265.93692202004604,
+      "pred_kind": "greeting",
+      "p_kind": 0.9151468873023987,
+      "p_pii": 0.9836598634719849,
+      "pred_pii": false,
+      "probs_kind": {
+        "abusive": 0.005,
+        "agora_question": 0.0097,
+        "goodbye": 0.0069,
+        "greeting": 0.9151,
+        "injection": 0.0054,
+        "npc_question": 0.0146,
+        "other": 0.0097,
+        "request": 0.0086,
+        "small_talk": 0.0168,
+        "thanks": 0.0083
+      }
+    },
+    {
+      "id": "fr008",
+      "lang": "fr",
+      "kind": "greeting",
+      "pii": false,
+      "ms": 257.25825401605107,
+      "pred_kind": "greeting",
+      "p_kind": 0.8566676378250122,
+      "p_pii": 0.9838472008705139,
+      "pred_pii": false,
+      "probs_kind": {
+        "abusive": 0.0063,
+        "agora_question": 0.0167,
+        "goodbye": 0.0081,
+        "greeting": 0.8567,
+        "injection": 0.0074,
+        "npc_question": 0.0302,
+        "other": 0.0157,
+        "request": 0.0152,
+        "small_talk": 0.0371,
+        "thanks": 0.0065
+      }
+    },
+    {
+      "id": "fr009",
+      "lang": "fr",
+      "kind": "greeting",
+      "pii": false,
+      "ms": 262.0059580076486,
+      "pred_kind": "greeting",
+      "p_kind": 0.8148184418678284,
+      "p_pii": 0.9915544390678406,
+      "pred_pii": false,
+      "probs_kind": {
+        "abusive": 0.0026,
+        "agora_question": 0.0301,
+        "goodbye": 0.0058,
+        "greeting": 0.8148,
+        "injection": 0.0095,
+        "npc_question": 0.0422,
+        "other": 0.0352,
+        "request": 0.0228,
+        "small_talk": 0.0352,
+        "thanks": 0.0018
+      }
+    },
+    {
+      "id": "fr010",
+      "lang": "fr",
+      "kind": "greeting",
+      "pii": false,
+      "ms": 252.33680100063793,
+      "pred_kind": "greeting",
+      "p_kind": 0.8840022087097168,
+      "p_pii": 0.9791954755783081,
+      "pred_pii": false,
+      "probs_kind": {
+        "abusive": 0.0057,
+        "agora_question": 0.0164,
+        "goodbye": 0.0062,
+        "greeting": 0.884,
+        "injection": 0.0066,
+        "npc_question": 0.0251,
+        "other": 0.013,
+        "request": 0.0097,
+        "small_talk": 0.0236,
+        "thanks": 0.0097
+      }
+    },
+    {
+      "id": "fr011",
+      "lang": "fr",
+      "kind": "greeting",
+      "pii": false,
+      "ms": 247.78905298444442,
+      "pred_kind": "greeting",
+      "p_kind": 0.8711272478103638,
+      "p_pii": 0.9846641421318054,
+      "pred_pii": false,
+      "probs_kind": {
+        "abusive": 0.0067,
+        "agora_question": 0.0171,
+        "goodbye": 0.0086,
+        "greeting": 0.8711,
+        "injection": 0.0095,
+        "npc_question": 0.023,
+        "other": 0.0177,
+        "request": 0.0146,
+        "small_talk": 0.0245,
+        "thanks": 0.0071
+      }
+    },
+    {
+      "id": "fr012",
+      "lang": "fr",
+      "kind": "greeting",
+      "pii": false,
+      "ms": 246.9570030225441,
+      "pred_kind": "greeting",
+      "p_kind": 0.7643770575523376,
+      "p_pii": 0.9759464263916016,
+      "pred_pii": false,
+      "probs_kind": {
+        "abusive": 0.0047,
+        "agora_question": 0.0288,
+        "goodbye": 0.0109,
+        "greeting": 0.7644,
+        "injection": 0.0094,
+        "npc_question": 0.0487,
+        "other": 0.0298,
+        "request": 0.042,
+        "small_talk": 0.0574,
+        "thanks": 0.004
+      }
+    },
+    {
+      "id": "fr013",
+      "lang": "fr",
+      "kind": "greeting",
+      "pii": false,
+      "ms": 241.79702598485164,
+      "pred_kind": "greeting",
+      "p_kind": 0.8522287011146545,
+      "p_pii": 0.882123589515686,
+      "pred_pii": false,
+      "probs_kind": {
+        "abusive": 0.0025,
+        "agora_question": 0.0148,
+        "goodbye": 0.0248,
+        "greeting": 0.8522,
+        "injection": 0.0043,
+        "npc_question": 0.0324,
+        "other": 0.0144,
+        "request": 0.0155,
+        "small_talk": 0.0334,
+        "thanks": 0.0055
+      }
+    },
+    {
+      "id": "fr014",
+      "lang": "fr",
+      "kind": "greeting",
+      "pii": false,
+      "ms": 243.15184698207304,
+      "pred_kind": "greeting",
+      "p_kind": 0.8660764098167419,
+      "p_pii": 0.9755303859710693,
+      "pred_pii": false,
+      "probs_kind": {
+        "abusive": 0.0049,
+        "agora_question": 0.0141,
+        "goodbye": 0.0057,
+        "greeting": 0.8661,
+        "injection": 0.0065,
+        "npc_question": 0.0294,
+        "other": 0.0148,
+        "request": 0.0141,
+        "small_talk": 0.039,
+        "thanks": 0.0055
+      }
+    },
+    {
+      "id": "fr015",
+      "lang": "fr",
+      "kind": "greeting",
+      "pii": false,
+      "ms": 242.69265701877885,
+      "pred_kind": "greeting",
+      "p_kind": 0.8602240085601807,
+      "p_pii": 0.9898303151130676,
+      "pred_pii": false,
+      "probs_kind": {
+        "abusive": 0.0071,
+        "agora_question": 0.017,
+        "goodbye": 0.0173,
+        "greeting": 0.8602,
+        "injection": 0.0088,
+        "npc_question": 0.0233,
+        "other": 0.0155,
+        "request": 0.0141,
+        "small_talk": 0.0285,
+        "thanks": 0.008
+      }
+    },
+    {
+      "id": "fr016",
+      "lang": "fr",
+      "kind": "greeting",
+      "pii": false,
+      "ms": 243.03050700109452,
+      "pred_kind": "greeting",
+      "p_kind": 0.9268112182617188,
+      "p_pii": 0.6020615696907043,
+      "pred_pii": false,
+      "probs_kind": {
+        "abusive": 0.0033,
+        "agora_question": 0.0081,
+        "goodbye": 0.0048,
+        "greeting": 0.9268,
+        "injection": 0.0046,
+        "npc_question": 0.0129,
+        "other": 0.0081,
+        "request": 0.0081,
+        "small_talk": 0.0156,
+        "thanks": 0.0078
+      }
+    },
+    {
+      "id": "fr017",
+      "lang": "fr",
+      "kind": "greeting",
+      "pii": false,
+      "ms": 241.88555098953657,
+      "pred_kind": "greeting",
+      "p_kind": 0.7795147895812988,
+      "p_pii": 0.9901401400566101,
+      "pred_pii": false,
+      "probs_kind": {
+        "abusive": 0.0043,
+        "agora_question": 0.0226,
+        "goodbye": 0.0168,
+        "greeting": 0.7795,
+        "injection": 0.0081,
+        "npc_question": 0.0472,
+        "other": 0.0335,
+        "request": 0.0234,
+        "small_talk": 0.0606,
+        "thanks": 0.0041
+      }
+    },
+    {
+      "id": "fr018",
+      "lang": "fr",
+      "kind": "greeting",
+      "pii": true,
+      "ms": 243.70647899922915,
+      "pred_kind": "greeting",
+      "p_kind": 0.8029485940933228,
+      "p_pii": 0.9683812260627747,
+      "pred_pii": true,
+      "probs_kind": {
+        "abusive": 0.003,
+        "agora_question": 0.0283,
+        "goodbye": 0.0093,
+        "greeting": 0.8029,
+        "injection": 0.0159,
+        "npc_question": 0.0331,
+        "other": 0.0505,
+        "request": 0.0214,
+        "small_talk": 0.0334,
+        "thanks": 0.002
+      }
+    },
+    {
+      "id": "fr019",
+      "lang": "fr",
+      "kind": "greeting",
+      "pii": false,
+      "ms": 242.02458799118176,
+      "pred_kind": "greeting",
+      "p_kind": 0.6054570078849792,
+      "p_pii": 0.7394223809242249,
+      "pred_pii": false,
+      "probs_kind": {
+        "abusive": 0.0019,
+        "agora_question": 0.0487,
+        "goodbye": 0.0049,
+        "greeting": 0.6055,
+        "injection": 0.0158,
+        "npc_question": 0.0715,
+        "other": 0.0615,
+        "request": 0.103,
+        "small_talk": 0.0852,
+        "thanks": 0.0021
+      }
+    },
+    {
+      "id": "fr020",
+      "lang": "fr",
+      "kind": "greeting",
+      "pii": false,
+      "ms": 252.46106897247955,
+      "pred_kind": "greeting",
+      "p_kind": 0.8960843086242676,
+      "p_pii": 0.9822876453399658,
+      "pred_pii": false,
+      "probs_kind": {
+        "abusive": 0.0055,
+        "agora_question": 0.0135,
+        "goodbye": 0.0075,
+        "greeting": 0.8961,
+        "injection": 0.0068,
+        "npc_question": 0.0226,
+        "other": 0.0127,
+        "request": 0.0119,
+        "small_talk": 0.0163,
+        "thanks": 0.0072
+      }
+    }
+  ]
+}

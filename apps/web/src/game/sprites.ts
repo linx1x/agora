@@ -14,7 +14,7 @@ export const sheets: Partial<Record<SheetId, HTMLImageElement>> = {};
  * `<sheet>.json` manifest {sprites: {name: {x, y, w, h, frames, fps}}}. Sprite names equal tile keys
  * from `tileset.ts` (e.g. 'jungle.deskH', 'chairUp'). Frame 0 is the still / reduced-motion frame.
  */
-export const ART_SHEETS = ['common', 'hub', 'jungle', 'oasis', 'boreal', 'zen'] as const;
+export const ART_SHEETS = ['common', 'hub', 'jungle', 'oasis', 'boreal', 'zen', 'pets'] as const;
 export interface ArtSprite {
   img: HTMLImageElement;
   x: number;

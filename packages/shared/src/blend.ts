@@ -163,6 +163,57 @@ export function propRestX(r: TileReader, x: number, y: number): number {
   return arm ? (arm[0] + arm[1]) / 2 : 16;
 }
 
+/** Inset (px) from an open edge of a top face: a prop's base never sits on the outline. */
+const EDGE = 2;
+
+/**
+ * True when the world-px point (x, y) lies on the top face of furniture that can hold props
+ * (P9.16, ADR-039): the merged band / arm of ADR-037, or a lone tile's top rows around its
+ * `surface` row. The server checks every prop's base point with this.
+ */
+export function surfaceTop(r: TileReader, x: number, y: number): boolean {
+  const T = 32;
+  const cx = Math.floor(x / T);
+  const cy = Math.floor(y / T);
+  const d = r.def('furniture', cx, cy);
+  if (d?.surface === undefined) return false;
+  const lx = x - cx * T;
+  const ly = y - cy * T;
+  const m = isMerged(r, cx, cy) ? joinMask(r, cx, cy) : 0;
+  if (!m) return lx >= 4 && lx <= T - 5 && ly >= d.surface - 6 && ly <= d.surface + 2;
+  const { top, bottom } = BLEND_GEOM;
+  const arm = armSpan(r, cx, cy);
+  // east–west band (any cell with an east or west link, or no arm)
+  if (m & (E | W) || !arm) {
+    const x0 = m & W ? 0 : EDGE;
+    const x1 = m & E ? T - 1 : T - 1 - EDGE;
+    if (lx >= x0 && lx <= x1 && ly >= top + EDGE && ly <= bottom - 1) return true;
+  }
+  if (arm) {
+    const full = arm[1] - arm[0] >= T;
+    const x0 = full && m & W ? 0 : arm[0] + EDGE;
+    const x1 = full && m & E ? T - 1 : arm[1] - 1 - EDGE;
+    const y0 = m & N ? 0 : top + EDGE;
+    const y1 = m & S ? T - 1 : bottom - 1;
+    if (lx >= x0 && lx <= x1 && ly >= y0 && ly <= y1) return true;
+  }
+  return false;
+}
+
+/**
+ * Snap spots of a cell's top face (world px base points, P9.17): left, middle and right at the
+ * usual rest row, or the arm's middle on a north–south arm. Empty when nothing rests here.
+ */
+export function snapSpots(r: TileReader, cx: number, cy: number): { x: number; y: number }[] {
+  const rest = propRestY(r, cx, cy);
+  if (rest === null) return [];
+  const y = cy * 32 + rest;
+  const m = isMerged(r, cx, cy) ? joinMask(r, cx, cy) : 0;
+  if (m && !(m & (E | W)) && armSpan(r, cx, cy))
+    return [{ x: cx * 32 + Math.round(propRestX(r, cx, cy)), y }];
+  return [8, 16, 24].map((lx) => ({ x: cx * 32 + lx, y })).filter((p) => surfaceTop(r, p.x, p.y));
+}
+
 const animated = new Set<string>();
 /** Tiles the compositor must leave alone (their animation overlay sits on top). */
 export function markAnimated(names: Iterable<string>) {
@@ -185,10 +236,9 @@ export function furnitureKey(r: TileReader, x: number, y: number): string | null
       const d = r.def('furniture', x + dx, y + dy);
       const m = d?.join ? joinMask(r, x + dx, y + dy) : 0;
       if (m) any = true;
-      // props only change merged tops (contact shadow, lamp light), so only key them there
-      const p = m ? (r.def('props', x + dx, y + dy)?.name ?? '') : '';
+      // props (ADR-039) draw their own contact shadow and glow: they never change a variant
       const arm = m ? (armSpan(r, x + dx, y + dy)?.[0] ?? '') : '';
-      parts.push(`${d?.name ?? ''}/${m}/${arm}/${p}`);
+      parts.push(`${d?.name ?? ''}/${m}/${arm}`);
     }
   return any ? `f|${parts.join('|')}` : null;
 }

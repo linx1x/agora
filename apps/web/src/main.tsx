@@ -7,7 +7,7 @@ import './styles.css';
 import { App } from './App';
 import { setHeld } from './game/input';
 import { store } from './state/store';
-import { rendered } from './game/WorldScene';
+import { rendered } from './game/controller';
 import { world } from './net/client';
 import { media } from './media/MediaManager';
 

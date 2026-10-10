@@ -1,0 +1,8 @@
+# Clef-flash benchmark (P15.1). torch and torchvision come from the CUDA index (setup-wsl.sh).
+# Versions: the model card says it was tested with torch 2.11 and transformers 5.10.2.
+transformers==5.10.2
+accelerate>=1.10
+bitsandbytes>=0.46
+huggingface_hub>=0.34
+safetensors>=0.5
+pillow>=10

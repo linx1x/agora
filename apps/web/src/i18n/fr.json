@@ -67,7 +67,8 @@
     "locate": "Localiser {{name}}",
     "reconnecting": "Reconnexion…",
     "goto": "Aller voir {{name}}",
-    "callover": "Inviter {{name}} à venir"
+    "callover": "Inviter {{name}} à venir",
+    "characters": "Personnages"
   },
   "chat": {
     "channels": "Canaux",
@@ -203,7 +204,11 @@
     "keyShiftRight": "Maj de droite",
     "keyControlRight": "Ctrl de droite",
     "joystick": "Joystick à l’écran",
-    "joystickHint": "Écrans tactiles. Vous pouvez aussi toucher la carte pour vous y rendre."
+    "joystickHint": "Écrans tactiles. Vous pouvez aussi toucher la carte pour vous y rendre.",
+    "npcBubbles": "Bulles des personnages",
+    "npcBubblesHint": "Affiche leurs réponses au-dessus de leur tête. Le texte reste dans la boîte de conversation.",
+    "npcVoices": "Voix des personnages",
+    "npcVoicesHint": "Les personnages à portée de voix parlent à voix haute (voix synthétique). Désactivé par défaut."
   },
   "shortcuts": {
     "title": "Raccourcis clavier",
@@ -260,6 +265,24 @@
     "contact": {
       "h": "Contact",
       "p": "Pour accéder à vos renseignements ou les faire supprimer, écrivez à la personne responsable de la protection des renseignements personnels de l'organisation qui héberge Agora."
+    },
+    "introCloud": "Agora est hébergé sur l'infrastructure locale. Aucune donnée n'est envoyée à des tiers, sauf si vous acceptez de parler aux personnages IA (voir « Parler aux personnages »).",
+    "npcs": {
+      "h": "Les personnages IA",
+      "p": "Les personnages sont des programmes gérés par le serveur, pas des personnes. Ils ne voient que les gens sur l’aire commune (jamais dans une salle privée, un poste ou une zone silencieuse), et seulement votre prénom, votre statut et votre position. Leurs décisions sont prises sur la machine de l’hébergeur."
+    },
+    "npcTalk": {
+      "h": "Parler aux personnages",
+      "p": "Seul ce que vous écrivez dans la boîte « Parler à… » parvient à un personnage, jamais le clavardage. Le message est trié sur la machine de l’hébergeur. La plupart des réponses sont préparées et ne quittent pas le serveur.",
+      "pCloud": "Seul ce que vous écrivez dans la boîte « Parler à… » parvient à un personnage, jamais le clavardage. Quand aucune réplique préparée ne convient, votre message et votre prénom sont envoyés à un modèle d’IA infonuagique ({{provider}}, {{country}}), après votre accord. Les courriels, numéros, codes postaux et liens sont retirés d’abord, et un message qui en contient n’est jamais envoyé. Le texte n’est pas conservé dans les journaux. Vous pouvez retirer votre accord en tout temps."
+    },
+    "npcMemory": {
+      "h": "Ce que les personnages retiennent",
+      "p": "Après une conversation utile, un personnage peut garder de courtes notes (600 caractères) sur ce que vous avez dit de votre travail ou de vos préférences, jamais de renseignements personnels. Elles ne sont visibles que par vous, expirent après une période sans visite (90 jours par défaut) et se suppriment à tout moment avec « Tout oublier » dans la boîte « Parler à… », en retirant votre accord, ou avec votre compte."
+    },
+    "npcWeb": {
+      "h": "Recherches sur le Web",
+      "p": "Quand l’hébergeur a activé les recherches, une question sur l’actualité ou le monde extérieur peut être cherchée sur le Web par son propre moteur de recherche (SearXNG), qui la transmet aux moteurs qu’il utilise. Seuls les mots de la question partent, sans prénom ni nom de personnage, et jamais un message contenant des renseignements personnels. Les extraits cités viennent de sites publics, sont traités comme du texte non fiable et leurs sites sont indiqués sous la réponse. Activer cette option redemande l’accord de tout le monde."
     }
   },
   "desk": {
@@ -337,7 +360,9 @@
     "teleport": "Téléporteur : où aller ?",
     "sitBtn": "S’asseoir",
     "standBtn": "Se lever",
-    "knockTouch": "Poste de {{name}} : frappez pour entrer"
+    "knockTouch": "Poste de {{name}} : frappez pour entrer",
+    "talk": "Parler à {{name}} (X)",
+    "talkTouch": "{{name}} est tout près"
   },
   "nav": {
     "unreachable": "Impossible de s'y rendre"
@@ -366,7 +391,8 @@
     "tool": {
       "paint": "Pinceau",
       "erase": "Gomme",
-      "pick": "Pipette (copier un élément)"
+      "pick": "Pipette (copier un élément)",
+      "select": "Sélectionner"
     },
     "undo": "Annuler",
     "redo": "Rétablir",
@@ -406,6 +432,7 @@
       "chairLeft": "Chaise (gauche)",
       "chairRight": "Chaise (droite)",
       "stool": "Tabouret",
+      "waterBowl": "Gamelle d'eau",
       "deskH": "Bureau",
       "deskMonitor": "Bureau avec écran",
       "deskMonitorBack": "Bureau, écran de dos",
@@ -440,7 +467,9 @@
         "icedCoffee": "Café glacé",
         "matcha": "Matcha",
         "herbalTea": "Tisane",
-        "juice": "Jus"
+        "juice": "Jus",
+        "books": "Pile de livres",
+        "laptopClosed": "Portable fermé"
       }
     },
     "help": "Clic ou glisser : placer · Clic droit : effacer · Espace + glisser ou clic molette : déplacer la vue · WASD : déplacer la vue · Flèches + Entrée : placer au clavier · Suppr : effacer · Chaque modification est vue de tous immédiatement.",
@@ -457,7 +486,8 @@
       "blocks_access": "Refusé : cela bloquerait l'accès à une chaise, un poste, une porte ou un téléporteur.",
       "opens_region": "Refusé : cela ouvrirait un passage vers une autre aile.",
       "too_big": "Trop de cases d'un coup.",
-      "no_surface": "Un accessoire se pose sur un bureau, une table ou un comptoir."
+      "no_surface": "Un accessoire se pose sur un bureau, une table ou un comptoir.",
+      "too_many": "Trop d’accessoires ici (8 par case au plus)."
     },
     "unlock": "Code de construction ou d’administration",
     "unlockHint": "Débloque le mode construction (ou l’administration) pour cette session.",
@@ -465,7 +495,50 @@
     "unlockBad": "Code incorrect.",
     "unlocked": "Mode construction débloqué.",
     "themeAuto": "Auto : thème de la zone ({{theme}})",
-    "unlockedAdmin": "Administration débloquée."
+    "unlockedAdmin": "Administration débloquée.",
+    "snap": "Magnétisme",
+    "snapHint": "Magnétisme : les accessoires se posent sur des emplacements. Maintenez Alt pour placer au pixel près.",
+    "brush": "Pinceau",
+    "flip": "Miroir",
+    "rotate": "Tourner",
+    "raise": "Monter",
+    "lower": "Descendre",
+    "propHint": "Alt : au pixel près · R : tourner",
+    "helpPlacement": "Cliquez sur un accessoire pour le sélectionner, glissez-le pour le déplacer (Alt : au pixel près). Flèches : ajuster d’un pixel (Maj : 4) · PgPréc / PgSuiv : monter, descendre · F : miroir · R : tourner · Suppr : retirer · Échap : désélectionner. Un bureau sélectionné s’allonge avec ses poignées ou Maj + flèches.",
+    "sel": {
+      "title": "Sélection",
+      "none": "Cliquez sur un accessoire ou un meuble pour le sélectionner.",
+      "clear": "Désélectionner",
+      "delete": "Retirer",
+      "where": "x {{x}}, y {{y}} · hauteur {{z}} px",
+      "length_one": "{{count}} case",
+      "length_other": "{{count}} cases",
+      "handles": "Glissez une poignée pour allonger ou raccourcir, case par case.",
+      "lengthen": "Rallonger",
+      "shorten": "Raccourcir"
+    },
+    "nudge": {
+      "n": "Décaler d’un pixel vers le haut",
+      "e": "Décaler d’un pixel vers la droite",
+      "s": "Décaler d’un pixel vers le bas",
+      "w": "Décaler d’un pixel vers la gauche"
+    },
+    "grow": {
+      "n": "Rallonger vers le haut",
+      "e": "Rallonger vers la droite",
+      "s": "Rallonger vers le bas",
+      "w": "Rallonger vers la gauche"
+    },
+    "shrink": {
+      "n": "Raccourcir par le haut",
+      "e": "Raccourcir par la droite",
+      "s": "Raccourcir par le bas",
+      "w": "Raccourcir par la gauche"
+    },
+    "key": {
+      "shift": "Maj",
+      "del": "Suppr"
+    }
   },
   "role": {
     "owner": "Propriétaire",
@@ -777,5 +850,103 @@
     "sheet": "Fermer le panneau des personnes et du clavardage",
     "pttKey": "Tenir pour parler",
     "ptt": "Le micro transmet tant que vous tenez le bouton"
+  },
+  "npc": {
+    "bot": "Bot",
+    "about": "Personnage IA géré par Agora, pas une personne",
+    "act": {
+      "desk": "À son bureau",
+      "coffee": "Au café",
+      "lounge": "Au salon",
+      "tea": "Prend le thé",
+      "water": "Marche au bord de l'eau",
+      "tour": "Fait le tour des ailes",
+      "wander": "Se promène",
+      "break": "Fait une pause",
+      "greet": "Va saluer quelqu’un",
+      "friend": "Rejoint un ami"
+    },
+    "brain": {
+      "title": "Cerveau",
+      "open": "Cerveau de {{name}}",
+      "status": {
+        "up": "Décisions : Clef, sur ton PC",
+        "down": "Décisions : score (Clef injoignable)",
+        "off": "Décisions : score (Clef non configuré)"
+      },
+      "needsTitle": "Besoins",
+      "needs": {
+        "energy": "Énergie",
+        "social": "Social",
+        "focus": "Concentration",
+        "caffeine": "Caféine"
+      },
+      "need": "{{name}} : {{value}} sur 100",
+      "until": "Garde ce choix jusqu’à {{time}}",
+      "onTheWay": "En route",
+      "via": {
+        "clef": "Choisi par Clef ({{p}} %)",
+        "unsure": "Clef pas sûr ({{p}} %) : meilleur score",
+        "score": "Choisi par le score"
+      },
+      "candidates": "Meilleures options",
+      "chosen": "choisie",
+      "none": "Pas encore de décision",
+      "approach": "Dernière approche",
+      "busy": "jugé occupé",
+      "choice": {
+        "ignore": "laisse tranquille",
+        "wave": "salue de loin",
+        "walk_up": "va dire bonjour"
+      },
+      "moods": {
+        "steady": "Humeur du jour : ordinaire",
+        "focused": "Humeur du jour : concentrée",
+        "social": "Humeur du jour : sociable",
+        "relaxed": "Humeur du jour : détendue"
+      }
+    }
+  },
+  "talk": {
+    "title": "Parler à {{name}}",
+    "close": "Fermer la conversation",
+    "open": "Parler",
+    "log": "Conversation",
+    "you": "Vous",
+    "toOther": "{{name}} (à {{to}})",
+    "empty": "Dites quelque chose à {{name}}. Seul ce que vous écrivez ici lui parvient, jamais le clavardage.",
+    "label": "Message pour {{name}}",
+    "placeholder": "Écrire à {{name}}…",
+    "send": "Envoyer",
+    "typing": "{{name}} écrit…",
+    "hint": "{{name}} est un personnage IA. N’écrivez aucun renseignement personnel.",
+    "refused": {
+      "off": "La conversation avec les personnages est désactivée.",
+      "gone": "{{name}} n’est plus là.",
+      "range": "Approchez-vous de {{name}} pour lui parler.",
+      "zone": "On ne peut pas parler aux personnages depuis une salle privée, un poste ou une zone silencieuse.",
+      "consent": "Acceptez d’abord l’avis sur l’IA.",
+      "rate": "Un instant, {{name}} n’a pas fini de répondre.",
+      "muted": "{{name}} préfère ne pas répondre pour l’instant."
+    },
+    "notice": {
+      "title": "Avis : personnages propulsés par l’IA",
+      "body": "Pour répondre à des questions qu’aucune réplique préparée ne couvre, les personnages envoient votre message à un modèle d’IA infonuagique (fournisseur : {{provider}}, pays : {{country}}). Votre message peut donc être traité à l’extérieur du Canada.",
+      "rules": "Seul le texte écrit dans cette boîte est envoyé, avec votre prénom. Les courriels, numéros, codes postaux et liens en sont retirés avant l’envoi, et un message qui en contient reste sur ce serveur. Le texte n’est pas conservé dans les journaux. Vous pouvez retirer votre accord en tout temps avec le bouton « Retirer mon accord » au bas de cette boîte.",
+      "accept": "J’accepte",
+      "decline": "Non merci",
+      "withdraw": "Retirer mon accord pour l’IA",
+      "web": "Certaines questions sur l’actualité ou le monde extérieur peuvent aussi être cherchées sur le Web, par le moteur de recherche de l’hébergeur : les mots de votre question (sans votre prénom ni le nom des personnages) sont alors transmis aux moteurs de recherche qu’il utilise. Les sites consultés sont indiqués sous la réponse."
+    },
+    "memory": {
+      "title": "Ce que {{name}} retient de moi",
+      "none": "{{name}} ne retient rien sur vous pour l’instant.",
+      "about": "Ces notes sont courtes (600 caractères), visibles seulement par vous et {{name}}, et expirent si vous ne revenez pas.",
+      "forget": "Tout oublier, pour tous les personnages",
+      "forgot": "Les personnages ont tout oublié à votre sujet."
+    },
+    "web": {
+      "sources": "Sources : {{sites}}"
+    }
   }
 }

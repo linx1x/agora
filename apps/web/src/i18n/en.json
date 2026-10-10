@@ -67,7 +67,8 @@
     "locate": "Locate {{name}}",
     "reconnecting": "Reconnecting…",
     "goto": "Go to {{name}}",
-    "callover": "Ask {{name}} to come over"
+    "callover": "Ask {{name}} to come over",
+    "characters": "Characters"
   },
   "chat": {
     "channels": "Channels",
@@ -203,7 +204,11 @@
     "keyShiftRight": "Right Shift",
     "keyControlRight": "Right Ctrl",
     "joystick": "On-screen joystick",
-    "joystickHint": "Touch screens. You can also tap the map to walk there."
+    "joystickHint": "Touch screens. You can also tap the map to walk there.",
+    "npcBubbles": "Character bubbles",
+    "npcBubblesHint": "Shows their replies above their heads. The text stays in the Talk box.",
+    "npcVoices": "Character voices",
+    "npcVoicesHint": "Characters within earshot speak aloud (a synthetic voice). Off by default."
   },
   "shortcuts": {
     "title": "Keyboard shortcuts",
@@ -260,6 +265,24 @@
     "contact": {
       "h": "Contact",
       "p": "To access or delete your information, contact the person in charge of the protection of personal information."
+    },
+    "introCloud": "Agora is hosted on local infrastructure. No data is sent to third parties unless you agree to talk to the AI characters (see “Talking to characters”).",
+    "npcs": {
+      "h": "AI characters",
+      "p": "Characters are programs run by the server, not people. They only see people on the open floor (never in a private room, desk pod or quiet zone), and only your first name, status and position. Their decisions are made on the host’s own machine."
+    },
+    "npcTalk": {
+      "h": "Talking to characters",
+      "p": "Only what you write in the “Talk to…” box reaches a character, never chat. The message is sorted on the host’s own machine. Most replies are prepared and never leave the server.",
+      "pCloud": "Only what you write in the “Talk to…” box reaches a character, never chat. When no prepared line fits, your message and first name are sent to a cloud AI model ({{provider}}, {{country}}), after you agree. Emails, numbers, postal codes and links are removed first, and a message containing any is never sent. The text is not kept in logs. You can withdraw your agreement at any time."
+    },
+    "npcMemory": {
+      "h": "What characters remember",
+      "p": "After a useful conversation a character may keep short notes (600 characters) about what you said about your work or preferences, never personal identifiers. Only you can see them, they expire after a period without a visit (90 days by default), and you can delete them any time with “Forget everything” in the “Talk to…” box, by withdrawing your agreement, or with your account."
+    },
+    "npcWeb": {
+      "h": "Web searches",
+      "p": "When the host has turned searches on, a question about the news or the outside world may be searched on the web through the host’s own search engine (SearXNG), which passes it on to the engines it uses. Only the words of the question leave, without first names or character names, and never a message that contains personal information. The quoted excerpts come from public sites, are treated as untrusted text, and their sites are shown under the reply. Turning this on asks everyone for their agreement again."
     }
   },
   "desk": {
@@ -337,7 +360,9 @@
     "teleport": "Teleporter: where to?",
     "sitBtn": "Sit down",
     "standBtn": "Stand up",
-    "knockTouch": "{{name}}’s desk: knock to enter"
+    "knockTouch": "{{name}}’s desk: knock to enter",
+    "talk": "Talk to {{name}} (X)",
+    "talkTouch": "{{name}} is right here"
   },
   "nav": {
     "unreachable": "Can't get there"
@@ -366,7 +391,8 @@
     "tool": {
       "paint": "Brush",
       "erase": "Eraser",
-      "pick": "Picker (copy an item)"
+      "pick": "Picker (copy an item)",
+      "select": "Select"
     },
     "undo": "Undo",
     "redo": "Redo",
@@ -406,6 +432,7 @@
       "chairLeft": "Chair (facing left)",
       "chairRight": "Chair (facing right)",
       "stool": "Stool",
+      "waterBowl": "Pet water bowl",
       "deskH": "Desk",
       "deskMonitor": "Desk with monitor",
       "deskMonitorBack": "Desk, monitor back",
@@ -440,7 +467,9 @@
         "icedCoffee": "Iced coffee",
         "matcha": "Matcha",
         "herbalTea": "Herbal tea",
-        "juice": "Juice"
+        "juice": "Juice",
+        "books": "Stack of books",
+        "laptopClosed": "Closed laptop"
       }
     },
     "help": "Click or drag: place · Right-click: erase · Space + drag or middle-drag: pan · WASD: pan · Arrows + Enter: place with the keyboard · Delete: erase · Everyone sees each change right away.",
@@ -457,7 +486,8 @@
       "blocks_access": "Refused: this would block a chair, desk, doorway or teleporter.",
       "opens_region": "Refused: this would open a path into another wing.",
       "too_big": "Too many cells at once.",
-      "no_surface": "Props go on a desk, a table or a counter."
+      "no_surface": "Props go on a desk, a table or a counter.",
+      "too_many": "Too many items here (8 per cell at most)."
     },
     "unlock": "Builder or admin code",
     "unlockHint": "Unlocks build mode (or administration) for this session.",
@@ -465,7 +495,50 @@
     "unlockBad": "Wrong code.",
     "unlocked": "Build mode unlocked.",
     "themeAuto": "Auto: area theme ({{theme}})",
-    "unlockedAdmin": "Administration unlocked."
+    "unlockedAdmin": "Administration unlocked.",
+    "snap": "Snap",
+    "snapHint": "Snap: items land on set spots. Hold Alt to place them to the pixel.",
+    "brush": "Brush",
+    "flip": "Mirror",
+    "rotate": "Turn",
+    "raise": "Raise",
+    "lower": "Lower",
+    "propHint": "Alt: to the pixel · R: turn",
+    "helpPlacement": "Click an item to select it, drag it to move it (Alt: to the pixel). Arrows: nudge one pixel (Shift: 4) · PgUp / PgDn: raise, lower · F: mirror · R: turn · Del: remove · Esc: deselect. A selected desk stretches with its handles or Shift + arrows.",
+    "sel": {
+      "title": "Selection",
+      "none": "Click an item or a piece of furniture to select it.",
+      "clear": "Deselect",
+      "delete": "Remove",
+      "where": "x {{x}}, y {{y}} · height {{z}} px",
+      "length_one": "{{count}} cell",
+      "length_other": "{{count}} cells",
+      "handles": "Drag a handle to lengthen or shorten, one cell at a time.",
+      "lengthen": "Lengthen",
+      "shorten": "Shorten"
+    },
+    "nudge": {
+      "n": "Nudge up one pixel",
+      "e": "Nudge right one pixel",
+      "s": "Nudge down one pixel",
+      "w": "Nudge left one pixel"
+    },
+    "grow": {
+      "n": "Lengthen upward",
+      "e": "Lengthen to the right",
+      "s": "Lengthen downward",
+      "w": "Lengthen to the left"
+    },
+    "shrink": {
+      "n": "Shorten from the top",
+      "e": "Shorten from the right",
+      "s": "Shorten from the bottom",
+      "w": "Shorten from the left"
+    },
+    "key": {
+      "shift": "Shift",
+      "del": "Del"
+    }
   },
   "role": {
     "owner": "Owner",
@@ -777,5 +850,103 @@
     "sheet": "Close the people and chat panel",
     "pttKey": "Hold to talk",
     "ptt": "Your mic sends while you hold the button"
+  },
+  "npc": {
+    "bot": "Bot",
+    "about": "AI character run by Agora, not a person",
+    "act": {
+      "desk": "At their desk",
+      "coffee": "Getting a coffee",
+      "lounge": "In the lounge",
+      "tea": "Having tea",
+      "water": "Walking by the water",
+      "tour": "Touring the wings",
+      "wander": "Strolling around",
+      "break": "Taking a break",
+      "greet": "Going to greet someone",
+      "friend": "Joining a friend"
+    },
+    "brain": {
+      "title": "Brain",
+      "open": "{{name}}’s brain",
+      "status": {
+        "up": "Decisions: Clef, on your PC",
+        "down": "Decisions: scoring (Clef unreachable)",
+        "off": "Decisions: scoring (Clef not set up)"
+      },
+      "needsTitle": "Needs",
+      "needs": {
+        "energy": "Energy",
+        "social": "Social",
+        "focus": "Focus",
+        "caffeine": "Caffeine"
+      },
+      "need": "{{name}}: {{value}} out of 100",
+      "until": "Keeps this choice until {{time}}",
+      "onTheWay": "On the way",
+      "via": {
+        "clef": "Chosen by Clef ({{p}}%)",
+        "unsure": "Clef unsure ({{p}}%): top score",
+        "score": "Chosen by scoring"
+      },
+      "candidates": "Best options",
+      "chosen": "chosen",
+      "none": "No decision yet",
+      "approach": "Last approach",
+      "busy": "judged busy",
+      "choice": {
+        "ignore": "lets them be",
+        "wave": "waves from afar",
+        "walk_up": "goes to say hi"
+      },
+      "moods": {
+        "steady": "Today’s mood: steady",
+        "focused": "Today’s mood: focused",
+        "social": "Today’s mood: sociable",
+        "relaxed": "Today’s mood: relaxed"
+      }
+    }
+  },
+  "talk": {
+    "title": "Talk to {{name}}",
+    "close": "Close the conversation",
+    "open": "Talk",
+    "log": "Conversation",
+    "you": "You",
+    "toOther": "{{name}} (to {{to}})",
+    "empty": "Say something to {{name}}. Only what you write here reaches them, never chat.",
+    "label": "Message for {{name}}",
+    "placeholder": "Write to {{name}}…",
+    "send": "Send",
+    "typing": "{{name}} is writing…",
+    "hint": "{{name}} is an AI character. Don’t write any personal information.",
+    "refused": {
+      "off": "Talking to characters is turned off.",
+      "gone": "{{name}} isn’t here anymore.",
+      "range": "Move closer to {{name}} to talk.",
+      "zone": "You can’t talk to characters from a private room, a desk pod or a quiet zone.",
+      "consent": "Accept the AI notice first.",
+      "rate": "One moment, {{name}} hasn’t finished replying.",
+      "muted": "{{name}} would rather not answer for now."
+    },
+    "notice": {
+      "title": "Notice: AI-powered characters",
+      "body": "To answer questions no prepared line covers, characters send your message to a cloud AI model (provider: {{provider}}, country: {{country}}). Your message may therefore be processed outside Canada.",
+      "rules": "Only the text written in this box is sent, with your first name. Emails, numbers, postal codes and links are removed first, and a message containing any stays on this server. The text is not kept in logs. You can withdraw your consent at any time with the “Withdraw my AI consent” button at the bottom of this box.",
+      "accept": "I accept",
+      "decline": "No thanks",
+      "withdraw": "Withdraw my AI consent",
+      "web": "Some questions about the news or the outside world may also be searched on the web, through the host’s own search engine: the words of your question (without your first name or the characters’ names) are then passed on to the search engines it uses. The sites quoted are shown under the reply."
+    },
+    "memory": {
+      "title": "What {{name}} remembers about me",
+      "none": "{{name}} doesn’t remember anything about you yet.",
+      "about": "These notes are short (600 characters), only you and {{name}} can see them, and they expire if you don’t come back.",
+      "forget": "Forget everything, for every character",
+      "forgot": "The characters have forgotten everything about you."
+    },
+    "web": {
+      "sources": "Sources: {{sites}}"
+    }
   }
 }

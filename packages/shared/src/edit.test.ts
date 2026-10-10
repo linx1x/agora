@@ -8,8 +8,11 @@ import {
   remapTmj,
   tileNameAt,
   type CellChange,
+  type MapChange,
 } from './edit';
 import { parseMap, type Tmj } from './map';
+import { MAX_PROPS_PER_CELL, writePropsLayer, type PropChange } from './props';
+import { gid } from './tileset';
 
 const raw = readFileSync(new URL('../../maps/hq.tmj', import.meta.url), 'utf8');
 const fresh = () => parseMap(JSON.parse(raw) as Tmj);
@@ -107,57 +110,173 @@ describe('build mode edits', () => {
     expect(out.layers[0]!.data).toEqual(tmj.layers[0]!.data);
   });
 
-  it('props (P9.11) need a surface, leave with it, and come back with undo', () => {
+  // P9.16 (ADR-039): props are placed objects with a base point in world px
+  const T = 32;
+  const lamp = (id: string, x: number, y: number, extra: Partial<PropChange> = {}): PropChange => ({
+    l: 'prop',
+    id,
+    p: { t: 'prop.lampOn', x, y, z: 0, f: false },
+    ...extra,
+  });
+  const ok = (map: ReturnType<typeof fresh>, cs: MapChange[]) => {
+    const plan = planEdit(map, cs);
+    expect(plan).toMatchObject({ ok: true });
+    if (!plan.ok) throw new Error(plan.reason);
+    applyChanges(map, plan.changes);
+    return plan.changes;
+  };
+
+  it('props need a surface, leave with it, and come back with undo', () => {
     const map = fresh();
     // jungle corridor, open floor (same cell as the plant test)
-    expect(planEdit(map, [{ l: 'props', x: 5, y: 9, t: 'prop.coffee' }])).toMatchObject({
+    expect(planEdit(map, [lamp('aaaa', 5 * T + 16, 9 * T + 17)])).toMatchObject({
       ok: false,
       reason: 'no_surface',
     });
     // a desk and a lamp on it in one edit is fine
-    const both = planEdit(map, [
+    ok(map, [
       { l: 'furniture', x: 5, y: 9, t: 'jungle.deskH' },
-      { l: 'props', x: 5, y: 9, t: 'prop.lampOn' },
+      lamp('aaaa', 5 * T + 16, 9 * T + 17),
     ]);
-    expect(both.ok).toBe(true);
-    if (!both.ok) return;
-    applyChanges(map, both.changes);
-    expect(tileNameAt(map, 'props', 5, 9)).toBe('prop.lampOn');
+    expect(map.props).toEqual([
+      { id: 'aaaa', t: 'prop.lampOn', x: 5 * T + 16, y: 9 * T + 17, z: 0, f: false },
+    ]);
     expect(map.solid[9 * map.width + 5]).toBe(1);
     // props are not furniture: they never go on the furniture layer
     expect(planEdit(map, [{ l: 'furniture', x: 6, y: 9, t: 'prop.coffee' }])).toMatchObject({
       ok: false,
       reason: 'bad_tile',
     });
+    // and furniture is not a prop
+    expect(
+      planEdit(map, [
+        {
+          l: 'prop',
+          id: 'bbbb',
+          p: { t: 'jungle.deskH', x: 5 * T + 8, y: 9 * T + 17, z: 0, f: false },
+        },
+      ]),
+    ).toMatchObject({ ok: false, reason: 'bad_tile' });
     // erasing the desk takes the lamp with it
     const erase = planEdit(map, [{ l: 'furniture', x: 5, y: 9, t: null }]);
     expect(erase.ok).toBe(true);
     if (!erase.ok) return;
-    expect(erase.changes).toContainEqual({ l: 'props', x: 5, y: 9, t: null });
+    expect(erase.changes).toContainEqual({ l: 'prop', id: 'aaaa', p: null });
     const inv = inverseOf(map, erase.changes);
     applyChanges(map, erase.changes);
-    expect(tileNameAt(map, 'props', 5, 9)).toBeNull();
+    expect(map.props).toEqual([]);
     // undo goes through the server again: the lamp is valid because the desk returns with it
-    const undo = planEdit(map, inv);
-    expect(undo.ok).toBe(true);
-    if (!undo.ok) return;
-    applyChanges(map, undo.changes);
+    ok(map, inv);
     expect(tileNameAt(map, 'furniture', 5, 9)).toBe('jungle.deskH');
-    expect(tileNameAt(map, 'props', 5, 9)).toBe('prop.lampOn');
+    expect(map.props.map((p) => p.id)).toEqual(['aaaa']);
     // a table holds props too
-    expect(
-      planEdit(map, [
-        { l: 'furniture', x: 7, y: 9, t: 'jungle.table' },
-        { l: 'props', x: 7, y: 9, t: 'prop.matcha' },
-      ]).ok,
-    ).toBe(true);
+    ok(map, [
+      { l: 'furniture', x: 7, y: 9, t: 'jungle.table' },
+      {
+        l: 'prop',
+        id: 'cccc',
+        p: { t: 'prop.matcha', x: 7 * T + 16, y: 9 * T + 15, z: 0, f: false },
+      },
+    ]);
+  });
+
+  it('several props share a desk cell, placed to the pixel on its top face only', () => {
+    const map = fresh();
+    ok(map, [{ l: 'furniture', x: 5, y: 9, t: 'jungle.deskH' }]);
+    const X = 5 * T;
+    const Y = 9 * T;
+    ok(map, [
+      lamp('aaaa', X + 6, Y + 13),
+      lamp('bbbb', X + 17, Y + 18),
+      lamp('cccc', X + 25, Y + 12),
+    ]);
+    expect(map.props).toHaveLength(3);
+    // the front of the desk (below its top face) and the air above it hold nothing
+    expect(planEdit(map, [lamp('dddd', X + 16, Y + 27)])).toMatchObject({ reason: 'no_surface' });
+    expect(planEdit(map, [lamp('dddd', X + 16, Y + 2)])).toMatchObject({ reason: 'no_surface' });
+    // moving one keeps its place in the list; a no-op move is dropped
+    const mv = ok(map, [lamp('bbbb', X + 20, Y + 18)]);
+    expect(mv).toHaveLength(1);
+    expect(map.props.map((p) => p.id)).toEqual(['aaaa', 'bbbb', 'cccc']);
+    expect(planEdit(map, [lamp('bbbb', X + 20, Y + 18)])).toEqual({ ok: true, changes: [] });
+    // at most MAX_PROPS_PER_CELL in one cell
+    const more: PropChange[] = [];
+    for (let i = 0; i < MAX_PROPS_PER_CELL - 2; i++)
+      more.push(lamp(`m${i}xx`, X + 4 + i * 3, Y + 15));
+    expect(planEdit(map, more)).toMatchObject({ reason: 'too_many' });
+    expect(planEdit(map, more.slice(1)).ok).toBe(true);
+    // bad ids and out-of-range raises are refused
+    expect(planEdit(map, [lamp('a b', X + 6, Y + 13)])).toMatchObject({ ok: false });
+  });
+
+  it('undo puts removed props back in their place in the list', () => {
+    const map = fresh();
+    ok(map, [
+      { l: 'furniture', x: 5, y: 9, t: 'jungle.deskH' },
+      { l: 'furniture', x: 7, y: 9, t: 'jungle.deskH' },
+    ]);
+    ok(map, [
+      lamp('aaaa', 5 * T + 8, 9 * T + 17),
+      lamp('bbbb', 7 * T + 8, 9 * T + 17),
+      lamp('cccc', 5 * T + 24, 9 * T + 17),
+      lamp('dddd', 7 * T + 24, 9 * T + 17),
+    ]);
+    const before = map.props.map((p) => p.id);
+    // the two on desk 7 fall with it; a move to the top of the list (i) is undone too
+    const plan = planEdit(map, [
+      { l: 'furniture', x: 7, y: 9, t: null },
+      lamp('aaaa', 5 * T + 10, 9 * T + 17, { i: 99 }),
+    ]);
+    expect(plan.ok).toBe(true);
+    if (!plan.ok) return;
+    const inv = inverseOf(map, plan.changes);
+    applyChanges(map, plan.changes);
+    expect(map.props.map((p) => p.id)).toEqual(['cccc', 'aaaa']);
+    ok(map, inv);
+    expect(map.props.map((p) => p.id)).toEqual(before);
+    expect(map.props[0]!.x).toBe(5 * T + 8);
   });
 
   it('props on claimable desk pods are locked', () => {
     const map = fresh();
     const d = map.desks[0]!;
-    expect(
-      planEdit(map, [{ l: 'props', x: d.lamp.cx, y: d.lamp.cy, t: 'prop.coffee' }]),
-    ).toMatchObject({ ok: false, reason: 'locked_desk' });
+    expect(planEdit(map, [lamp('aaaa', d.lamp.cx * T + 16, d.lamp.cy * T + 17)])).toMatchObject({
+      ok: false,
+      reason: 'locked_desk',
+    });
+  });
+
+  it('reads P9.11 tile-layer props and writes them back as an object layer', () => {
+    const tmj = JSON.parse(raw) as Tmj;
+    const map0 = parseMap(tmj);
+    // put a desk and a one-per-cell prop the P9.11 way
+    const W = tmj.width;
+    tmj.layers.find((l) => l.name === 'furniture')!.data![9 * W + 5] = gid('jungle.deskH');
+    const legacy = new Array(W * tmj.height).fill(0);
+    legacy[9 * W + 5] = gid('prop.coffee');
+    tmj.layers = tmj.layers.filter((l) => l.name !== 'props');
+    tmj.layers.splice(3, 0, {
+      name: 'props',
+      type: 'tilelayer',
+      width: W,
+      height: tmj.height,
+      data: legacy,
+    });
+    const map = parseMap(tmj);
+    expect(map0.props).toEqual([]);
+    expect(map.props).toEqual([
+      { id: 'p5x9', t: 'prop.coffee', x: 5 * T + 16, y: 9 * T + 17, z: 0, f: false },
+    ]);
+    expect(map.layers.props).toBeUndefined();
+    writePropsLayer(tmj, map.props);
+    const layer = tmj.layers.find((l) => l.name === 'props')!;
+    expect(layer.type).toBe('objectgroup');
+    expect(tmj.layers.findIndex((l) => l.name === 'props')).toBe(
+      tmj.layers.findIndex((l) => l.name === 'furniture') + 1,
+    );
+    expect(parseMap(tmj).props).toEqual(map.props);
+    // object ids stay unique across the map
+    const ids = tmj.layers.flatMap((l) => (l.objects ?? []).map((o) => o.id));
+    expect(new Set(ids).size).toBe(ids.length);
   });
 });

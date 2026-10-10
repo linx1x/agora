@@ -83,3 +83,48 @@ with your organization's person in charge of the protection of personal informat
   (`localStorage`). The device check is local only; nothing is sent before "Enter". Connection-quality
   statistics are computed in the browser and never sent; only an "audio only" flag is shared with the
   people you are connected to.
+- Characters (2026-10-07, P15.3, ADR-044; flag `npcs`, off by default): the characters see only
+  connected people on the open floor (never anyone in a private room, desk pod or quiet zone): first
+  name, status, position, whether they sit, when they joined. To choose what to do, a character sends
+  that, for people within 8 tiles, to Clef-flash on the operator's own machine (`apps/ml`,
+  `NPC_DECIDE_URL`); nothing goes to the cloud model for these decisions. A character never
+  approaches someone in Busy, Do Not Disturb or Away, and its wave reaches only the people a nearby-chat
+  line from it would reach. A local decision log (`NPC_LOG_DIR`, development default `data/npc-log`,
+  off in production unless set) keeps one line per decision for `NPC_LOG_DAYS` (30) days with names
+  replaced by "person 1", "person 2"… and no account ids or Talk text; it is the training set for
+  tuning the characters' own scoring. The Privacy page lines come with P15.5 (memory), before any pilot.
+- Talking to characters (2026-10-07, P15.4, ADR-045; flag `npcTalk`, off by default): only a message
+  written in the Talk box reaches a character; nearby and "everyone" chat never does. It is refused
+  from a private room, desk pod or quiet zone. The message is sorted on the operator's machine (Clef).
+  A prepared line answers most messages with no outside call. Only when none covers it, and only if the
+  message carries no personal information (emails, long numbers, postal codes and links are removed
+  first; a message that had any stays on the server), the text and the person's first name go to the
+  configured cloud model. If that provider stores data outside Canada (DeepSeek: China), each person
+  first accepts an AI notice naming the provider and country; the acceptance is recorded per account
+  and version, can be withdrawn in the Talk box, and is deleted with the account. Replies are said only
+  to people a nearby-chat line from the character would reach. The text is not written to logs and the
+  short conversation history (six turns, ten minutes) lives in memory only.
+- Memory and chats between characters (2026-10-07, P15.5, ADR-046; flags `npcMemory`, `npcSocial`, off by
+  default): after a useful conversation a character may keep a short note (600 characters) about what the
+  person said about their work or preferences. It is written by the cloud model only from the parts of
+  the conversation without personal information, checked by rules, readable only by that person, deleted
+  by "Forget everything" in the Talk box, by withdrawing the AI notice, with the account, and after
+  `NPC_MEMORY_DAYS` (90) without a refresh. Without a cloud model nothing is kept. Characters chat with
+  each other from prepared lines only, and only while a person is within nearby-chat reach of the
+  speaker; people in private rooms, desk pods or quiet zones never see or cause it. A character's mood
+  and needs are saved once a minute (no person data).
+- Voices (2026-10-07, P15.6, ADR-048; flag `npcVoice`, off by default): a character's reply can be spoken. The
+  voice is made on the operator's own machine (Chatterbox, built-in voice, never a copy of a real person's
+  voice, always carrying the model's inaudible watermark); the reply text does not go to a cloud speech
+  service. The clip is sent only to people who turned on "Character voices" and who are still within reach
+  of the character when it is ready; never to a private room, desk pod or quiet zone. Clips are cached in
+  memory by text and are not written to disk.
+- Fitting the scoring (2026-10-07, P15.3b, ADR-047): the decision log (no names, no Talk text) can be used
+  to adjust how much each factor counts in a character's own scoring. The result is a small file of
+  multipliers, `weights.json`, with nothing about people in it.
+- Web searches (2026-10-07, P15.8, ADR-049; flag `npcWeb` and `NPC_WEB`, off by default): when the operator
+  turns them on, a question about the news or the outside world may be searched on the web through the
+  operator's own SearXNG, which passes it to the search engines it is set up with. Only the words of the
+  question leave, without first names or character names, never a message that carries personal
+  information, at most 30 searches an hour for the whole server. Enabling it changes the AI notice and
+  everyone is asked again. Results are treated as untrusted text and their sites are shown under the reply.

@@ -1,5 +1,7 @@
 import { FEET_H, FEET_W, TILE, type Dir } from './constants';
 import { tileDef } from './tileset';
+import { mapReader } from './blend';
+import { readProps, type PlacedProp } from './props';
 
 /** Minimal Tiled JSON (.tmj) types — only what Agora reads. */
 export interface TmjProperty {
@@ -16,6 +18,7 @@ export interface TmjObject {
   width?: number;
   height?: number;
   polygon?: { x: number; y: number }[];
+  point?: boolean;
   properties?: TmjProperty[];
 }
 export interface TmjLayer {
@@ -136,6 +139,8 @@ export interface WorldMap {
   spawns: { x: number; y: number; isDefault: boolean; region?: string }[];
   /** raw tile gids per tile layer */
   layers: Record<string, number[]>;
+  /** small items resting on surfaces, in stacking order (P9.16, ADR-039) */
+  props: PlacedProp[];
 }
 
 export const SIT_DIRS: Dir[] = ['down', 'left', 'right', 'up'];
@@ -155,6 +160,7 @@ export function parseMap(tmj: Tmj): WorldMap {
   const layers: Record<string, number[]> = {};
   for (const layer of tmj.layers) {
     if (layer.type !== 'tilelayer' || !layer.data) continue;
+    if (layer.name === 'props') continue; // P9.11 tile layer: converted by readProps below
     layers[layer.name] = layer.data;
     if (!['walls', 'furniture'].includes(layer.name)) continue;
     layer.data.forEach((g, i) => {
@@ -247,7 +253,7 @@ export function parseMap(tmj: Tmj): WorldMap {
       isDefault: true,
       region: undefined,
     });
-  return {
+  const map: WorldMap = {
     width,
     height,
     tile: tmj.tilewidth,
@@ -261,7 +267,10 @@ export function parseMap(tmj: Tmj): WorldMap {
     desks,
     spawns,
     layers,
+    props: [],
   };
+  map.props = readProps(tmj, map, mapReader(map));
+  return map;
 }
 
 /** Chair facing at a pixel position (avatar feet), if standing on a chair. */
@@ -354,7 +363,7 @@ function inPolygon(px: number, py: number, poly: { x: number; y: number }[]): bo
   return inside;
 }
 
-function zoneContains(z: Zone, x: number, y: number): boolean {
+export function zoneContains(z: Zone, x: number, y: number): boolean {
   if (x < z.x || y < z.y || x >= z.x + z.w || y >= z.y + z.h) return false;
   return z.polygon ? inPolygon(x, y, z.polygon) : true;
 }

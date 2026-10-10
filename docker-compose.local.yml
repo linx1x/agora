@@ -1,4 +1,4 @@
-# Local override (not used by the Marketplace). On a laptop the containers do not
+# Local override (not used on the hosted platform). On a laptop the containers do not
 # share localhost, so point the app at the "db" service and persist Postgres.
 #   docker compose -f docker-compose.yml -f docker-compose.local.yml up --build
 # With LiveKit in Docker too (ADR-031), add `--profile livekit` and set in .env:

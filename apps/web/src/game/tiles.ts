@@ -1000,6 +1000,12 @@ const globals: Record<string, (c: Ctx) => void> = {
     rect(c, 10, 20, 2, 8, '#5a4029');
     rect(c, 20, 20, 2, 8, '#5a4029');
   },
+  waterBowl: (c) => {
+    ellipse(c, 16, 24, 9, 4, '#5a4029');
+    ellipse(c, 16, 23, 8, 3, '#c9d2d9');
+    ellipse(c, 16, 23, 6, 2, '#8fc3e8');
+    rect(c, 13, 22, 3, 1, '#d9eefb');
+  },
   fireplace: (c) => {
     rect(c, 1, 2, 30, 30, '#8f8f88');
     for (let y = 4; y < 30; y += 6)

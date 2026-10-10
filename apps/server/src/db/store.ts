@@ -228,6 +228,20 @@ export interface Store {
   deleteDesksOf(uid: string): Promise<void>;
   /** delete a user row and its memberships, desks and sessions (pilot purge) */
   deleteUser(uid: string): Promise<void>;
+  // characters (P15.4): the version of the AI notice this person accepted, if any
+  getNpcConsent(uid: string): Promise<string | null>;
+  /** null withdraws it */
+  setNpcConsent(uid: string, version: string | null): Promise<void>;
+  // characters (P15.5, ADR-046): what a character remembers about a person (≤ 600 characters)
+  getNpcMemory(uid: string, npcId: string): Promise<string | null>;
+  setNpcMemory(uid: string, npcId: string, summary: string): Promise<void>;
+  /** every character's notes about this person */
+  deleteNpcMemories(uid: string): Promise<void>;
+  /** delete notes not refreshed since `before` (ms); returns how many */
+  pruneNpcMemories(before: number): Promise<number>;
+  // characters (P15.5): a character's day (mood, needs) so a restart does not reset it
+  getNpcState(space: string, npcId: string): Promise<string | null>;
+  setNpcState(space: string, npcId: string, json: string): Promise<void>;
   // passkeys (P2.14)
   addPasskey(p: StoredPasskey): Promise<void>;
   getPasskey(id: string): Promise<StoredPasskey | null>;
@@ -488,7 +502,44 @@ export class MemoryStore implements Store {
   async deleteDesksOf(uid: string) {
     for (const [k, d] of this.desks) if (d.ownerUid === uid) this.desks.delete(k);
   }
+  private npcConsent = new Map<string, string>();
+  async getNpcConsent(uid: string) {
+    return this.npcConsent.get(uid) ?? null;
+  }
+  async setNpcConsent(uid: string, version: string | null) {
+    if (version === null) this.npcConsent.delete(uid);
+    else this.npcConsent.set(uid, version);
+  }
+  private npcMemory = new Map<string, { summary: string; at: number }>();
+  async getNpcMemory(uid: string, npcId: string) {
+    return this.npcMemory.get(`${uid}|${npcId}`)?.summary ?? null;
+  }
+  async setNpcMemory(uid: string, npcId: string, summary: string) {
+    this.npcMemory.set(`${uid}|${npcId}`, { summary, at: Date.now() });
+  }
+  async deleteNpcMemories(uid: string) {
+    for (const k of [...this.npcMemory.keys()])
+      if (k.startsWith(`${uid}|`)) this.npcMemory.delete(k);
+  }
+  async pruneNpcMemories(before: number) {
+    let n = 0;
+    for (const [k, v] of this.npcMemory)
+      if (v.at < before) {
+        this.npcMemory.delete(k);
+        n++;
+      }
+    return n;
+  }
+  private npcStates = new Map<string, string>();
+  async getNpcState(space: string, npcId: string) {
+    return this.npcStates.get(`${space}|${npcId}`) ?? null;
+  }
+  async setNpcState(space: string, npcId: string, json: string) {
+    this.npcStates.set(`${space}|${npcId}`, json);
+  }
   async deleteUser(uid: string) {
+    await this.deleteNpcMemories(uid);
+    this.npcConsent.delete(uid);
     this.users.delete(uid);
     this.roles.delete(uid);
     this.meta.delete(uid);
@@ -650,6 +701,25 @@ CREATE TABLE IF NOT EXISTS maps (
   rev INTEGER NOT NULL,
   updated_by TEXT,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS npc_consent (
+  user_id TEXT PRIMARY KEY,
+  version TEXT NOT NULL,
+  accepted_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS npc_memory (
+  user_id TEXT NOT NULL,
+  npc_id TEXT NOT NULL,
+  summary TEXT NOT NULL CHECK (char_length(summary) <= 600),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (user_id, npc_id)
+);
+CREATE TABLE IF NOT EXISTS npc_state (
+  space_id TEXT NOT NULL,
+  npc_id TEXT NOT NULL,
+  state JSONB NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (space_id, npc_id)
 );
 CREATE TABLE IF NOT EXISTS presence_sessions (
   id BIGSERIAL PRIMARY KEY,
@@ -1160,6 +1230,8 @@ export class PgStore implements Store {
         'DELETE FROM space_desks WHERE owner_id = $1',
         'DELETE FROM sessions WHERE user_id = $1',
         'DELETE FROM passkeys WHERE user_id = $1',
+        'DELETE FROM npc_consent WHERE user_id = $1',
+        'DELETE FROM npc_memory WHERE user_id = $1',
         'DELETE FROM users WHERE id = $1',
       ])
         await c.query(q, [uid]);
@@ -1170,6 +1242,58 @@ export class PgStore implements Store {
     } finally {
       c.release();
     }
+  }
+  async getNpcMemory(uid: string, npcId: string) {
+    const r = await this.pool.query(
+      'SELECT summary FROM npc_memory WHERE user_id = $1 AND npc_id = $2',
+      [uid, npcId],
+    );
+    return (r.rows[0]?.summary as string | undefined) ?? null;
+  }
+  async setNpcMemory(uid: string, npcId: string, summary: string) {
+    await this.pool.query(
+      `INSERT INTO npc_memory (user_id, npc_id, summary) VALUES ($1, $2, $3)
+       ON CONFLICT (user_id, npc_id) DO UPDATE SET summary = EXCLUDED.summary, updated_at = now()`,
+      [uid, npcId, summary],
+    );
+  }
+  async deleteNpcMemories(uid: string) {
+    await this.pool.query('DELETE FROM npc_memory WHERE user_id = $1', [uid]);
+  }
+  async pruneNpcMemories(before: number) {
+    const r = await this.pool.query('DELETE FROM npc_memory WHERE updated_at < $1', [
+      new Date(before),
+    ]);
+    return r.rowCount ?? 0;
+  }
+  async getNpcState(space: string, npcId: string) {
+    const r = await this.pool.query(
+      'SELECT state FROM npc_state WHERE space_id = $1 AND npc_id = $2',
+      [space, npcId],
+    );
+    return r.rows[0] ? JSON.stringify(r.rows[0].state) : null;
+  }
+  async setNpcState(space: string, npcId: string, json: string) {
+    await this.pool.query(
+      `INSERT INTO npc_state (space_id, npc_id, state) VALUES ($1, $2, $3::jsonb)
+       ON CONFLICT (space_id, npc_id) DO UPDATE SET state = EXCLUDED.state, updated_at = now()`,
+      [space, npcId, json],
+    );
+  }
+  async getNpcConsent(uid: string) {
+    const r = await this.pool.query('SELECT version FROM npc_consent WHERE user_id = $1', [uid]);
+    return (r.rows[0]?.version as string | undefined) ?? null;
+  }
+  async setNpcConsent(uid: string, version: string | null) {
+    if (version === null) {
+      await this.pool.query('DELETE FROM npc_consent WHERE user_id = $1', [uid]);
+      return;
+    }
+    await this.pool.query(
+      `INSERT INTO npc_consent (user_id, version) VALUES ($1, $2)
+       ON CONFLICT (user_id) DO UPDATE SET version = EXCLUDED.version, accepted_at = now()`,
+      [uid, version],
+    );
   }
   async addPasskey(p: StoredPasskey) {
     await this.pool.query(

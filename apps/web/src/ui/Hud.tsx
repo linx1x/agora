@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Lock, VolumeX, Users } from 'lucide-react';
-import { zoneName } from '../game/WorldScene';
+import { zoneName } from '../game/controller';
 import { store, useStore } from '../state/store';
 import { media } from '../media/MediaManager';
 

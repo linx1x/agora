@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Minus, Plus, Map as MapIcon } from 'lucide-react';
 import { tileDef, type Biome } from '@agora/shared';
 import { PALETTES } from '../game/tiles';
-import { rendered } from '../game/WorldScene';
+import { rendered } from '../game/controller';
 import { store, useStore } from '../state/store';
 
 const SCALE = 2;

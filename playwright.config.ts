@@ -1,5 +1,6 @@
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { defineConfig } from '@playwright/test';
 
 const PORT = 3123;
@@ -12,6 +13,14 @@ export const SETUP_LINK_FILE = join(tmpdir(), `agora-e2e-setup-${process.env.AGO
  * Media backend under test (ADR-031): set LIVEKIT_BIN to a livekit-server binary to run
  * the suite against a real LiveKit in --dev mode; without it the P2P fallback is tested.
  */
+/**
+ * Character voices (P15.6): the fake voice of apps/ml (beeps, no model) when python3 and ffmpeg are
+ * there; e2e/npcs.spec.ts skips the voice test otherwise.
+ */
+const VOICE_PORT = 8793;
+const has = (cmd: string, args: string[]) => spawnSync(cmd, args, { stdio: 'ignore' }).status === 0;
+const VOICE_E2E = has('python3', ['--version']) && has('ffmpeg', ['-version']);
+process.env.AGORA_E2E_VOICE = VOICE_E2E ? '1' : '';
 const LIVEKIT_BIN = process.env.LIVEKIT_BIN;
 const LK_PORT = 7880;
 const livekitEnv = LIVEKIT_BIN
@@ -23,6 +32,8 @@ const livekitEnv = LIVEKIT_BIN
   : {};
 export default defineConfig({
   testDir: 'e2e',
+  // One progress line instead of one line per test when output is piped (agent runs).
+  reporter: process.stdout.isTTY ? 'list' : 'line',
   timeout: 60_000,
   fullyParallel: false,
   workers: 1,
@@ -41,6 +52,17 @@ export default defineConfig({
     permissions: ['camera', 'microphone'],
   },
   webServer: [
+    ...(VOICE_E2E
+      ? [
+          {
+            command: `python3 -m agora_ml.server --fake --voice fake --port ${VOICE_PORT}`,
+            cwd: 'apps/ml',
+            url: `http://127.0.0.1:${VOICE_PORT}/health`,
+            reuseExistingServer: false,
+            stderr: 'ignore' as const,
+          },
+        ]
+      : []),
     ...(LIVEKIT_BIN
       ? [
           {
@@ -61,6 +83,14 @@ export default defineConfig({
         NODE_ENV: 'test',
         LOG_LEVEL: 'warn',
         BUILDER_IDS: 'dev-alice',
+        // the office cat is off by default until its art is approved (ADR-040);
+        // the characters (ADR-042) at a fixed hour so their schedule puts them in the office
+        FEATURE_FLAGS:
+          'pets=true,npcs=true,npcTalk=true,npcMemory=true,npcSocial=true,npcVoice=true',
+        ...(VOICE_E2E ? { NPC_VOICE_URL: `http://127.0.0.1:${VOICE_PORT}` } : {}),
+        // a stand-in for the cloud model: its replies start with "(fake)" (P15.4)
+        NPC_LLM_PROVIDER: 'fake',
+        NPC_CLOCK: '10:30',
         ...livekitEnv,
       },
     },

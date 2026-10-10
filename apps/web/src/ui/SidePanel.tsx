@@ -2,17 +2,97 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BellRing, Crosshair, Footprints, Mic, MicOff, Send, Video, X } from 'lucide-react';
 import { useCompactLayout } from './layout';
-import type { ChatMsg } from '@agora/shared';
+import type { ChatMsg, NpcMindView } from '@agora/shared';
 import { avatarUrl } from '../game/textures';
-import { zoneName } from '../game/WorldScene';
+import { zoneName } from '../game/controller';
 import { world } from '../net/client';
 import { store, useStore } from '../state/store';
+
+const NEEDS = ['energy', 'social', 'focus', 'caffeine'] as const;
+const hhmm = (m: number) =>
+  `${String(Math.floor(m / 60) % 24).padStart(2, '0')}:${String(Math.floor(m % 60)).padStart(2, '0')}`;
+
+/**
+ * The brain view (P15.3, development and space admins): a character's needs, what it chose and
+ * why. Shows nothing about people: the server leaves names out.
+ */
+function NpcBrain({ mind, name }: { mind: NpcMindView; name: string }) {
+  const { t } = useTranslation();
+  const pct = (p?: number) => Math.round((p ?? 0) * 100);
+  const n = mind.next;
+  const via = !n
+    ? null
+    : n.via === 'clef'
+      ? t('npc.brain.via.clef', { p: pct(n.p) })
+      : n.p !== undefined
+        ? t('npc.brain.via.unsure', { p: pct(n.p) })
+        : t('npc.brain.via.score');
+  const a = mind.approach;
+  return (
+    <details className="npc-brain">
+      <summary aria-label={t('npc.brain.open', { name })}>{t('npc.brain.title')}</summary>
+      <ul className="npc-needs" aria-label={t('npc.brain.needsTitle')}>
+        {NEEDS.map((k) => (
+          <li key={k}>
+            <span className="npc-need-name">{t(`npc.brain.needs.${k}`)}</span>
+            <meter
+              min={0}
+              max={100}
+              low={30}
+              high={70}
+              optimum={100}
+              value={mind.needs[k]}
+              aria-label={t('npc.brain.need', {
+                name: t(`npc.brain.needs.${k}`),
+                value: mind.needs[k],
+              })}
+            />
+            <span className="npc-need-value" aria-hidden>
+              {mind.needs[k]}
+            </span>
+          </li>
+        ))}
+      </ul>
+      {mind.mood && <p className="small">{t(`npc.brain.moods.${mind.mood}`)}</p>}
+      <p className="small">
+        {mind.until >= 0
+          ? t('npc.brain.until', { time: hhmm(mind.until) })
+          : t('npc.brain.onTheWay')}
+      </p>
+      {n ? (
+        <>
+          <p className="small">{via}</p>
+          <ol className="npc-cands small" aria-label={t('npc.brain.candidates')}>
+            {n.top.map((c) => (
+              <li key={c.a} aria-current={c.a === n.chosen ? 'true' : undefined}>
+                {t(`npc.act.${c.a}`)} · {c.s.toFixed(2)}
+                {c.a === n.chosen && <span className="sr-only"> ({t('npc.brain.chosen')})</span>}
+              </li>
+            ))}
+          </ol>
+        </>
+      ) : (
+        <p className="small muted">{t('npc.brain.none')}</p>
+      )}
+      {a && (
+        <p className="small">
+          {t('npc.brain.approach')}: {t(`npc.brain.choice.${a.choice}`)}
+          {a.busy ? ` · ${t('npc.brain.busy')}` : ''} ·{' '}
+          {a.via === 'clef' ? t('npc.brain.via.clef', { p: pct(a.p) }) : t('npc.brain.via.score')}
+        </p>
+      )}
+    </details>
+  );
+}
 
 function People() {
   const { t } = useTranslation();
   const profiles = useStore((s) => s.profiles);
   const areas = useStore((s) => s.areas);
   const me = useStore((s) => s.me);
+  const npcs = useStore((s) => s.npcs);
+  const minds = useStore((s) => s.npcMinds);
+  const brain = useStore((s) => s.npcBrain);
   const compact = useCompactLayout();
   /** on phones the sheet covers the world: close it so you see where you go */
   const hide = compact ? { panelOpen: false } : {};
@@ -101,6 +181,48 @@ function People() {
           </li>
         ))}
       </ul>
+      {npcs.length > 0 && (
+        <>
+          {/* ADR-042: characters are listed apart and never counted as people */}
+          <h3 className="h-small" id="characters-h">
+            {t('people.characters')}
+          </h3>
+          {brain && (
+            <p className="muted small npc-brain-status">{t(`npc.brain.status.${brain}`)}</p>
+          )}
+          <ul className="people" aria-labelledby="characters-h">
+            {npcs
+              .filter((n) => n.name.toLowerCase().includes(q.toLowerCase()))
+              .map((n) => (
+                <li key={n.id}>
+                  <img src={avatarUrl(n.avatar)} alt="" width={32} height={40} className="pixel" />
+                  <div className="person">
+                    <div className="person-name">
+                      {n.name}{' '}
+                      <span className="bot-tag" title={t('npc.about')}>
+                        {t('npc.bot')}
+                        <span className="sr-only"> ({t('npc.about')})</span>
+                      </span>
+                    </div>
+                    <div className="muted small">{t(`npc.act.${n.act}`)}</div>
+                    {minds[n.id] && <NpcBrain mind={minds[n.id]!} name={n.name} />}
+                  </div>
+                  <span className="person-actions">
+                    <button
+                      type="button"
+                      className="icon-btn"
+                      onClick={() => store.set({ locate: n.id, ...hide })}
+                      aria-label={t('people.locate', { name: n.name })}
+                      title={t('people.locate', { name: n.name })}
+                    >
+                      <Crosshair size={16} aria-hidden />
+                    </button>
+                  </span>
+                </li>
+              ))}
+          </ul>
+        </>
+      )}
     </div>
   );
 }

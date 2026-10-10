@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { store } from '../state/store';
+import { store, useStore } from '../state/store';
 import { Dialog } from './common';
 import { useTouchControls } from './layout';
 
@@ -58,23 +58,43 @@ export function Credits({ onClose }: { onClose: () => void }) {
 }
 
 export function Privacy({ onClose }: { onClose: () => void }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const flags = useStore((s) => s.config?.flags);
+  const consent = useStore((s) => s.npcConsent);
+  const cloud = flags?.npcTalk === true && consent?.needed === true;
+  const country = (() => {
+    if (!consent?.country) return '';
+    try {
+      return new Intl.DisplayNames([i18n.language], { type: 'region' }).of(consent.country) ?? '';
+    } catch {
+      return consent.country;
+    }
+  })();
   const items = [
     'collected',
     'notStored',
     'floor',
     'rooms',
     'media',
+    ...(flags?.npcs === true ? (['npcs'] as const) : []),
+    ...(flags?.npcTalk === true ? (['npcTalk'] as const) : []),
+    ...(flags?.npcMemory === true ? (['npcMemory'] as const) : []),
+    ...(flags?.npcTalk === true && consent?.web === true ? (['npcWeb'] as const) : []),
     'retention',
     'contact',
   ] as const;
   return (
     <Dialog title={t('privacy.title')} onClose={onClose} wide>
-      <p>{t('privacy.intro')}</p>
+      <p>{t(cloud ? 'privacy.introCloud' : 'privacy.intro')}</p>
       {items.map((k) => (
         <section key={k}>
           <h3 className="h-small">{t(`privacy.${k}.h`)}</h3>
-          <p>{t(`privacy.${k}.p`)}</p>
+          <p>
+            {t(k === 'npcTalk' && cloud ? 'privacy.npcTalk.pCloud' : `privacy.${k}.p`, {
+              provider: consent?.provider ?? '',
+              country,
+            })}
+          </p>
         </section>
       ))}
     </Dialog>

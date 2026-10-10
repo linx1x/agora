@@ -1,0 +1,287 @@
+{
+  "via": "clef",
+  "when": "2026-10-07T12:09:52.465Z",
+  "costUsd": 0,
+  "rows": [
+    {
+      "id": "fr001",
+      "lang": "fr",
+      "kind": "greeting",
+      "pii": false,
+      "error": "network: clef: fetch failed"
+    },
+    {
+      "id": "fr002",
+      "lang": "fr",
+      "kind": "greeting",
+      "pii": false,
+      "error": "network: clef: fetch failed"
+    },
+    {
+      "id": "fr003",
+      "lang": "fr",
+      "kind": "greeting",
+      "pii": false,
+      "error": "network: clef: fetch failed"
+    },
+    {
+      "id": "fr004",
+      "lang": "fr",
+      "kind": "greeting",
+      "pii": false,
+      "error": "network: clef: fetch failed"
+    },
+    {
+      "id": "fr005",
+      "lang": "fr",
+      "kind": "greeting",
+      "pii": false,
+      "error": "network: clef: fetch failed"
+    },
+    {
+      "id": "fr006",
+      "lang": "fr",
+      "kind": "greeting",
+      "pii": false,
+      "error": "network: clef: fetch failed"
+    },
+    {
+      "id": "fr007",
+      "lang": "fr",
+      "kind": "greeting",
+      "pii": false,
+      "error": "network: clef: fetch failed"
+    },
+    {
+      "id": "fr008",
+      "lang": "fr",
+      "kind": "greeting",
+      "pii": false,
+      "error": "network: clef: fetch failed"
+    },
+    {
+      "id": "fr009",
+      "lang": "fr",
+      "kind": "greeting",
+      "pii": false,
+      "error": "network: clef: fetch failed"
+    },
+    {
+      "id": "fr010",
+      "lang": "fr",
+      "kind": "greeting",
+      "pii": false,
+      "error": "network: clef: fetch failed"
+    },
+    {
+      "id": "fr011",
+      "lang": "fr",
+      "kind": "greeting",
+      "pii": false,
+      "error": "network: clef: fetch failed"
+    },
+    {
+      "id": "fr012",
+      "lang": "fr",
+      "kind": "greeting",
+      "pii": false,
+      "error": "network: clef: fetch failed"
+    },
+    {
+      "id": "fr013",
+      "lang": "fr",
+      "kind": "greeting",
+      "pii": false,
+      "error": "network: clef: fetch failed"
+    },
+    {
+      "id": "fr014",
+      "lang": "fr",
+      "kind": "greeting",
+      "pii": false,
+      "error": "network: clef: fetch failed"
+    },
+    {
+      "id": "fr015",
+      "lang": "fr",
+      "kind": "greeting",
+      "pii": false,
+      "error": "network: clef: fetch failed"
+    },
+    {
+      "id": "fr016",
+      "lang": "fr",
+      "kind": "greeting",
+      "pii": false,
+      "error": "network: clef: fetch failed"
+    },
+    {
+      "id": "fr017",
+      "lang": "fr",
+      "kind": "greeting",
+      "pii": false,
+      "error": "network: clef: fetch failed"
+    },
+    {
+      "id": "fr018",
+      "lang": "fr",
+      "kind": "greeting",
+      "pii": true,
+      "error": "network: clef: fetch failed"
+    },
+    {
+      "id": "fr019",
+      "lang": "fr",
+      "kind": "greeting",
+      "pii": false,
+      "error": "network: clef: fetch failed"
+    },
+    {
+      "id": "fr020",
+      "lang": "fr",
+      "kind": "greeting",
+      "pii": false,
+      "error": "network: clef: fetch failed"
+    },
+    {
+      "id": "fr021",
+      "lang": "fr",
+      "kind": "thanks",
+      "pii": false,
+      "error": "network: clef: fetch failed"
+    },
+    {
+      "id": "fr022",
+      "lang": "fr",
+      "kind": "thanks",
+      "pii": false,
+      "error": "network: clef: fetch failed"
+    },
+    {
+      "id": "fr023",
+      "lang": "fr",
+      "kind": "thanks",
+      "pii": false,
+      "error": "network: clef: fetch failed"
+    },
+    {
+      "id": "fr024",
+      "lang": "fr",
+      "kind": "thanks",
+      "pii": false,
+      "error": "network: clef: fetch failed"
+    },
+    {
+      "id": "fr025",
+      "lang": "fr",
+      "kind": "thanks",
+      "pii": false,
+      "error": "network: clef: fetch failed"
+    },
+    {
+      "id": "fr026",
+      "lang": "fr",
+      "kind": "thanks",
+      "pii": false,
+      "error": "network: clef: fetch failed"
+    },
+    {
+      "id": "fr027",
+      "lang": "fr",
+      "kind": "thanks",
+      "pii": false,
+      "error": "network: clef: fetch failed"
+    },
+    {
+      "id": "fr028",
+      "lang": "fr",
+      "kind": "thanks",
+      "pii": false,
+      "error": "network: clef: fetch failed"
+    },
+    {
+      "id": "fr029",
+      "lang": "fr",
+      "kind": "thanks",
+      "pii": false,
+      "error": "network: clef: fetch failed"
+    },
+    {
+      "id": "fr030",
+      "lang": "fr",
+      "kind": "thanks",
+      "pii": false,
+      "error": "network: clef: fetch failed"
+    },
+    {
+      "id": "fr031",
+      "lang": "fr",
+      "kind": "thanks",
+      "pii": false,
+      "error": "network: clef: fetch failed"
+    },
+    {
+      "id": "fr032",
+      "lang": "fr",
+      "kind": "thanks",
+      "pii": true,
+      "error": "network: clef: fetch failed"
+    },
+    {
+      "id": "fr033",
+      "lang": "fr",
+      "kind": "thanks",
+      "pii": false,
+      "error": "network: clef: fetch failed"
+    },
+    {
+      "id": "fr034",
+      "lang": "fr",
+      "kind": "thanks",
+      "pii": false,
+      "error": "network: clef: fetch failed"
+    },
+    {
+      "id": "fr035",
+      "lang": "fr",
+      "kind": "thanks",
+      "pii": false,
+      "error": "network: clef: fetch failed"
+    },
+    {
+      "id": "fr036",
+      "lang": "fr",
+      "kind": "thanks",
+      "pii": false,
+      "error": "network: clef: fetch failed"
+    },
+    {
+      "id": "fr037",
+      "lang": "fr",
+      "kind": "thanks",
+      "pii": false,
+      "error": "network: clef: fetch failed"
+    },
+    {
+      "id": "fr038",
+      "lang": "fr",
+      "kind": "thanks",
+      "pii": false,
+      "error": "network: clef: fetch failed"
+    },
+    {
+      "id": "fr039",
+      "lang": "fr",
+      "kind": "thanks",
+      "pii": false,
+      "error": "network: clef: fetch failed"
+    },
+    {
+      "id": "fr040",
+      "lang": "fr",
+      "kind": "thanks",
+      "pii": false,
+      "error": "network: clef: fetch failed"
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 import { falloff, distTiles } from '@agora/shared';
 import { world } from '../net/client';
 import { store } from '../state/store';
-import { rendered } from '../game/WorldScene';
+import { rendered } from '../game/controller';
 import { isTyping } from '../game/input';
 import { QualityTracker, isPoor, type QualitySample } from './quality';
 import { LiveKitTransport } from './livekit';

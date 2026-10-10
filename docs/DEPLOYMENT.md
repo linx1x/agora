@@ -1,6 +1,7 @@
 # Deployment
 
 Two targets share one docker compose file with profiles:
+
 - **Mac** — development and a small LAN pilot.
 - **Production server** — internet-reachable production for staff.
 
@@ -11,6 +12,7 @@ OrbStack, `brew install livekit`, Tiled (mapeditor.org) for maps. On Windows see
 section D for LiveKit.
 
 Dev loop:
+
 ```
 pnpm i
 pnpm infra:up              # Postgres
@@ -18,6 +20,7 @@ livekit-server --dev       # native, separate terminal
 pnpm db:migrate && pnpm db:seed
 pnpm dev                   # http://localhost:5173
 ```
+
 Camera/mic need a secure context. `localhost` counts; a LAN IP does not. For a
 LAN pilot, run Caddy with its internal CA (`tls internal`) on a hostname like
 `agora.local`, and install Caddy's root certificate on test machines.
@@ -32,42 +35,47 @@ outside the LAN.
 ## B. Production server
 
 ### Topology
+
 One Linux VM (Ubuntu LTS or RHEL-family) running docker compose:
 `caddy`, `web` (static build served by Caddy), `server`, `postgres`, `livekit`,
 optional `egress`, `whisper`, `clamav`, `grafana`. LiveKit uses host networking
 for UDP performance.
 
 ### Sizing (starting point — confirm with the Phase 13 load test)
-| | Pilot (≤15 people) | Production (50 in one space) |
-|---|---|---|
-| vCPU | 4 | 8 |
-| RAM | 8 GB | 16 GB |
-| Disk | 100 GB SSD | 250 GB SSD (+ recordings) |
-| Network | 200 Mbit/s | 1 Gbit/s, public IPv4 |
-| GPU | — | optional, only for live captions |
+
+|         | Pilot (≤15 people) | Production (50 in one space)     |
+| ------- | ------------------ | -------------------------------- |
+| vCPU    | 4                  | 8                                |
+| RAM     | 8 GB               | 16 GB                            |
+| Disk    | 100 GB SSD         | 250 GB SSD (+ recordings)        |
+| Network | 200 Mbit/s         | 1 Gbit/s, public IPv4            |
+| GPU     | —                  | optional, only for live captions |
 
 LiveKit CPU and bandwidth scale with how many people see each other's video, not
 with total users; the nearest-N video cap keeps this bounded.
 
 ### DNS and TLS
+
 - `agora.<your-domain>` → app (Caddy, automatic TLS via ACME or your own certs)
 - `rtc.agora.<your-domain>` → LiveKit signalling (proxied by Caddy on 443)
 - `turn.agora.<your-domain>` → LiveKit TURN/TLS (see firewall)
 
 ### Firewall (inbound)
-| Port | Proto | Purpose |
-|---|---|---|
-| 443 | TCP | web app, API, WebSockets, LiveKit signalling |
-| 80 | TCP | ACME HTTP challenge + redirect (optional if you use your own certs) |
-| 7881 | TCP | LiveKit ICE over TCP (fallback) |
-| 50000–60000 | UDP | LiveKit media (range can be narrowed; ~2 ports/participant) |
-| 3478 | UDP | TURN/UDP |
-| 5349 or 443 | TCP | TURN/TLS for very restrictive networks — on 443 it needs a second IP |
+
+| Port        | Proto | Purpose                                                              |
+| ----------- | ----- | -------------------------------------------------------------------- |
+| 443         | TCP   | web app, API, WebSockets, LiveKit signalling                         |
+| 80          | TCP   | ACME HTTP challenge + redirect (optional if you use your own certs)  |
+| 7881        | TCP   | LiveKit ICE over TCP (fallback)                                      |
+| 50000–60000 | UDP   | LiveKit media (range can be narrowed; ~2 ports/participant)          |
+| 3478        | UDP   | TURN/UDP                                                             |
+| 5349 or 443 | TCP   | TURN/TLS for very restrictive networks — on 443 it needs a second IP |
 
 Outbound: Entra ID (`login.microsoftonline.com`), Microsoft Graph
 (`graph.microsoft.com`) from Phase 10, ACME if used. Nothing else.
 
 ### Deploy steps (the agent writes `infra/deploy.md` with exact commands)
+
 1. Provision VM, install Docker Engine + compose plugin.
 2. Copy `infra/` and `.env.production` (secrets from your secrets vault).
 3. `docker compose --profile prod pull && docker compose --profile prod up -d`
@@ -76,6 +84,7 @@ Outbound: Entra ID (`login.microsoftonline.com`), Microsoft Graph
    (office + mobile hotspot) to prove TURN works.
 
 ### Backups
+
 Nightly `pg_dump` + rsync of `/data/uploads` and `/data/recordings` to your backup
 storage, 14-day retention; restore drill in Phase 13.
 
@@ -115,25 +124,28 @@ Agora's media goes through LiveKit when `LIVEKIT_URL` is set (ADR-031). LiveKit 
 separate program from the app; it can run on the same PC as `pnpm dev` or on its own.
 
 ### D1. Only you, on this PC
+
 1. Download `livekit_<version>_windows_amd64.zip` (1.12+) from
    https://github.com/livekit/livekit/releases and put `livekit-server.exe` on your PATH.
 2. `pnpm livekit` (= `livekit-server --dev`), leave it running.
 3. In `.env`: `LIVEKIT_URL=ws://localhost:7880`, `LIVEKIT_API_KEY=devkey`,
    `LIVEKIT_API_SECRET=secret`. Restart the app; the log says `media: LiveKit reachable`.
 4. Two browser profiles on `http://localhost:5173` → walk up to each other.
-`--dev` uses a well-known secret and hands browsers public STUN servers: never expose it.
+   `--dev` uses a well-known secret and hands browsers public STUN servers: never expose it.
 
 ### D2. People elsewhere (e.g. the Paris office) joining LiveKit on your PC
+
 What they need to reach, and why:
 
-| What | Port | Notes |
-|---|---|---|
-| Signalling + API | 443 TCP → 7880 | Must be `wss://` with a real certificate, because the Agora page is `https://`. Caddy does this (below). Agora's server calls the API through the same address. |
-| Media over UDP | 50000–50050 UDP | Range set in `infra/livekit.yaml`; ~2 ports per person. |
-| Media over TCP | 7881 TCP | Fallback when UDP is blocked. |
-| TURN relay | 3478 UDP (5349 TCP with TLS) | For strict corporate networks; TURN/TLS needs a certificate for the TURN name. |
+| What             | Port                         | Notes                                                                                                                                                           |
+| ---------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Signalling + API | 443 TCP → 7880               | Must be `wss://` with a real certificate, because the Agora page is `https://`. Caddy does this (below). Agora's server calls the API through the same address. |
+| Media over UDP   | 50000–50050 UDP              | Range set in `infra/livekit.yaml`; ~2 ports per person.                                                                                                         |
+| Media over TCP   | 7881 TCP                     | Fallback when UDP is blocked.                                                                                                                                   |
+| TURN relay       | 3478 UDP (5349 TCP with TLS) | For strict corporate networks; TURN/TLS needs a certificate for the TURN name.                                                                                  |
 
 Steps:
+
 1. A DNS name for your public IP (your own domain or a dynamic-DNS name), e.g.
    `rtc.example.org`, and the ports above forwarded on your router to the PC.
 2. Windows firewall (PowerShell as administrator):
@@ -155,7 +167,7 @@ Steps:
    ```
    Edit `turn.domain` in `infra/livekit.yaml` first. Its embedded TURN replaces the public STUN
    servers `--dev` would give browsers (PRIVACY rule 1).
-5. Agora's server (Marketplace Settings, or `.env`): `LIVEKIT_URL=wss://rtc.example.org`,
+5. Agora's server (your hosting platform's settings, or `.env`): `LIVEKIT_URL=wss://rtc.example.org`,
    `LIVEKIT_API_KEY=agora`, `LIVEKIT_API_SECRET=<the same secret>`. Its log must say
    `media: LiveKit reachable`.
 6. Rehearse before the demo with one person in Paris on the office network: walk up to each
@@ -198,7 +210,6 @@ passkeys and sessions). Lost **owner** passkey: on the server, `pnpm owner:recov
 Local development in passkey mode: `AUTH_MODE=passkey` with `NODE_ENV=development`
 works on `http://localhost` (browsers allow passkeys there); the setup link is printed
 by `pnpm dev`.
-
 
 **"It asks me to create the owner again after a restart."** The owner lives in Postgres;
 a setup link appears only when the database the server uses has no owner. Check the boot

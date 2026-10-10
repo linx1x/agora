@@ -9,6 +9,9 @@
  */
 import {
   TILE,
+  mapReader,
+  propDef,
+  resolveProps,
   tileDef,
   type Biome,
   type DeskState,
@@ -143,10 +146,16 @@ export function visibility(
 }
 
 /** Light sources from tiles (lamps, windows, fireplaces, portals), the `lights` layer and desk lamps. */
+function regionBiome(map: WorldMap, cx: number, cy: number): string | undefined {
+  const x = cx * TILE + TILE / 2;
+  const y = cy * TILE + TILE / 2;
+  return map.regions.find((r) => x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h)?.biome;
+}
+
 export function collectLights(map: WorldMap, tmj: Tmj): Light[] {
   const out: Light[] = [];
   const W = map.width;
-  for (const name of ['walls', 'furniture', 'props'] as const) {
+  for (const name of ['walls', 'furniture'] as const) {
     const data = map.layers[name] ?? [];
     data.forEach((g, i) => {
       const def = tileDef(g);
@@ -193,6 +202,22 @@ export function collectLights(map: WorldMap, tmj: Tmj): Light[] {
         });
     });
   }
+  // lit desk lamps among the placed props (P9.16): at the lamp head, raised with what holds it
+  const rest = resolveProps(mapReader(map), map.props);
+  map.props.forEach((p, i) => {
+    if (propDef(p.t)?.light !== 'lamp') return;
+    const cx = Math.floor(p.x / TILE);
+    const cy = Math.floor(p.y / TILE);
+    const biome = (regionBiome(map, cx, cy) ?? 'hub') as Biome;
+    out.push({
+      kind: 'lamp',
+      x: p.x,
+      y: p.y - rest[i]!.lift - p.z - 7,
+      radius: 4.5 * TILE,
+      color: LAMP_COLOR[biome] ?? LAMP_COLOR.hub,
+      intensity: 0.85,
+    });
+  });
   // portals are 2×2: keep one light per pad
   const seen = new Set<string>();
   const dedup = out.filter((l) => {

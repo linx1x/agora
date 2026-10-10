@@ -1,6 +1,7 @@
 {
   "name": "agora",
   "private": true,
+  "license": "MIT",
   "version": "0.1.0",
   "type": "module",
   "packageManager": "pnpm@10.28.0",
@@ -17,6 +18,7 @@
     "e2e": "playwright test",
     "map:build": "tsx packages/maps/scripts/build-hq.ts",
     "i18n:check": "tsx scripts/i18n-check.ts",
+    "adr:index": "node scripts/adr-index.mjs",
     "assets:check": "tsx scripts/assets-check.ts",
     "infra:up": "docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --wait db",
     "infra:down": "docker compose -f docker-compose.yml -f docker-compose.local.yml down",

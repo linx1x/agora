@@ -7,14 +7,14 @@ with the map.
 
 ## Tokens
 
-| Name | Hex | Use |
-|---|---|---|
-| Fleuve | `#17324D` | primary text, panel headers, primary buttons |
-| Neige | `#F3F6F8` | panel backgrounds (light theme) |
-| Ardoise | `#4A5866` | secondary text, borders, inactive icons |
-| Ambre | `#F2A900` | speaking ring, live/recording/broadcast states only |
-| Sapin | `#2F7D5B` | Available status, success |
-| Cerise | `#C2364B` | Do not disturb, destructive actions, errors |
+| Name    | Hex       | Use                                                 |
+| ------- | --------- | --------------------------------------------------- |
+| Fleuve  | `#17324D` | primary text, panel headers, primary buttons        |
+| Neige   | `#F3F6F8` | panel backgrounds (light theme)                     |
+| Ardoise | `#4A5866` | secondary text, borders, inactive icons             |
+| Ambre   | `#F2A900` | speaking ring, live/recording/broadcast states only |
+| Sapin   | `#2F7D5B` | Available status, success                           |
+| Cerise  | `#C2364B` | Do not disturb, destructive actions, errors         |
 
 Dark theme: panels `#12202E`, text `#E6EDF2`; Ambre, Sapin, Cerise unchanged
 (check contrast ≥ 4.5:1 for text, 3:1 for icons).
@@ -22,6 +22,7 @@ Dark theme: panels `#12202E`, text `#E6EDF2`; Ambre, Sapin, Cerise unchanged
 Ambre is scarce on purpose: if it appears, something live is happening.
 
 ## Type
+
 - **Atkinson Hyperlegible** (SIL OFL, bundled, full French accent support) for
   all UI and name labels. Designed for legibility, which matters for small labels
   over busy pixel art.
@@ -45,6 +46,7 @@ Ambre is scarce on purpose: if it appears, something live is happening.
 │ [me: avatar · mic · cam · share · emote · status]  [room name]│
 └──────────────────────────────────────────────────────────────┘
 ```
+
 - Bottom-left control bar, left-aligned; room name bottom-right announces where
   you are (also to screen readers).
 - Side panel is one panel with tabs, not a stack of floating cards.
@@ -57,6 +59,7 @@ Ambre is scarce on purpose: if it appears, something live is happening.
   bottom-right when push-to-talk is on.
 
 ## Principles
+
 1. The map is the navigation. Prefer "walk there" over menus; menus are for
    things that have no place in the world.
 2. Location is always legible: you know which room you're in and who can hear you.

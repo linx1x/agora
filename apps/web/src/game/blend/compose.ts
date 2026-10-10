@@ -274,26 +274,47 @@ interface Prop {
   baseY: number;
   x0: number;
   x1: number;
-  glow: boolean;
 }
-const boundsCache = new WeakMap<Uint8ClampedArray, [number, number, number]>();
-/** [minx, maxx, maxy] of a sprite's opaque pixels. */
-function bounds(px: Uint8ClampedArray): [number, number, number] {
+const boundsCache = new WeakMap<Uint8ClampedArray, [number, number, number, number]>();
+/** [minx, maxx, maxy, miny] of a sprite's opaque pixels. */
+export function bounds(px: Uint8ClampedArray): [number, number, number, number] {
   const hit = boundsCache.get(px);
   if (hit) return hit;
   let minx = T;
   let maxx = -1;
   let maxy = -1;
+  let miny = T;
   for (let y = 0; y < T; y++)
     for (let x = 0; x < T; x++)
       if (px[(y * T + x) * 4 + 3]! > 0) {
         if (x < minx) minx = x;
         if (x > maxx) maxx = x;
         if (y > maxy) maxy = y;
+        if (y < miny) miny = y;
       }
-  const b: [number, number, number] = maxx < 0 ? [0, T - 1, T - 1] : [minx, maxx, maxy];
+  const b: [number, number, number, number] =
+    maxx < 0 ? [0, T - 1, T - 1, 0] : [minx, maxx, maxy, miny];
   boundsCache.set(px, b);
   return b;
+}
+
+/**
+ * Where a placed prop's sprite is drawn (P9.16, ADR-039): its opaque bottom row on the base
+ * point raised by `lift` (what it rests on) and its own `z`, centred on `x`, mirrored by `f`.
+ * `x0..x1, y0..baseY`: the opaque box, for hit tests and the contact shadow.
+ */
+export function placedSprite(
+  px: Uint8ClampedArray,
+  p: { x: number; y: number; z: number; f: boolean },
+  lift: number,
+): { ox: number; oy: number; baseY: number; x0: number; x1: number; y0: number } {
+  const [minx, maxx, maxy, miny] = bounds(px);
+  const mn = p.f ? T - 1 - maxx : minx;
+  const mx = p.f ? T - 1 - minx : maxx;
+  const baseY = p.y - lift - p.z;
+  const ox = Math.round(p.x - (mn + mx + 1) / 2);
+  const oy = baseY - maxy;
+  return { ox, oy, baseY, x0: ox + mn, x1: ox + mx, y0: oy + miny };
 }
 
 /**
@@ -381,12 +402,12 @@ export function composeFurniture(
       }
       if (m & 4 && arm)
         boxes.push(box(X + arm[0], Y + T - EXT, X + arm[1], Y + T + EXT, look, vert));
-      // props resting here: baked-in ones (a monitor) and the props layer
-      for (const name of [d.join.prop, r.def('props', x, y)?.name]) {
-        if (!name) continue;
-        const px = src.tile(name);
+      // props baked into the art (a monitor) rest here; placed props (ADR-039) draw their own
+      // contact shadow and glow, so they never change a variant
+      if (d.join.prop) {
+        const px = src.tile(d.join.prop);
         const p = px && propPlacement(r, px, x, y);
-        if (px && p) props.push({ px, ...p, glow: name === 'prop.lampOn' });
+        if (px && p) props.push({ px, ...p });
       }
     }
   const ownDef = r.def('furniture', cx, cy);
@@ -425,7 +446,6 @@ export function composeFurniture(
   const lev = new Float32Array(B * B);
   const look: (MaterialLook | null)[] = new Array(B * B).fill(null);
   const face: (RGB[] | null)[] = new Array(B * B).fill(null);
-  const lamps = props.filter((p) => p.glow);
 
   for (let j = 0; j < B; j++)
     for (let i = 0; i < B; i++) {
@@ -460,12 +480,6 @@ export function composeFurniture(
         } else {
           v += (vnoise(lx / 4, ly / 4, 11, 8) - 0.5) * 0.7;
           if (hash(lx, ly, 13) < 0.025) v += 0.9;
-        }
-        for (const p of lamps) {
-          const ddx = sx - (p.x0 + 4);
-          const ddy = (sy - (p.baseY - 2)) * 1.6;
-          const rr = Math.hypot(ddx, ddy);
-          if (rr < 18) v += 1.25 * Math.pow(1 - rr / 18, 1.4);
         }
         lev[k] = v;
         continue;

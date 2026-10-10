@@ -1,6 +1,14 @@
 import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
-import { CONNECT_R, DISCONNECT_R, VIDEO_CAP, parseFlags, type Flags } from '@agora/shared';
+import {
+  CONNECT_R,
+  DEFAULT_SPACE,
+  DISCONNECT_R,
+  VIDEO_CAP,
+  parseFlags,
+  type Flags,
+} from '@agora/shared';
+import { PRICES, parsePrice, type LlmConfig } from './npc-brain/llm';
 
 const bool = z
   .string()
@@ -72,6 +80,97 @@ const EnvSchema = z.object({
   BUILDER_IDS: z.string().optional(),
   /** Shared code that unlocks build mode for the current session (Settings → Build mode). */
   BUILDER_CODE: z.string().optional(),
+  /** NPCs (ADR-042, flag `npcs`): comma-separated space ids or addresses that have characters. */
+  NPC_SPACES: z.string().optional(),
+  /** Folder of character files (<id>.json); dev default data/npcs, written with the defaults. */
+  NPC_DIR: z.string().optional(),
+  /** Dev only: the characters' clock starts at this time (HH:MM) instead of the real time. */
+  NPC_CLOCK: z
+    .string()
+    .regex(/^([01]\d|2[0-3]):[0-5]\d$/)
+    .optional()
+    .or(z.literal('').transform(() => undefined)),
+  /** Dev only: game minutes per real minute (60 = a workday in about 9 minutes). */
+  NPC_TIME_SCALE: z.coerce.number().positive().max(600).default(1),
+  /**
+   * P15.3, ADR-044: where body decisions go. `clef` asks apps/ml at NPC_DECIDE_URL (when set);
+   * `off` means the characters' own scoring only. Body decisions never go to the cloud model.
+   */
+  NPC_DECIDE_PROVIDER: z.enum(['clef', 'llm', 'off']).default('clef'),
+  /** apps/ml, e.g. http://127.0.0.1:8790 (empty: scoring only) */
+  NPC_DECIDE_URL: z
+    .string()
+    .url()
+    .optional()
+    .or(z.literal('').transform(() => undefined)),
+  /** A Clef answer counts only at or above this probability; else the safe default. */
+  NPC_DECIDE_MIN_P: z.coerce.number().min(0).max(1).default(0.7),
+  NPC_DECIDE_TIMEOUT_MS: z.coerce.number().int().min(100).max(10_000).default(1500),
+  /** Shared secret for apps/ml when it listens beyond localhost (ML_TOKEN there). */
+  NPC_DECIDE_TOKEN: z.string().optional(),
+  /** Local decision log folder (no names, no Talk text); dev default data/npc-log, off otherwise. */
+  NPC_LOG_DIR: z.string().optional(),
+  NPC_LOG_DAYS: z.coerce.number().int().min(1).max(365).default(30),
+  /**
+   * P15.4 (ADR-042, ADR-045): the cloud model that writes what no prepared line covers, behind one
+   * interface. `openai` = any OpenAI-compatible endpoint (DeepSeek, Mistral, OpenRouter, Ollama,
+   * vLLM, llama.cpp); `anthropic` = the Messages API; `fake` = canned answers for tests (refused
+   * in production). Without NPC_LLM_API_KEY nothing leaves the machine and prepared lines answer.
+   */
+  NPC_LLM_PROVIDER: z.preprocess(
+    unsetIfEmpty,
+    z.enum(['openai', 'anthropic', 'fake']).default('openai'),
+  ),
+  NPC_LLM_BASE_URL: z.preprocess(unsetIfEmpty, z.string().optional()),
+  NPC_LLM_MODEL: z.preprocess(unsetIfEmpty, z.string().optional()),
+  NPC_LLM_API_KEY: z.preprocess(unsetIfEmpty, z.string().optional()),
+  /** off: ask DeepSeek-style providers not to think (the default on deepseek.com) */
+  NPC_LLM_THINKING: z.preprocess(unsetIfEmpty, z.enum(['on', 'off']).optional()),
+  NPC_LLM_TIMEOUT_MS: z.preprocess(
+    unsetIfEmpty,
+    z.coerce.number().int().min(500).max(60_000).default(8000),
+  ),
+  /** JSON merged into every request body */
+  NPC_LLM_EXTRA_BODY: z.preprocess(unsetIfEmpty, z.string().optional()),
+  /** "hit,miss,output" in US$ per 1M tokens, for a model with no built-in price */
+  NPC_LLM_PRICE: z.preprocess(unsetIfEmpty, z.string().optional()),
+  /** the provider's name and country (ISO code), shown in the AI notice and on the Privacy page */
+  NPC_LLM_LABEL: z.preprocess(unsetIfEmpty, z.string().max(60).optional()),
+  NPC_LLM_COUNTRY: z.preprocess(unsetIfEmpty, z.string().length(2).optional()),
+  /** calls to the cloud model per character per hour, then prepared lines only */
+  NPC_CALLS_PER_HOUR: z.preprocess(
+    unsetIfEmpty,
+    z.coerce.number().int().min(1).max(100_000).default(60),
+  ),
+  /** daily spend ceiling (US$), then prepared lines only */
+  NPC_LLM_DAILY_USD: z.preprocess(unsetIfEmpty, z.coerce.number().min(0).max(10_000).default(1)),
+  /** P15.6: the voice service on the operator's machine (apps/ml `--voice`); empty = no voices */
+  NPC_VOICE_URL: z.preprocess(unsetIfEmpty, z.string().url().optional()),
+  NPC_VOICE_TOKEN: z.preprocess(unsetIfEmpty, z.string().optional()),
+  NPC_VOICE_TIMEOUT_MS: z.preprocess(
+    unsetIfEmpty,
+    z.coerce.number().int().min(500).max(120_000).default(20_000),
+  ),
+  /**
+   * P15.8 (ADR-049): web lookups through your own SearXNG (JSON output enabled). Off by default; it
+   * sends the words of a question, without names, to the search engines SearXNG uses, so turning it
+   * on changes the AI notice and asks everyone again. Needs the cloud model (it writes the answer).
+   */
+  NPC_WEB: z.preprocess(unsetIfEmpty, z.enum(['off', 'searxng']).default('off')),
+  NPC_WEB_URL: z.preprocess(unsetIfEmpty, z.string().url().optional()),
+  /** comma-separated sites whose results may be quoted (and their subdomains); empty = any */
+  NPC_WEB_SITES: z.preprocess(unsetIfEmpty, z.string().optional()),
+  NPC_WEB_TIMEOUT_MS: z.preprocess(
+    unsetIfEmpty,
+    z.coerce.number().int().min(500).max(30_000).default(4000),
+  ),
+  /** searches per hour for the whole server */
+  NPC_WEB_PER_HOUR: z.preprocess(
+    unsetIfEmpty,
+    z.coerce.number().int().min(1).max(10_000).default(30),
+  ),
+  /** P15.5: notes a character keeps about a person are deleted after this many days without a refresh */
+  NPC_MEMORY_DAYS: z.preprocess(unsetIfEmpty, z.coerce.number().int().min(1).max(3650).default(90)),
   /** Platform admins: admin in every space (settings, invites). Entra group later (P6.1). */
   ADMIN_IDS: z.string().optional(),
   /** Shared code that makes the current session a platform admin (Settings). */
@@ -123,6 +222,28 @@ export interface Config {
     prefix: string;
   };
   flags: Flags;
+  /** ADR-042: which spaces have characters, where their files are, and their clock */
+  npc: {
+    spaces: string[];
+    dir?: string;
+    clock?: string;
+    timeScale: number;
+    /** P15.3: Clef for body decisions (absent: scoring only) */
+    decide?: { url: string; minP: number; timeoutMs: number; token?: string };
+    minP: number;
+    /** P15.3: the local decision log */
+    log?: { dir: string; days: number };
+    /** P15.4: the cloud model for words (absent: prepared lines only, nothing leaves the machine) */
+    llm?: NpcLlmSettings;
+    callsPerHour: number;
+    dailyUsd: number;
+    /** P15.5: how long notes about a person live without being refreshed */
+    memoryDays: number;
+    /** P15.6: the voice service, if any */
+    voice?: { url: string; token?: string; timeoutMs: number };
+    /** P15.8: web lookups, if any */
+    web?: { url: string; sites: string[]; timeoutMs: number; perHour: number };
+  };
   connectR: number;
   disconnectR: number;
   videoCap: number;
@@ -142,6 +263,85 @@ export interface Config {
 }
 
 export class ConfigError extends Error {}
+
+/** The cloud model behind `complete()`, with how the AI notice names it (P15.4). */
+export interface NpcLlmSettings {
+  /** answers canned JSON, for tests; never in production */
+  fake: boolean;
+  cfg: LlmConfig;
+  label: string;
+  /** ISO 3166-1 alpha-2 code, or '' when unknown */
+  country: string;
+}
+
+const hostOf = (url: string) => {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return '';
+  }
+};
+
+/** What the AI notice says about a provider we know by its address. */
+const KNOWN_HOSTS: { re: RegExp; label: string; country: string }[] = [
+  { re: /(^|\.)deepseek\.com$/, label: 'DeepSeek', country: 'CN' },
+  { re: /(^|\.)anthropic\.com$/, label: 'Anthropic', country: 'US' },
+  { re: /(^|\.)openai\.com$/, label: 'OpenAI', country: 'US' },
+  { re: /(^|\.)mistral\.ai$/, label: 'Mistral', country: 'FR' },
+  { re: /^(localhost|127\.0\.0\.1|\[::1\])$/, label: 'local', country: 'CA' },
+];
+
+function npcLlm(e: z.infer<typeof EnvSchema>): NpcLlmSettings | undefined {
+  if (e.NPC_LLM_PROVIDER === 'fake') {
+    if (e.NODE_ENV === 'production')
+      throw new ConfigError('NPC_LLM_PROVIDER=fake is refused when NODE_ENV=production.');
+    return {
+      fake: true,
+      cfg: {
+        provider: 'openai',
+        baseUrl: 'fake',
+        model: 'fake',
+        apiKey: '',
+        timeoutMs: e.NPC_LLM_TIMEOUT_MS,
+      },
+      label: e.NPC_LLM_LABEL ?? 'Test',
+      country: e.NPC_LLM_COUNTRY?.toUpperCase() ?? 'CA',
+    };
+  }
+  if (!e.NPC_LLM_API_KEY) return undefined;
+  const provider = e.NPC_LLM_PROVIDER;
+  const model = e.NPC_LLM_MODEL ?? 'deepseek-flash';
+  const baseUrl =
+    e.NPC_LLM_BASE_URL ??
+    (provider === 'anthropic' ? 'https://api.anthropic.com' : 'https://api.deepseek.com');
+  const host = hostOf(baseUrl);
+  const known = KNOWN_HOSTS.find((k) => k.re.test(host));
+  // DeepSeek thinks by default (seconds and output tokens a character line does not need)
+  const thinking = e.NPC_LLM_THINKING ?? (known?.label === 'DeepSeek' ? 'off' : undefined);
+  let extraBody: Record<string, unknown> | undefined;
+  if (e.NPC_LLM_EXTRA_BODY) {
+    try {
+      extraBody = JSON.parse(e.NPC_LLM_EXTRA_BODY) as Record<string, unknown>;
+    } catch {
+      throw new ConfigError('NPC_LLM_EXTRA_BODY must be a JSON object.');
+    }
+  }
+  return {
+    fake: false,
+    cfg: {
+      provider: provider === 'anthropic' ? 'anthropic' : 'openai',
+      baseUrl,
+      model,
+      apiKey: e.NPC_LLM_API_KEY,
+      timeoutMs: e.NPC_LLM_TIMEOUT_MS,
+      thinking,
+      extraBody,
+      price: parsePrice(e.NPC_LLM_PRICE) ?? PRICES[model],
+    },
+    label: e.NPC_LLM_LABEL ?? known?.label ?? host,
+    country: e.NPC_LLM_COUNTRY?.toUpperCase() ?? known?.country ?? '',
+  };
+}
 
 /** WebAuthn: the RP ID must equal the origin's host or be a registrable parent of it. */
 export const hostMatches = (host: string, rpId: string) =>
@@ -258,6 +458,49 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     mediaBackend,
     livekit,
     flags: parseFlags(e.FEATURE_FLAGS),
+    npc: {
+      spaces: (e.NPC_SPACES || DEFAULT_SPACE)
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean),
+      dir: e.NPC_DIR || (e.NODE_ENV === 'development' ? 'data/npcs' : undefined),
+      // dev clocks never apply in production
+      clock: e.NODE_ENV === 'production' ? undefined : e.NPC_CLOCK,
+      timeScale: e.NODE_ENV === 'production' ? 1 : e.NPC_TIME_SCALE,
+      decide:
+        e.NPC_DECIDE_PROVIDER === 'clef' && e.NPC_DECIDE_URL
+          ? {
+              url: e.NPC_DECIDE_URL,
+              minP: e.NPC_DECIDE_MIN_P,
+              timeoutMs: e.NPC_DECIDE_TIMEOUT_MS,
+              token: e.NPC_DECIDE_TOKEN || undefined,
+            }
+          : undefined,
+      minP: e.NPC_DECIDE_MIN_P,
+      log: (() => {
+        const dir = e.NPC_LOG_DIR || (e.NODE_ENV === 'development' ? 'data/npc-log' : undefined);
+        return dir && dir !== 'off' ? { dir, days: e.NPC_LOG_DAYS } : undefined;
+      })(),
+      llm: npcLlm(e),
+      callsPerHour: e.NPC_CALLS_PER_HOUR,
+      dailyUsd: e.NPC_LLM_DAILY_USD,
+      memoryDays: e.NPC_MEMORY_DAYS,
+      voice: e.NPC_VOICE_URL
+        ? { url: e.NPC_VOICE_URL, token: e.NPC_VOICE_TOKEN, timeoutMs: e.NPC_VOICE_TIMEOUT_MS }
+        : undefined,
+      web:
+        e.NPC_WEB === 'searxng' && e.NPC_WEB_URL
+          ? {
+              url: e.NPC_WEB_URL,
+              sites: (e.NPC_WEB_SITES ?? '')
+                .split(',')
+                .map((x) => x.trim().toLowerCase())
+                .filter(Boolean),
+              timeoutMs: e.NPC_WEB_TIMEOUT_MS,
+              perHour: e.NPC_WEB_PER_HOUR,
+            }
+          : undefined,
+    },
     connectR: e.CONNECT_R,
     disconnectR: e.DISCONNECT_R,
     videoCap: e.VIDEO_CAP,

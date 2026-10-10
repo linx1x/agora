@@ -1,0 +1,3 @@
+# Keep shell scripts runnable in WSL2 even with core.autocrlf on Windows
+*.sh text eol=lf
+*.py text eol=lf
