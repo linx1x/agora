@@ -74,7 +74,13 @@ import {
   type NpcTalkLink,
 } from './npcs';
 import { MediaGate, type GatePlayer, type SfuApi } from '../media/gate';
-import { worldHubFor, type WorldHub, type WorldMember, type WorldRoom } from '../worlds/worldRoom';
+import {
+  worldHubFor,
+  type WorldHub,
+  type WorldMedia,
+  type WorldMember,
+  type WorldRoom,
+} from '../worlds/worldRoom';
 
 export interface Conn {
   send(msg: S2CMsg): void;
@@ -863,14 +869,19 @@ export class SpaceRoom {
     this.recomputeLinks();
     p.world = {
       room,
-      member: room.join(conn, {
-        id: p.id,
-        uid: p.uid,
-        name: p.profile.name,
-        avatar: p.profile.avatar,
-      }),
+      member: room.join(
+        conn,
+        { id: p.id, uid: p.uid, name: p.profile.name, avatar: p.profile.avatar },
+        this.worldMedia(),
+      ),
     };
     this.log.info({ player: p.id, world: room.id }, 'entered world');
+  }
+
+  /** The SFU a world's members use, when this server runs one (ADR-031). */
+  private worldMedia(): WorldMedia | undefined {
+    const sfu = this.opts.sfu;
+    return sfu ? { api: sfu.api, url: sfu.url, prefix: sfu.prefix, log: this.log } : undefined;
   }
 
   /** Take the person out of their world. Nothing is sent to them here. */
@@ -918,9 +929,9 @@ export class SpaceRoom {
   }
 
   /**
-   * Messages from someone inside a world: moves, leaving, ping, and the return pad (P17.10: the
-   * only portal inside a world, checked against the person's position). Office-only messages do
-   * nothing there.
+   * Messages from someone inside a world: moves, leaving, ping, chat and signalling inside the
+   * world (P17.11), media tokens, and the return pad (P17.10: the only portal inside a world,
+   * checked against the person's position). Office-only messages do nothing there.
    */
   private onWorldMessage(p: Player, m: C2SMsg) {
     const w = p.world;
@@ -932,6 +943,18 @@ export class SpaceRoom {
       case 'world:leave':
         if (!p.buckets.misc.take()) return;
         return this.leaveWorld(p);
+      case 'chat':
+        if (!p.buckets.chat.take()) return p.conn?.send({ t: 'error', code: 'rate_limited' });
+        return w.room.chat(w.member, m.body);
+      case 'rtc': {
+        if (!p.buckets.rtc.take()) return;
+        const verdict = w.room.signal(w.member, m.to, m.data);
+        if (verdict !== 'ok') p.conn?.send({ t: 'error', code: verdict === 'off' ? 'rtc_off' : 'rtc_not_linked' });
+        return;
+      }
+      case 'media:token':
+        if (!p.buckets.misc.take()) return;
+        return w.room.refreshMedia(w.member);
       case 'portal:enter': {
         if (!p.buckets.misc.take()) return;
         if (m.id !== RETURN_PORTAL_ID) return p.conn?.send({ t: 'portal:refused', id: m.id, reason: 'unknown' });

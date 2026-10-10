@@ -292,7 +292,8 @@ export type S2CMsg =
   | {
       t: 'media:grant';
       url: string;
-      floor: MediaRoomGrant;
+      /** null inside a personal world (P17.11): the world's room is then the only media room */
+      floor: MediaRoomGrant | null;
       zone: MediaRoomGrant | null;
       publish: 'floor' | 'zone' | 'none';
     }

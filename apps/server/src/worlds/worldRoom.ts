@@ -5,6 +5,7 @@
  * position with `validateWorldMove` on the seed's terrain plus the stored edits; the client only
  * predicts. Messages go to the people in that world and nobody else.
  */
+import { randomUUID } from 'node:crypto';
 import {
   ChunkDeltaSchema,
   WORLDGEN,
@@ -24,6 +25,7 @@ import {
   worldCollides,
   worldGenParamsFor,
   type Avatar,
+  type ChatMsg,
   type ChunkCoord,
   type ChunkDelta,
   type Dir,
@@ -33,6 +35,7 @@ import {
   type WorldGenParams,
   type WorldPerson,
 } from '@agora/shared';
+import type { SfuApi } from '../media/gate';
 import { defaultStarter } from './starter';
 import type { StoredChunk, StoredWorld, WorldStore } from './worldStore';
 
@@ -43,6 +46,20 @@ const SPAWN_SEARCH_CELLS = 16;
 export interface WorldConn {
   send(m: S2CMsg): void;
 }
+
+/**
+ * The SFU a world's members publish through when this server runs one (ADR-031). The world has
+ * one room, `prefix:world:<id>`, shared by every space; a member gets a token for it and nothing else.
+ */
+export interface WorldMedia {
+  api: SfuApi;
+  url: string;
+  prefix: string;
+  log: { warn: (o: object, m?: string) => void };
+}
+
+/** The SFU room of a world (P17.11). Named from the world id, never from a user id. */
+export const worldRoomName = (prefix: string, worldId: string) => `${prefix}:world:${worldId}`;
 
 /** A person inside one world. `uid` stays on the server; `id` is the office presence id. */
 export interface WorldMember {
@@ -57,7 +74,12 @@ export interface WorldMember {
   lastMoveAt: number;
   /** chunks this person is shown, by chunk key */
   view: Map<string, ChunkCoord>;
+  /** the SFU this person's media uses, undefined when the server carries no SFU (peer-to-peer) */
+  readonly media: WorldMedia | undefined;
 }
+
+/** The signalling payload of an `rtc` message (P2P only, ADR-009). */
+export type WorldSignal = Extract<S2CMsg, { t: 'rtc' }>['data'];
 
 const personOf = (m: WorldMember): WorldPerson => ({
   id: m.id,
@@ -139,7 +161,11 @@ export class WorldRoom {
    * Put a person in the world at its spawn: they get the welcome (seed, generator, who is here)
    * and their chunks, and everyone else hears `world:join`.
    */
-  join(conn: WorldConn, who: { id: string; uid: string; name: string; avatar: Avatar }): WorldMember {
+  join(
+    conn: WorldConn,
+    who: { id: string; uid: string; name: string; avatar: Avatar },
+    media?: WorldMedia,
+  ): WorldMember {
     const at = this.spawn();
     const m: WorldMember = {
       id: who.id,
@@ -152,6 +178,7 @@ export class WorldRoom {
       conn,
       lastMoveAt: Date.now(),
       view: new Map(),
+      media,
     };
     const others = [...this.members.values()];
     this.members.set(m.id, m);
@@ -166,7 +193,46 @@ export class WorldRoom {
     });
     this.updateView(m);
     for (const o of others) o.conn?.send({ t: 'world:join', person: personOf(m) });
+    this.sendPeers();
+    void this.grant(m);
     return m;
+  }
+
+  /** A fresh media token for someone who asked again (the SFU connection dropped for good). */
+  refreshMedia(m: WorldMember): void {
+    if (this.members.get(m.id) === m) void this.grant(m);
+  }
+
+  /**
+   * Nearby chat inside the world (P17.11): every line reaches the people in this world, at any
+   * distance, and nobody else. It is never stored and never enters the office history. An
+   * `everyone` line from inside a world is the same thing: the world is the whole audience.
+   */
+  chat(m: WorldMember, body: string): void {
+    if (this.disposed || this.members.get(m.id) !== m) return;
+    const msg: ChatMsg = {
+      id: randomUUID(),
+      scope: 'nearby',
+      from: m.id,
+      name: m.name,
+      body,
+      at: Date.now(),
+      zoneId: `world:${this.id}`,
+    };
+    for (const o of this.members.values()) o.conn?.send({ t: 'chat', msg });
+  }
+
+  /**
+   * Peer-to-peer signalling between two members (ADR-009, P17.11). Relayed only to a member of this
+   * world; refused as `off` when the SFU carries this person's media, as in the office.
+   */
+  signal(m: WorldMember, to: string, data: WorldSignal): 'ok' | 'off' | 'not_linked' {
+    if (this.members.get(m.id) !== m) return 'not_linked';
+    if (m.media) return 'off';
+    const target = this.members.get(to);
+    if (!target || target === m) return 'not_linked';
+    target.conn?.send({ t: 'rtc', from: m.id, data });
+    return 'ok';
   }
 
   /**
@@ -205,7 +271,14 @@ export class WorldRoom {
     this.members.delete(m.id);
     m.view.clear();
     m.conn = null;
+    // out of the world's SFU room, and every token they hold for it is void (SfuApi.remove)
+    const media = m.media;
+    if (media)
+      void media.api
+        .remove(worldRoomName(media.prefix, this.id), m.id)
+        .catch((err: unknown) => media.log.warn({ err: String(err) }, 'world media remove failed'));
     for (const o of this.members.values()) o.conn?.send({ t: 'world:depart', id: m.id });
+    this.sendPeers();
     if (this.members.size === 0) this.onEmpty();
   }
 
@@ -213,6 +286,41 @@ export class WorldRoom {
     this.disposed = true;
     this.members.clear();
     this.deltas.clear();
+    this.effective.clear();
+  }
+
+  /**
+   * Everyone in a world is linked to everyone else in it, at any distance (the private rule of
+   * ADR-017, applied to the world as one room). Sent whenever someone comes or goes.
+   */
+  private sendPeers(): void {
+    const ids = [...this.members.keys()];
+    for (const m of this.members.values())
+      m.conn?.send({ t: 'peers', peers: ids.filter((id) => id !== m.id).sort() });
+  }
+
+  /**
+   * A media token for this person in the world's room, and only that room: no floor grant
+   * (`floor: null`), so the office floor is never joined from inside a world.
+   */
+  private grant(m: WorldMember): Promise<void> {
+    const media = m.media;
+    if (!media) return Promise.resolve();
+    const room = worldRoomName(media.prefix, this.id);
+    return media.api
+      .mint(room, m.id, m.name, true)
+      .then((token) => {
+        // they may have left while the token was minted: then nothing is sent
+        if (this.members.get(m.id) !== m || !m.conn) return;
+        m.conn.send({
+          t: 'media:grant',
+          url: media.url,
+          floor: null,
+          zone: { room, token },
+          publish: 'zone',
+        });
+      })
+      .catch((err: unknown) => media.log.warn({ err: String(err) }, 'world media grant failed'));
   }
 
   /** Stream the chunks that came into this person's view, and tell them which left it. */

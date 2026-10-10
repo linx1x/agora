@@ -14,6 +14,7 @@ import {
 import { MemoryWorldStore, type WorldStore } from './worldStore';
 import { WorldHub, type WorldMember, type WorldRoom, worldSpawn } from './worldRoom';
 import { defaultStarter } from './starter';
+import type { SfuApi } from '../media/gate';
 
 const SEED = 3560865791;
 const P: WorldGenParams = worldGenParamsFor(WORLDGEN, 1);
@@ -281,5 +282,153 @@ describe('WorldRoom: the starter stamp (P17.10, ADR-053)', () => {
     const seq = { n: 1 };
     for (const cell of path!) expect(walkTo(room, m1, cell.cx * 32 + 16, cell.cy * 32 + 26, seq)).toBe(true);
     expect(room.atReturn(m1)).toBe(true);
+  });
+});
+
+/** A stand-in SFU for a world's room: records every call and hands out readable tokens. */
+class RecordingSfu implements SfuApi {
+  calls: string[] = [];
+  async mint(room: string, identity: string, _name: string, canPublish: boolean) {
+    this.calls.push(`mint ${room} ${identity} ${canPublish ? 'pub' : 'sub'}`);
+    return `tok|${room}|${identity}`;
+  }
+  async setPublish(room: string, identity: string, canPublish: boolean) {
+    this.calls.push(`perm ${room} ${identity} ${canPublish ? 'pub' : 'sub'}`);
+  }
+  async remove(room: string, identity: string) {
+    this.calls.push(`remove ${room} ${identity}`);
+  }
+  async rooms(): Promise<string[]> {
+    return [];
+  }
+  async participants(): Promise<{ identity: string; canPublish: boolean }[]> {
+    return [];
+  }
+}
+
+const mediaOf = (sfu: RecordingSfu) => ({
+  api: sfu,
+  url: 'wss://sfu.test',
+  prefix: 'agora',
+  log: { warn: () => {} },
+});
+const flush = () => new Promise((r) => setTimeout(r, 0));
+
+describe('WorldRoom: media and chat stay inside the world (P17.11, ADR-053)', () => {
+  it('peers: everyone in a world is linked to the others there, and never to the people of another world', async () => {
+    const hub = new WorldHub(await storeWith('w1', 'w2'));
+    const w1 = (await hub.enter('w1'))!;
+    const w2 = (await hub.enter('w2'))!;
+    const c1 = new FakeConn();
+    const c2 = new FakeConn();
+    const c3 = new FakeConn();
+    w1.join(c1, who('p1'));
+    const m2 = w1.join(c2, who('p2'));
+    w2.join(c3, who('p3'));
+    expect(c1.of('peers').at(-1)?.peers).toEqual(['p2']);
+    expect(c2.of('peers').at(-1)?.peers).toEqual(['p1']);
+    expect(c3.of('peers').at(-1)?.peers).toEqual([]);
+    expect(c1.of('peers').flatMap((p) => p.peers)).not.toContain('p3');
+    expect(c3.of('world:join')).toEqual([]);
+    expect(c3.of('world:pos')).toEqual([]);
+    w1.leave(m2);
+    expect(c1.of('peers').at(-1)?.peers).toEqual([]);
+  });
+
+  it('chat: a nearby line reaches every person in its world, wherever they stand, and never another world', async () => {
+    const hub = new WorldHub(await storeWith('w1', 'w2'));
+    const w1 = (await hub.enter('w1'))!;
+    const w2 = (await hub.enter('w2'))!;
+    const c1 = new FakeConn();
+    const c2 = new FakeConn();
+    const c3 = new FakeConn();
+    const m1 = w1.join(c1, who('p1'));
+    const m2 = w1.join(c2, who('p2'));
+    w2.join(c3, who('p3'));
+    m2.x += 800; // far from the speaker: the world is one private scope, so distance does not count
+    w1.chat(m1, 'bonjour');
+    expect(c1.of('chat').at(-1)?.msg).toMatchObject({
+      from: 'p1',
+      name: 'p1',
+      body: 'bonjour',
+      scope: 'nearby',
+      zoneId: 'world:w1',
+    });
+    expect(c2.of('chat').at(-1)?.msg.body).toBe('bonjour');
+    expect(c3.of('chat')).toEqual([]);
+  });
+
+  it('SFU: a member gets a token for the world room only, with no floor; the token is taken back on leave', async () => {
+    const sfu = new RecordingSfu();
+    const hub = new WorldHub(await storeWith('w1', 'w2'));
+    const w1 = (await hub.enter('w1'))!;
+    const w2 = (await hub.enter('w2'))!;
+    const c1 = new FakeConn();
+    const c2 = new FakeConn();
+    const m1 = w1.join(c1, who('p1'), mediaOf(sfu));
+    await flush();
+    expect(c1.of('media:grant').at(-1)).toEqual({
+      t: 'media:grant',
+      url: 'wss://sfu.test',
+      floor: null,
+      zone: { room: 'agora:world:w1', token: 'tok|agora:world:w1|p1' },
+      publish: 'zone',
+    });
+    expect(sfu.calls).toEqual(['mint agora:world:w1 p1 pub']);
+    w2.join(c2, who('p2'), mediaOf(sfu));
+    await flush();
+    expect(c2.of('media:grant').at(-1)?.zone?.room).toBe('agora:world:w2');
+    expect(c1.of('media:grant')).toHaveLength(1); // nothing of the other world reached the first member
+    w1.refreshMedia(m1);
+    await flush();
+    expect(c1.of('media:grant')).toHaveLength(2);
+    w1.leave(m1);
+    await flush();
+    expect(sfu.calls).toContain('remove agora:world:w1 p1');
+    expect(sfu.calls.filter((c) => c.includes('agora:world:w2'))).toEqual(['mint agora:world:w2 p2 pub']);
+  });
+
+  it('SFU: someone who leaves before their token is minted is sent none', async () => {
+    const sfu = new RecordingSfu();
+    const hub = new WorldHub(await storeWith('w1'));
+    const w1 = (await hub.enter('w1'))!;
+    const c1 = new FakeConn();
+    const m1 = w1.join(c1, who('p1'), mediaOf(sfu));
+    w1.leave(m1);
+    await flush();
+    expect(c1.of('media:grant')).toEqual([]);
+    expect(sfu.calls).toContain('remove agora:world:w1 p1');
+  });
+
+  it('P2P: a signal is relayed to a member of the same world only; nobody else hears it', async () => {
+    const hub = new WorldHub(await storeWith('w1', 'w2'));
+    const w1 = (await hub.enter('w1'))!;
+    const w2 = (await hub.enter('w2'))!;
+    const c1 = new FakeConn();
+    const c2 = new FakeConn();
+    const c3 = new FakeConn();
+    const m1 = w1.join(c1, who('p1'));
+    w1.join(c2, who('p2'));
+    w2.join(c3, who('p3'));
+    const data = { kind: 'offer', sdp: 'v=0' } as const;
+    expect(w1.signal(m1, 'p2', data)).toBe('ok');
+    expect(c2.of('rtc')).toEqual([{ t: 'rtc', from: 'p1', data }]);
+    expect(w1.signal(m1, 'p3', data)).toBe('not_linked'); // a person of another world
+    expect(w1.signal(m1, 'nobody', data)).toBe('not_linked');
+    expect(w1.signal(m1, 'p1', data)).toBe('not_linked'); // not to oneself
+    expect(c1.of('rtc')).toEqual([]);
+    expect(c3.of('rtc')).toEqual([]);
+  });
+
+  it('SFU: signalling is off inside a world, as it is in the office', async () => {
+    const sfu = new RecordingSfu();
+    const hub = new WorldHub(await storeWith('w1'));
+    const w1 = (await hub.enter('w1'))!;
+    const c1 = new FakeConn();
+    const c2 = new FakeConn();
+    const m1 = w1.join(c1, who('p1'), mediaOf(sfu));
+    w1.join(c2, who('p2'), mediaOf(sfu));
+    expect(w1.signal(m1, 'p2', { kind: 'ice', candidate: {} })).toBe('off');
+    expect(c2.of('rtc')).toEqual([]);
   });
 });

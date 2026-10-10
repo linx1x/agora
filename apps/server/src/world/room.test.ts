@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   C2S,
   TILE,
@@ -12,7 +12,8 @@ import {
   type Tmj,
 } from '@agora/shared';
 import { MemoryStore, roomStore } from '../db/store';
-import { SpaceRoom, type Player } from './room';
+import { SpaceRoom, type Player, type RoomOptions } from './room';
+import type { SfuApi } from '../media/gate';
 
 const tmj = JSON.parse(
   readFileSync(new URL('../../../../packages/maps/hq.tmj', import.meta.url), 'utf8'),
@@ -33,7 +34,7 @@ class FakeConn {
   }
 }
 
-function makeRoom(store = new MemoryStore(), capacity = 4) {
+function makeRoom(store = new MemoryStore(), capacity = 4, sfu?: RoomOptions['sfu']) {
   return new SpaceRoom(
     map,
     {
@@ -50,6 +51,7 @@ function makeRoom(store = new MemoryStore(), capacity = 4) {
         flags: {} as never,
       },
       reconnectGraceMs: 50,
+      sfu,
     },
     roomStore(store, 'hq'),
     silent,
@@ -804,6 +806,53 @@ describe('SpaceRoom: personal worlds (P17.9, ADR-053)', () => {
     expect(owner.world).toBeUndefined();
   });
 
+  it('peers: people in a world are linked to each other, and the office never lists them (P17.11)', async () => {
+    const start = cb.msgs.length;
+    await enter(owner);
+    // the office heard its own people's links only; the owner is in no link after leaving
+    const linked = (from: number) =>
+      cb.msgs.slice(from).flatMap((m) => (m.t === 'peers' ? m.peers : []));
+    expect(linked(start)).not.toContain(owner.id);
+    place(room, c, cellPos(map, spot.guest));
+    await enter(c);
+    // c stood next to cb while still in the office, so cb was linked to c until c went into the world
+    const after = cb.msgs.length;
+    expect(co.of('peers').at(-1)?.peers).toEqual([c.id]);
+    expect(cc.of('peers').at(-1)?.peers).toEqual([owner.id]);
+    expect(linked(after)).not.toContain(c.id);
+    expect(cb.of('peers').at(-1)?.peers).toEqual([]);
+  });
+
+  it('chat: a line from inside a world reaches its people only and is never stored (P17.11)', async () => {
+    const save = vi.spyOn(store, 'saveMessage');
+    await enter(owner);
+    place(room, c, cellPos(map, spot.guest));
+    await enter(c);
+    room.handle(owner, { t: 'chat', scope: 'nearby', body: 'inside nearby' });
+    room.handle(c, { t: 'chat', scope: 'everyone', body: 'inside everyone' });
+    expect(co.of('chat').map((m) => m.msg.body)).toEqual(['inside nearby', 'inside everyone']);
+    expect(cc.of('chat').map((m) => m.msg.body)).toEqual(['inside nearby', 'inside everyone']);
+    expect(cc.of('chat').every((m) => m.msg.scope === 'nearby')).toBe(true);
+    expect(cb.of('chat').map((m) => m.msg.body)).toEqual([]);
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it('signalling: nobody outside a world reaches a member of it; members reach each other (P17.11)', async () => {
+    await enter(owner);
+    place(room, c, cellPos(map, spot.guest));
+    await enter(c);
+    const benoit = [...room.players.values()].find((p) => p.uid === 'ub')!;
+    const data = { kind: 'offer' as const, sdp: 'v=0' };
+    room.handle(benoit, { t: 'rtc', to: owner.id, data });
+    expect(cb.of('error').at(-1)).toEqual({ t: 'error', code: 'rtc_not_linked' });
+    room.handle(owner, { t: 'rtc', to: benoit.id, data });
+    expect(co.of('error').at(-1)).toEqual({ t: 'error', code: 'rtc_not_linked' });
+    expect(cb.of('rtc')).toEqual([]);
+    room.handle(c, { t: 'rtc', to: owner.id, data });
+    expect(co.of('rtc')).toEqual([{ t: 'rtc', from: c.id, data }]);
+    expect(cb.of('rtc')).toEqual([]);
+  });
+
   it('leaving the space from inside a world takes the person out of the office as well', async () => {
     await enter(owner);
     room.remove(owner);
@@ -829,5 +878,99 @@ describe('SpaceRoom: personal worlds (P17.9, ADR-053)', () => {
     expect(co.of('world:exit')).toHaveLength(1);
     expect(room.players.has(owner.id)).toBe(true);
     expect(owner.zone?.id).toBe('jungle-1');
+  });
+});
+
+describe('SpaceRoom: the SFU and a personal world (P17.11, ADR-053)', () => {
+  const spot = map.desks.find((d) => d.id === 'jungle-1')!;
+  const OWNER = 'owner-7731';
+  const WORLD = 'world-7f3k';
+  const SEED = 3560865791;
+  const FLOOR = 'agora:hq:floor';
+  const settle = () => new Promise((r) => setTimeout(r, 0));
+
+  /** A stand-in SFU: records every call and hands out readable tokens. */
+  class RecordingSfu implements SfuApi {
+    calls: string[] = [];
+    async mint(room: string, identity: string, _name: string, canPublish: boolean) {
+      this.calls.push(`mint ${room} ${identity} ${canPublish ? 'pub' : 'sub'}`);
+      return `tok|${room}|${identity}`;
+    }
+    async setPublish(room: string, identity: string, canPublish: boolean) {
+      this.calls.push(`perm ${room} ${identity} ${canPublish ? 'pub' : 'sub'}`);
+    }
+    async remove(room: string, identity: string) {
+      this.calls.push(`remove ${room} ${identity}`);
+    }
+    async rooms(): Promise<string[]> {
+      return [];
+    }
+    async participants(): Promise<{ identity: string; canPublish: boolean }[]> {
+      return [];
+    }
+  }
+
+  let store: MemoryStore;
+  let sfu: RecordingSfu;
+  let room: SpaceRoom;
+  let co: FakeConn;
+  let owner: Player;
+
+  beforeEach(async () => {
+    store = new MemoryStore();
+    sfu = new RecordingSfu();
+    room = makeRoom(store, 4, { api: sfu, url: 'wss://sfu.test', prefix: 'agora' });
+    await room.init();
+    co = new FakeConn();
+    owner = (await room.join(co, { uid: OWNER, name: 'Alice' }))!;
+    place(room, owner, cellPos(map, spot.chair), 'sit');
+    room.handle(owner, { t: 'desk:claim', deskId: 'jungle-1' });
+    await store.worlds.createWorld({
+      id: WORLD,
+      ownerId: OWNER,
+      seed: SEED,
+      genVersion: 1,
+      createdAt: 0,
+      lastDay: 0,
+      settings: {},
+    });
+    await settle();
+  });
+
+  it('the office floor is left on entry; inside the world the person has the world room and no floor', async () => {
+    expect(co.of('media:grant').at(-1)).toMatchObject({ floor: { room: FLOOR }, zone: null, publish: 'floor' });
+    const mark = sfu.calls.length;
+    room.handle(owner, { t: 'portal:enter', id: 'desk:jungle-1' });
+    await settle();
+    const since = sfu.calls.slice(mark);
+    expect(since).toContain(`remove ${FLOOR} ${owner.id}`);
+    expect(since).toContain(`mint agora:world:${WORLD} ${owner.id} pub`);
+    expect(since.filter((c) => c.startsWith('mint') && c.includes(':floor'))).toEqual([]);
+    expect(co.of('media:grant').at(-1)).toMatchObject({
+      floor: null,
+      zone: { room: `agora:world:${WORLD}` },
+      publish: 'zone',
+    });
+    // signalling is off with an SFU, inside the world as in the office
+    room.handle(owner, { t: 'rtc', to: 'anyone', data: { kind: 'offer', sdp: 'v=0' } });
+    expect(co.of('error').at(-1)).toEqual({ t: 'error', code: 'rtc_off' });
+    // a fresh token on request, still the world's room only
+    room.handle(owner, { t: 'media:token' });
+    await settle();
+    expect(co.of('media:grant').at(-1)?.zone?.room).toBe(`agora:world:${WORLD}`);
+  });
+
+  it('back at the desk the office floor is granted again, and the world room is left', async () => {
+    room.handle(owner, { t: 'portal:enter', id: 'desk:jungle-1' });
+    await settle();
+    const mark = sfu.calls.length;
+    room.handle(owner, { t: 'world:leave' });
+    await settle();
+    expect(sfu.calls.slice(mark)).toContain(`remove agora:world:${WORLD} ${owner.id}`);
+    // the desk's guest spot is inside the pod (a desk zone), so the zone may be granted; never the world room
+    const back = co.of('media:grant').at(-1)!;
+    expect(back.floor?.room).toBe(FLOOR);
+    expect(back.publish).toBe(back.zone ? 'zone' : 'floor');
+    expect(back.zone?.room ?? '').not.toContain('world');
   });
 });
