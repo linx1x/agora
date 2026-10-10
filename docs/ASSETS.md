@@ -96,3 +96,42 @@ Built from `art-src/` with `python3 scripts/art/build.py <biome>`; see `art-src/
 The Jungle wing uses all of it (ADR-023): paths, pond, waterfall, hammock, arcades, sofa sections,
 board game and VR are tile types now. Pond, waterfall, Hub water, portals and fireplaces animate.
 The Oasis wing uses its sheet the same way (ADR-024): fountain pool, cabanas, sandstone paths, pool table, ping-pong. The Boreal wing follows (ADR-025): fire pit, frozen pond, slate paths, TV and console. The Zen wing is done too (ADR-026): koi pond, flagstone paths, water basin, tea, go and jigsaw tables. The Hub floors, walls, windows, plants, tree, rugs, lamp, table and sofa are drawn too (ADR-027, `art-src/hub/atrium.py`), so the Atrium no longer needs Kenney art for those tiles (Kenney stays as a fallback for any tile without a sprite).
+
+## Worlds: block sprites (ADR-053, P17.13)
+
+Personal-world blocks are drawn as 32 px placeholder tiles in `apps/web/src/worlds/placeholders.ts`, from the biome palette (`art-src/palettes.json`) named in `packages/shared/data/worlds/biomes.json`. A real file for a sprite key (`worlds/<biome>/<name>`), once it is in the registry, is preferred automatically (`resolveTile`). Art for each block: 32 px wide, a top face of 24 rows and a side face of 8 rows for ground and solid blocks; decor blocks are transparent around the object. Style reference: the office palettes named below.
+
+| Block | Layer | Sprite key | Solid | Palette |
+|---|---|---|---|---|
+| `stone` | ground | `worlds/shared/stone` | no | zen |
+| `gravel` | ground | `worlds/shared/gravel` | no | zen |
+| `sand` | ground | `worlds/shared/sand` | no | zen |
+| `water` | ground | `worlds/shared/water` | no | zen |
+| `meadow_grass` | ground | `worlds/meadow/grass` | no | zen |
+| `meadow_dirt` | ground | `worlds/meadow/dirt` | no | zen |
+| `jungle_grass` | ground | `worlds/jungle/grass` | no | jungle |
+| `jungle_mud` | ground | `worlds/jungle/mud` | no | jungle |
+| `desert_sand` | ground | `worlds/desert/sand` | no | oasis |
+| `desert_sandstone` | ground | `worlds/desert/sandstone` | no | oasis |
+| `taiga_moss` | ground | `worlds/taiga/moss` | no | boreal |
+| `taiga_podzol` | ground | `worlds/taiga/podzol` | no | boreal |
+| `taiga_snow` | ground | `worlds/taiga/snow` | no | boreal |
+| `tilled_soil` | ground | `worlds/shared/tilled` | no | zen |
+| `tall_grass` | decor | `worlds/meadow/tall_grass` | no | zen |
+| `flower` | decor | `worlds/meadow/flower` | no | zen |
+| `fern` | decor | `worlds/jungle/fern` | no | jungle |
+| `dead_bush` | decor | `worlds/desert/dead_bush` | no | oasis |
+| `oak_tree` | decor | `worlds/meadow/oak` | yes | zen |
+| `jungle_tree` | decor | `worlds/jungle/tree` | yes | jungle |
+| `palm` | decor | `worlds/desert/palm` | yes | oasis |
+| `spruce` | decor | `worlds/taiga/spruce` | yes | boreal |
+| `cactus` | decor | `worlds/desert/cactus` | yes | oasis |
+| `boulder` | decor | `worlds/shared/boulder` | yes | zen |
+| `wood_wall` | decor | `worlds/shared/wood_wall` | yes | zen |
+| `torch` | decor | `worlds/shared/torch` | no | zen |
+| `stone_stairs` | decor | `worlds/shared/stone_stairs` | no | zen |
+| `wood_floor` | ground | `worlds/shared/wood_floor` | no | zen |
+| `return_pad` | ground | `worlds/shared/return_pad` | no | zen |
+| `bed` | decor | `worlds/shared/bed` | yes | zen |
+| `shipping_bin` | decor | `worlds/shared/shipping_bin` | yes | zen |
+| `shop_board` | decor | `worlds/shared/shop_board` | yes | zen |
