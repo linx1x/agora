@@ -57,6 +57,7 @@ import { Bucket } from './rate';
 import { OfficeCat } from './pets';
 import type { ScoreWeights } from '@agora/shared';
 import {
+  RETURN_PORTAL_ID,
   checkPortal,
   deskGate,
   deskOfPortal,
@@ -916,7 +917,11 @@ export class SpaceRoom {
     return nearestFree(this.map, s.x, s.y);
   }
 
-  /** Messages from someone inside a world: moves, leaving, ping. Office-only messages do nothing there. */
+  /**
+   * Messages from someone inside a world: moves, leaving, ping, and the return pad (P17.10: the
+   * only portal inside a world, checked against the person's position). Office-only messages do
+   * nothing there.
+   */
   private onWorldMessage(p: Player, m: C2SMsg) {
     const w = p.world;
     if (!w) return;
@@ -927,6 +932,13 @@ export class SpaceRoom {
       case 'world:leave':
         if (!p.buckets.misc.take()) return;
         return this.leaveWorld(p);
+      case 'portal:enter': {
+        if (!p.buckets.misc.take()) return;
+        if (m.id !== RETURN_PORTAL_ID) return p.conn?.send({ t: 'portal:refused', id: m.id, reason: 'unknown' });
+        if (!w.room.atReturn(w.member))
+          return p.conn?.send({ t: 'portal:refused', id: m.id, reason: 'outside' });
+        return this.leaveWorld(p);
+      }
       case 'ping':
         return p.conn?.send({ t: 'pong', at: m.at });
       case 'leave':

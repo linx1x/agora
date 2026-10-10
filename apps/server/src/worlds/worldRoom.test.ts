@@ -13,6 +13,7 @@ import {
 } from '@agora/shared';
 import { MemoryWorldStore, type WorldStore } from './worldStore';
 import { WorldHub, type WorldMember, type WorldRoom, worldSpawn } from './worldRoom';
+import { defaultStarter } from './starter';
 
 const SEED = 3560865791;
 const P: WorldGenParams = worldGenParamsFor(WORLDGEN, 1);
@@ -137,12 +138,10 @@ describe('WorldRoom: joining and the view', () => {
       rev: 1,
       delta: { '5': { block: 'tilled_soil' } },
     });
-    expect(first.add.find((c) => c.cx === 0 && c.cy === 0)).toEqual({
-      cx: 0,
-      cy: 0,
-      rev: 0,
-      delta: {},
-    });
+    // a chunk with nothing stored still carries the starter stamp (the origin is flattened ground)
+    const origin = first.add.find((c) => c.cx === 0 && c.cy === 0)!;
+    expect(origin.rev).toBe(0);
+    expect(origin.delta[String(chunkIndex(0, 0))]).toEqual({ level: 2, block: 'meadow_dirt', decor: '' });
   });
 
   it('walking into the next chunk streams the chunks that came into view and the ones that left', async () => {
@@ -229,5 +228,58 @@ describe('WorldRoom: presence stays inside its world', () => {
     expect(c1.msgs.length).toBe(seen);
     room.move(m1, { x: m1.x, y: m1.y, dir: 'down', seq: 1 }); // a departed person's move goes nowhere
     expect(c2.of('world:pos')).toHaveLength(1);
+  });
+});
+
+describe('WorldRoom: the starter stamp (P17.10, ADR-053)', () => {
+  it('the server reads the shipped starter from the repo, and its return pad is where the file says', () => {
+    expect(defaultStarter().ret).toEqual({ x: -1, y: 3 });
+  });
+
+  it('the stamp reaches the client with the chunks it covers, even when nothing is stored', async () => {
+    const room = (await new WorldHub(await storeWith('s1')).enter('s1'))!;
+    const c1 = new FakeConn();
+    room.join(c1, who('p1'));
+    // the return pad is cell (-1, 3): chunk (-1, 0), local (31, 3)
+    const west = c1.of('world:chunks')[0]!.add.find((c) => c.cx === -1 && c.cy === 0)!;
+    expect(west.rev).toBe(0);
+    expect(west.delta[String(chunkIndex(31, 3))]).toEqual({ level: 2, block: 'return_pad', decor: '' });
+  });
+
+  it('a stored edit goes over the stamp: the edited cell keeps its level, the rest of the stamp stays', async () => {
+    const store = await storeWith('s2');
+    await store.saveChunk('s2', 0, 0, { '0': { block: 'tilled_soil' } }, 0);
+    const room = (await new WorldHub(store).enter('s2'))!;
+    expect(room.terrain.cellAt(0, 0)).toMatchObject({ level: 2, block: 'tilled_soil', decor: '' });
+    expect(room.terrain.cellAt(1, 0)).toMatchObject({ level: 2, block: 'meadow_dirt', decor: '' });
+    const c1 = new FakeConn();
+    room.join(c1, who('p1'));
+    const origin = c1.of('world:chunks')[0]!.add.find((c) => c.cx === 0 && c.cy === 0)!;
+    expect(origin.rev).toBe(1);
+    expect(origin.delta['0']).toEqual({ level: 2, block: 'tilled_soil', decor: '' });
+  });
+
+  it('the house bed, walls and the shipping bin block walking; the farm and the pad do not', async () => {
+    const room = (await new WorldHub(await storeWith('s3')).enter('s3'))!;
+    const feet = (cx: number, cy: number) => ({ x: cx * 32 + 16, y: cy * 32 + 26 });
+    const blocked = (cx: number, cy: number) => worldCollides(room.terrain, feet(cx, cy).x, feet(cx, cy).y);
+    expect(blocked(-5, -5)).toBe(true); // the bed
+    expect(blocked(-6, -4)).toBe(true); // a wall
+    expect(blocked(0, 1)).toBe(true); // the shipping bin
+    expect(blocked(6, 0)).toBe(false); // the farm plot
+    expect(blocked(-1, 3)).toBe(false); // the return pad
+  });
+
+  it('only the return pad is a way back: a person off the pad is refused, on it they leave the world', async () => {
+    const room = (await new WorldHub(await storeWith('s4')).enter('s4'))!;
+    const c1 = new FakeConn();
+    const m1 = room.join(c1, who('p1'));
+    expect(room.atReturn(m1)).toBe(false);
+    // a walk from the arrival point to the pad, cell by cell (each step validated by the room)
+    const path = findWorldPath(room.terrain, feetCell(m1.x, m1.y), { cx: -1, cy: 3 });
+    expect(path).not.toBeNull();
+    const seq = { n: 1 };
+    for (const cell of path!) expect(walkTo(room, m1, cell.cx * 32 + 16, cell.cy * 32 + 26, seq)).toBe(true);
+    expect(room.atReturn(m1)).toBe(true);
   });
 });

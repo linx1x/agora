@@ -16,6 +16,10 @@ import {
   chunkOfPoint,
   chunksInView,
   deltaOverlay,
+  inPortal,
+  mergeDeltas,
+  returnTrigger,
+  starterPatches,
   validateWorldMove,
   worldCollides,
   worldGenParamsFor,
@@ -23,10 +27,13 @@ import {
   type ChunkCoord,
   type ChunkDelta,
   type Dir,
+  type PortalRect,
   type S2CMsg,
+  type Starter,
   type WorldGenParams,
   type WorldPerson,
 } from '@agora/shared';
+import { defaultStarter } from './starter';
 import type { StoredChunk, StoredWorld, WorldStore } from './worldStore';
 
 /** How far (in cells, each way) the spawn search looks for walkable ground. */
@@ -84,7 +91,11 @@ export class WorldRoom {
   readonly params: WorldGenParams;
   readonly terrain: WorldTerrain;
   private readonly members = new Map<string, WorldMember>();
+  /** stored edits only, by chunk key: the revision each chunk was saved at */
   private readonly deltas = new Map<string, { rev: number; delta: ChunkDelta }>();
+  /** what the terrain and the client see per chunk: the starter stamp, stored edits over it */
+  private readonly effective = new Map<string, ChunkDelta>();
+  private readonly returnRect: PortalRect;
   private readonly onEmpty: () => void;
   disposed = false;
 
@@ -93,19 +104,25 @@ export class WorldRoom {
     params: WorldGenParams,
     stored: readonly StoredChunk[],
     onEmpty: () => void,
+    starter: Starter,
   ) {
     this.id = world.id;
     this.seed = world.seed;
     this.genVersion = world.genVersion;
     this.params = params;
     this.onEmpty = onEmpty;
+    this.returnRect = returnTrigger(starter);
     for (const c of stored) {
-      // a stored delta that no longer parses is left out: its cells show the base terrain
+      // a stored delta that no longer parses is left out: its cells show the stamp or the base terrain
       const parsed = ChunkDeltaSchema.safeParse(c.delta);
       if (parsed.success) this.deltas.set(chunkKey(c.cx, c.cy), { rev: c.rev, delta: parsed.data });
     }
+    const stamp = starterPatches(starter);
+    for (const key of new Set([...stamp.keys(), ...this.deltas.keys()]))
+      this.effective.set(key, mergeDeltas(stamp.get(key), this.deltas.get(key)?.delta));
+    // the terrain reads the effective layers, built once here, so a chunk costs no copy per cell
     this.terrain = new WorldTerrain(world.seed, params, {
-      overlay: deltaOverlay((cx, cy) => this.deltas.get(chunkKey(cx, cy))?.delta),
+      overlay: deltaOverlay((cx, cy) => this.effective.get(chunkKey(cx, cy))),
     });
   }
 
@@ -177,6 +194,11 @@ export class WorldRoom {
       o.conn?.send({ t: 'world:pos', id: m.id, x: m.x, y: m.y, d: m.d });
   }
 
+  /** Whether a person stands on the return pad (the only way back to the office from a world). */
+  atReturn(m: WorldMember): boolean {
+    return inPortal(this.returnRect, m.x, m.y);
+  }
+
   /** Leave the world. The last person out closes the room. */
   leave(m: WorldMember): void {
     if (this.members.get(m.id) !== m) return;
@@ -202,8 +224,12 @@ export class WorldRoom {
     const add: { cx: number; cy: number; rev: number; delta: ChunkDelta }[] = [];
     for (const [key, c] of want) {
       if (m.view.has(key)) continue;
-      const stored = this.deltas.get(key);
-      add.push({ cx: c.cx, cy: c.cy, rev: stored?.rev ?? 0, delta: stored?.delta ?? {} });
+      add.push({
+        cx: c.cx,
+        cy: c.cy,
+        rev: this.deltas.get(key)?.rev ?? 0,
+        delta: this.effective.get(key) ?? {},
+      });
     }
     const drop: ChunkCoord[] = [];
     for (const [key, c] of m.view) if (!want.has(key)) drop.push(c);
@@ -220,7 +246,11 @@ export class WorldHub {
   private readonly rooms = new Map<string, WorldRoom>();
   private readonly opening = new Map<string, Promise<WorldRoom | null>>();
 
-  constructor(private readonly store: WorldStore) {}
+  /** `starter` is read on the first world opened (a missing file refuses worlds, never the office) */
+  constructor(
+    private readonly store: WorldStore,
+    private readonly starter?: Starter,
+  ) {}
 
   /**
    * The open room of a world, loading it when it is not open. Concurrent arrivals share one load.
@@ -252,7 +282,8 @@ export class WorldHub {
       return null;
     }
     const stored = await this.store.loadAllChunks(worldId);
-    const room: WorldRoom = new WorldRoom(world, params, stored, () => this.close(room));
+    const starter = this.starter ?? defaultStarter();
+    const room: WorldRoom = new WorldRoom(world, params, stored, () => this.close(room), starter);
     this.rooms.set(worldId, room);
     return room;
   }

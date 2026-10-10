@@ -811,4 +811,23 @@ describe('SpaceRoom: personal worlds (P17.9, ADR-053)', () => {
     expect(cc.of('leave').at(-1)?.id).toBe(owner.id);
     expect(owner.world).toBeUndefined();
   });
+
+  it('the return pad takes the person back to their desk; elsewhere in the world, or another id, is refused', async () => {
+    await enter(owner);
+    room.handle(owner, { t: 'portal:enter', id: 'return' });
+    expect(co.of('portal:refused').at(-1)).toEqual({ t: 'portal:refused', id: 'return', reason: 'outside' });
+    expect(owner.world).toBeDefined();
+    room.handle(owner, { t: 'portal:enter', id: 'desk:jungle-1' });
+    expect(co.of('portal:refused').at(-1)).toEqual({ t: 'portal:refused', id: 'desk:jungle-1', reason: 'unknown' });
+    expect(owner.world).toBeDefined();
+    // white-box: the walk to the pad is tested in worldRoom.test.ts; here only the room's rule
+    // (the pad is the cell (-1, 3), and the feet point at (-16, 122) is inside it)
+    owner.world!.member.x = -16;
+    owner.world!.member.y = 122;
+    room.handle(owner, { t: 'portal:enter', id: 'return' });
+    expect(owner.world).toBeUndefined();
+    expect(co.of('world:exit')).toHaveLength(1);
+    expect(room.players.has(owner.id)).toBe(true);
+    expect(owner.zone?.id).toBe('jungle-1');
+  });
 });

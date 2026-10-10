@@ -9,3 +9,4 @@ export * from './cells';
 export * from './walk';
 export * from './delta';
 export * from './view';
+export * from './starter';
