@@ -39,6 +39,17 @@
     "prev": "{{what}} précédent",
     "next": "{{what}} suivant",
     "enter": "Entrer dans Agora",
+    "paperPreviewAlt": "Aperçu de l'avatar en 2.5D",
+    "pixelPreviewAlt": "Aperçu de l'avatar en vue 2D",
+    "paperCaption": "Vue 2.5D",
+    "pixelCaption": "Vue 2D",
+    "turn": "Tourner",
+    "dir": {
+      "down": "face",
+      "left": "gauche",
+      "right": "droite",
+      "up": "dos"
+    },
     "opt": {
       "short": "Courts",
       "long": "Longs",

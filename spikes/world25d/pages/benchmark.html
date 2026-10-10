@@ -1,0 +1,310 @@
+<title>Agora 2.5D Benchmark</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400&display=swap">
+<style>
+  /* Layout: one calm column (Agora DESIGN.md tokens): run controls, then the shared results ledger. */
+  :root {
+    --fleuve: #17324D;
+    --neige: #F3F6F8;
+    --ardoise: #4A5866;
+    --ambre: #F2A900;
+    --sapin: #2F7D5B;
+    --cerise: #C2364B;
+    --bg: #F3F6F8;
+    --panel: #FFFFFF;
+    --fg: #17324D;
+    --muted: #4A5866;
+    --line: #D5DDE4;
+    --btn-fg: #FFFFFF;
+    --chip: #E7EDF2;
+    --ui: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0D1823; --panel: #12202E; --fg: #E6EDF2; --muted: #A3B2BF; --line: #24384B;
+      --fleuve: #8FB8DE; --btn-fg: #0D1823; --chip: #1A2C3D; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0D1823; --panel: #12202E; --fg: #E6EDF2; --muted: #A3B2BF; --line: #24384B;
+    --fleuve: #8FB8DE; --btn-fg: #0D1823; --chip: #1A2C3D; color-scheme: dark;
+  }
+  html, body { background: var(--bg); color: var(--fg); }
+  body { font: 15px/1.5 var(--ui); padding-inline: 16px; padding-block: 28px 48px; }
+  main { max-width: 860px; margin: 0 auto; display: grid; gap: 28px; }
+  h1 { font-size: 22px; margin: 0; text-wrap: balance; }
+  h2 { font-size: 18px; margin: 0; }
+  p { margin: 0; max-width: 65ch; }
+  .muted { color: var(--muted); }
+  header { display: grid; gap: 6px; }
+  .tag { display: inline-block; font-size: 13px; color: var(--muted); }
+  section { display: grid; gap: 14px; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 18px; display: grid; gap: 14px; }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  label.field { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+  input[type=text] { font: 15px var(--ui); color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; width: min(320px, 100%); }
+  button, .btn { font: 700 15px var(--ui); border-radius: 8px; padding: 9px 14px; cursor: pointer; border: 1px solid var(--fleuve); text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
+  .primary { background: var(--fleuve); color: var(--btn-fg); }
+  .secondary { background: transparent; color: var(--fleuve); }
+  button:disabled { opacity: .55; cursor: default; }
+  :focus-visible { outline: 3px solid var(--ambre); outline-offset: 2px; }
+  .engines { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+  .engine { border: 1px solid var(--line); border-radius: 8px; padding: 14px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+  .engine h3 { margin: 0; font-size: 15px; }
+  .engine p { font-size: 13px; color: var(--muted); }
+  .steps { margin: 0; padding-left: 20px; font-size: 13px; color: var(--muted); display: grid; gap: 2px; }
+  .status { font-size: 13px; color: var(--muted); min-height: 1.5em; }
+  .log { margin: 0; padding-left: 20px; font-size: 13px; display: grid; gap: 2px; }
+  .log:empty { display: none; }
+  .log .good { color: var(--sapin); }
+  .log .bad { color: var(--cerise); }
+  .tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { font-weight: 700; color: var(--muted); background: var(--chip); }
+  td.num, th.num { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  tr.group td { background: var(--chip); color: var(--muted); font-weight: 700; }
+  tr:last-child td { border-bottom: 0; }
+  .eng { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; background: var(--chip); }
+  .gpu { max-width: 260px; overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
+  .good { color: var(--sapin); font-weight: 700; }
+  .bad { color: var(--cerise); font-weight: 700; }
+  .empty { padding: 18px; color: var(--muted); font-size: 14px; }
+  /* full-screen run */
+  #stage { position: fixed; inset: 0; z-index: 10; background: #10140f; display: grid; grid-template-rows: auto 1fr; }
+  #stage[hidden] { display: none; }
+  #stage .bar { display: flex; gap: 10px; align-items: center; justify-content: space-between; padding: calc(8px + env(safe-area-inset-top, 0px)) 12px 8px; background: #17324D; color: #F3F6F8; }
+  #stage .live { display: inline-flex; gap: 8px; align-items: center; font-weight: 700; }
+  #stage .dot { width: 10px; height: 10px; border-radius: 50%; background: #F2A900; }
+  #stage button { background: #F3F6F8; color: #17324D; border-color: #F3F6F8; padding: 6px 12px; }
+  #stage iframe { border: 0; width: 100%; height: 100%; display: block; }
+  @media (prefers-reduced-motion: no-preference) { #stage .dot { animation: pulse 1.2s ease-in-out infinite; } }
+  @keyframes pulse { 50% { opacity: .35; } }
+</style>
+
+<main>
+  <header>
+    <span class="tag">Phase 16 · P16.1 engine spike · ADR-052</span>
+    <h1>Agora 2.5D benchmark</h1>
+    <p class="muted">The Jungle wing drawn in a tilted 3D view, built twice: once with Three.js and once with Phaser 4 projecting the same faces itself. Run it here on your laptop and on your phone. Each result is saved below, so Claude can read the numbers for Checkpoint I.</p>
+  </header>
+
+  <section class="panel" aria-labelledby="run-h">
+    <h2 id="run-h">Run on this device</h2>
+    <label class="field" for="device">Name this device (shown in the results)
+      <input type="text" id="device" placeholder="Laptop, Chrome" autocomplete="off">
+    </label>
+    <ol class="steps">
+      <li>Plug in the laptop and close other heavy tabs. On a phone, keep the screen awake.</li>
+      <li>The full run plays six scripted walks of 15 seconds each (about 2 minutes). Don't touch the page while it runs. On a phone, a quick run of each engine is enough.</li>
+    </ol>
+    <div class="row">
+      <button class="primary" id="runAll" type="button">Run full benchmark</button>
+      <span class="status" id="status" role="status"></span>
+    </div>
+    <ol class="log" id="log" aria-label="Run log"></ol>
+    <div class="row"><button class="secondary" type="button" id="copyRuns" hidden>Copy unsaved results</button></div>
+    <textarea id="copyText" hidden readonly aria-label="Unsaved results" style="width:100%;min-height:90px;font:12px var(--mono)"></textarea>
+    <div class="engines">
+      <div class="engine">
+        <h3>Three.js</h3>
+        <p>A real 3D engine: one merged mesh for the wing, real-time sun and lamp lights, optional sun shadows. It adds about 130 KB (gzipped) to the app.</p>
+        <div class="row"><button class="secondary" type="button" data-run="three">Quick run (15 s)</button><button class="secondary" type="button" data-walk="three">Walk around</button></div>
+      </div>
+      <div class="engine">
+        <h3>Phaser 4, faked depth</h3>
+        <p>The app's current engine. Phaser 4 has no 3D camera, so every face is projected on the CPU each frame. No dynamic lights. Adds nothing to the app.</p>
+        <div class="row"><button class="secondary" type="button" data-run="phaser">Quick run (15 s)</button><button class="secondary" type="button" data-walk="phaser">Walk around</button></div>
+      </div>
+    </div>
+    <p class="muted" style="font-size:13px">Walking: arrow keys or WASD, or click or tap the floor. The panel in the corner changes the tilt, the distance, the number of bots and the pixel filter.</p>
+  </section>
+
+  <section aria-labelledby="res-h">
+    <div class="row" style="justify-content:space-between">
+      <h2 id="res-h">Results</h2>
+      <span class="status" id="dbstate"></span>
+    </div>
+    <p class="muted" id="empty">No runs saved yet. Run the benchmark above; each result appears here, above the reference rows.</p>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>Device</th><th>Engine</th><th>Run</th><th class="num">FPS</th><th class="num">p95 frame</th><th class="num">Draw calls</th><th class="num">First frame</th><th>GPU</th><th>When</th></tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <p class="muted" style="font-size:13px">FPS is the average over the run, capped by the screen's refresh rate. "p95 frame" is the time 95% of frames came in under (16.7 ms keeps 60 fps, 33 ms keeps 30 fps). The reference rows come from Claude's workspace, which has no GPU and renders in software. They show the worst case, not a real device.</p>
+  </section>
+</main>
+
+<div id="stage" hidden>
+  <div class="bar">
+    <span class="live"><span class="dot" aria-hidden="true"></span><span id="stageLabel">Running</span></span>
+    <button type="button" id="closeStage">Close</button>
+  </div>
+  <iframe id="frame" title="2.5D world" allow="fullscreen"></iframe>
+</div>
+
+<script>
+const REFERENCE = [{"run":"three lights=1","engine":"three","fps":4.1,"p95":483.3,"calls":13,"first":2459},{"run":"three lights=0","engine":"three","fps":12.5,"p95":150.1,"calls":16,"first":1207},{"run":"three lights=1&shadows=1","engine":"three","fps":2.9,"p95":883.2,"calls":25,"first":1550},{"run":"phaser default","engine":"phaser","fps":10.8,"p95":168.1,"calls":1,"first":2763},{"run":"three lights=1&bots=50","engine":"three","fps":3.8,"p95":516.7,"calls":44,"first":2764},{"run":"phaser bots=50","engine":"phaser","fps":9.2,"p95":191.9,"calls":4,"first":5237}];
+const RUNS = [
+  ['three', 'lights=1', 'lights on'],
+  ['three', 'lights=0', 'lights off'],
+  ['phaser', '', 'default'],
+  ['three', 'lights=1&shadows=1', 'lights + sun shadows'],
+  ['three', 'lights=1&bots=50', '50 bots'],
+  ['phaser', 'bots=50', '50 bots'],
+];
+const $ = (s) => document.querySelector(s);
+const deviceEl = $('#device');
+try { deviceEl.value = localStorage.getItem('agora-bench-device') || ''; } catch {}
+deviceEl.addEventListener('change', () => { try { localStorage.setItem('agora-bench-device', deviceEl.value); } catch {} });
+
+let saved = [];          // rows from the shared store
+const local = [];        // rows from this page load when the store is not available
+let db = null;
+
+function guessDevice() {
+  const ua = navigator.userAgent;
+  const kind = /Mobi|Android|iPhone|iPad/.test(ua) ? 'Phone or tablet' : 'Computer';
+  const br = /Edg\//.test(ua) ? 'Edge' : /Firefox\//.test(ua) ? 'Firefox' : /Chrome\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : 'Browser';
+  return `${kind}, ${br}`;
+}
+const fmt = (n, d = 0) => (typeof n === 'number' ? n.toFixed(d) : '–');
+function fpsClass(f) { return f >= 50 ? 'good' : f < 25 ? 'bad' : ''; }
+function runLabel(run) {
+  const q = run.replace(/^(three|phaser) /, '');
+  if (q === 'default') return 'default';
+  return q.split('&').map((k) => ({ 'lights=1': 'lights on', 'lights=0': 'lights off', 'shadows=1': 'sun shadows', 'bots=50': '50 bots' }[k] || k)).join(', ');
+}
+function td(text, cls) { const c = document.createElement('td'); c.textContent = text; if (cls) c.className = cls; return c; }
+
+function render() {
+  const body = $('#rows');
+  body.replaceChildren();
+  const mine = [...saved, ...local].sort((a, b) => (b.at || 0) - (a.at || 0));
+  $('#empty').hidden = mine.length > 0;
+  for (const r of mine) {
+    const tr = document.createElement('tr');
+    const eng = document.createElement('td');
+    const chip = document.createElement('span'); chip.className = 'eng'; chip.textContent = r.engine === 'three' ? 'Three.js' : 'Phaser 4'; eng.append(chip);
+    const gpu = td(r.gpu || '', 'gpu'); gpu.title = r.gpu || '';
+    tr.append(td(r.device || '–'), eng, td(r.label || ''), td(fmt(r.fpsMean, 1), 'num ' + fpsClass(r.fpsMean)), td(fmt(r.frameMsP95, 1) + ' ms', 'num'), td(fmt(r.drawCallsMean), 'num'), td(fmt(r.firstFrameMs) + ' ms', 'num'), gpu, td(r.at ? new Date(r.at).toLocaleString() : ''));
+    body.append(tr);
+  }
+  const g = document.createElement('tr'); g.className = 'group';
+  const gc = td('Reference: software rendering, no GPU (Claude\'s workspace)'); gc.colSpan = 9; g.append(gc); body.append(g);
+  for (const r of REFERENCE) {
+    const tr = document.createElement('tr');
+    const eng = document.createElement('td');
+    const chip = document.createElement('span'); chip.className = 'eng'; chip.textContent = r.engine === 'three' ? 'Three.js' : 'Phaser 4'; eng.append(chip);
+    tr.append(td('Software GL'), eng, td(runLabel(r.run)), td(fmt(r.fps, 1), 'num'), td(fmt(r.p95, 1) + ' ms', 'num'), td(fmt(r.calls), 'num'), td(fmt(r.first) + ' ms', 'num'), td('SwiftShader', 'gpu'), td(''));
+    body.append(tr);
+  }
+}
+render();
+
+// shared store: results Claude can read back
+(async () => {
+  try { db = await window.claude?.use('db'); } catch { db = null; }
+  if (!db) { $('#dbstate').textContent = 'Results stay on this page only (saving is not available here).'; return; }
+  $('#dbstate').textContent = 'Results are saved for Claude.';
+  db.collection('runs').orderBy('at', 'desc').limit(200).onSnapshot(
+    (snap) => { saved = snap.docs.map((d) => d.data()); render(); },
+    () => { $('#dbstate').textContent = 'Could not load saved results. New runs still show here.'; },
+  );
+})();
+
+// ── running the engine pages in a full-screen frame
+const stage = $('#stage');
+const frame = $('#frame');
+let pending = null;
+addEventListener('message', (e) => {
+  if (e.source !== frame.contentWindow || !e.data) return;
+  if (e.data.type === 'agora-bench-ready' && pending) pending.ready = true;
+  if (e.data.type === 'agora-bench-result' && pending) pending.done(e.data.result);
+});
+// Going from three.html#a to three.html#b only changes the hash and does not reload the page,
+// so every run starts from a blank frame.
+function open(engine, hash, label) {
+  $('#stageLabel').textContent = label;
+  stage.hidden = false;
+  frame.src = 'about:blank';
+  setTimeout(() => { frame.src = `${engine}.html#${hash}`; frame.focus(); }, 80);
+}
+function close() { stage.hidden = true; frame.src = 'about:blank'; if (pending) pending.done(null); }
+$('#closeStage').addEventListener('click', close);
+addEventListener('keydown', (e) => { if (e.key === 'Escape' && !stage.hidden) close(); });
+document.querySelectorAll('[data-walk]').forEach((b) => b.addEventListener('click', () => {
+  open(b.dataset.walk, 'names=1', b.dataset.walk === 'three' ? 'Three.js · walk around' : 'Phaser 4 · walk around');
+}));
+
+const engName = (e) => (e === 'three' ? 'Three.js' : 'Phaser 4');
+function runOne(engine, q, label, i, n) {
+  return new Promise((resolve) => {
+    const t0 = Date.now();
+    const timer = setInterval(() => {
+      const s = Math.round((Date.now() - t0) / 1000);
+      $('#stageLabel').textContent = `Run ${i} of ${n} · ${engName(engine)}, ${label} · ${s} s`;
+      if (pending && !pending.ready && s > 30) pending.done({ failed: 'the page did not start (no picture after 30 s)' });
+      else if (pending && s > 75) pending.done({ failed: 'no result after 75 s' });
+    }, 500);
+    pending = { ready: false, done: (r) => { clearInterval(timer); pending = null; resolve(r); } };
+    open(engine, `bench=1&sec=15&${q}`, `Run ${i} of ${n}`);
+  });
+}
+
+const logEl = $('#log');
+const unsaved = [];
+function logLine(text, kind) {
+  const li = document.createElement('li');
+  li.textContent = text;
+  if (kind) li.className = kind;
+  logEl.append(li);
+}
+function showCopy() {
+  const b = $('#copyRuns');
+  b.hidden = unsaved.length === 0;
+}
+$('#copyRuns').addEventListener('click', async () => {
+  const text = JSON.stringify(unsaved);
+  try { await navigator.clipboard.writeText(text); $('#copyRuns').textContent = 'Copied. Paste it to Claude.'; }
+  catch {
+    const ta = $('#copyText'); ta.hidden = false; ta.value = text; ta.focus(); ta.select();
+  }
+});
+
+async function runSet(runs) {
+  document.querySelectorAll('[data-run], #runAll').forEach((b) => (b.disabled = true));
+  logEl.replaceChildren();
+  const device = deviceEl.value.trim() || guessDevice();
+  let ok = 0;
+  for (let i = 0; i < runs.length; i++) {
+    const [engine, q, label] = runs[i];
+    $('#status').textContent = `Running ${i + 1} of ${runs.length}…`;
+    const r = await runOne(engine, q, label, i + 1, runs.length);
+    const name = `${engName(engine)}, ${label}`;
+    if (!r) { logLine(`${name}: stopped.`, 'bad'); $('#status').textContent = 'Stopped. Finished runs are kept.'; break; }
+    if (r.failed) { logLine(`${name}: ${r.failed}.`, 'bad'); continue; }
+    const row = { device, label, engine: r.engine, fpsMean: r.fpsMean, frameMsP95: r.frameMsP95, frameMsP99: r.frameMsP99, frameMsMean: r.frameMsMean, workMsMean: r.workMsMean, drawCallsMean: r.drawCallsMean, firstFrameMs: r.firstFrameMs, gpu: r.gpu, ua: r.ua, dpr: r.dpr, viewport: r.viewport, opts: r.opts, at: Date.now() };
+    ok++;
+    let savedOk = false;
+    if (db) {
+      try { await db.collection('runs').add(row); savedOk = true; }
+      catch (err) { logLine(`${name}: ${r.fpsMean} fps, but saving failed (${err?.code || 'error'}).`, 'bad'); }
+    }
+    if (savedOk) logLine(`${name}: ${r.fpsMean} fps, saved.`, 'good');
+    else {
+      if (!db) logLine(`${name}: ${r.fpsMean} fps (not saved: saving is not available in this view).`, 'bad');
+      local.push(row); unsaved.push(row); render(); showCopy();
+    }
+  }
+  stage.hidden = true; frame.src = 'about:blank';
+  if (!$('#status').textContent.startsWith('Stopped')) $('#status').textContent = `Done: ${ok} of ${runs.length} runs finished.`;
+  document.querySelectorAll('[data-run], #runAll').forEach((b) => (b.disabled = false));
+}
+$('#runAll').addEventListener('click', () => runSet(RUNS));
+document.querySelectorAll('[data-run]').forEach((b) => b.addEventListener('click', () => runSet([[b.dataset.run, b.dataset.run === 'three' ? 'lights=1' : '', b.dataset.run === 'three' ? 'lights on' : 'default']])));
+</script>

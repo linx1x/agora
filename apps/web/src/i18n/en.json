@@ -39,6 +39,17 @@
     "prev": "Previous {{what}}",
     "next": "Next {{what}}",
     "enter": "Enter Agora",
+    "paperPreviewAlt": "Preview of the avatar in 2.5D",
+    "pixelPreviewAlt": "Preview of the avatar in the 2D view",
+    "paperCaption": "2.5D view",
+    "pixelCaption": "2D view",
+    "turn": "Turn",
+    "dir": {
+      "down": "front",
+      "left": "left",
+      "right": "right",
+      "up": "back"
+    },
     "opt": {
       "short": "Short",
       "long": "Long",

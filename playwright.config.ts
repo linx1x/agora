@@ -86,7 +86,7 @@ export default defineConfig({
         // the office cat is off by default until its art is approved (ADR-040);
         // the characters (ADR-042) at a fixed hour so their schedule puts them in the office
         FEATURE_FLAGS:
-          'pets=true,npcs=true,npcTalk=true,npcMemory=true,npcSocial=true,npcVoice=true',
+          'pets=true,npcs=true,npcTalk=true,npcMemory=true,npcSocial=true,npcVoice=true,world25d=true',
         ...(VOICE_E2E ? { NPC_VOICE_URL: `http://127.0.0.1:${VOICE_PORT}` } : {}),
         // a stand-in for the cloud model: its replies start with "(fake)" (P15.4)
         NPC_LLM_PROVIDER: 'fake',

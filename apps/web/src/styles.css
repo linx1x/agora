@@ -803,6 +803,42 @@ textarea {
 .avatar-preview img {
   image-rendering: pixelated;
 }
+/* P16.7: 2.5D paper preview beside the small 2D view (flag world25d). The preview card is light in
+   both themes, so its text is set dark here. */
+.avatar-previews {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+  justify-content: center;
+  color: #2b2118;
+}
+.avatar-fig {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--fs-1);
+}
+.avatar-previews .avatar-paper-img {
+  image-rendering: auto;
+  max-width: 100%;
+  height: auto;
+}
+.avatar-turn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  color: #2b2118;
+}
+.avatar-dir {
+  min-width: 4.5em;
+  font-size: var(--fs-1);
+  font-weight: 700;
+}
 .avatar-fields {
   flex: 1;
   min-width: 240px;
@@ -2177,4 +2213,90 @@ body {
 .linklike:focus-visible {
   outline: 3px solid var(--focus, #2c5a85);
   outline-offset: 2px;
+}
+/* P16.8 2.5D overlays */
+/* Names, status dots, emotes and speech bubbles over people and characters (ADR-052), the same
+   look as the 2D view's Phaser text. Sizes are CSS px at every zoom: nothing here is scaled. */
+.ov25 {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.ov25-who {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+}
+.ov25 .ov25-row {
+  position: absolute;
+  left: -200px;
+  width: 400px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.ov25 .ov25-row[hidden],
+.ov25 .ov25-who[hidden] {
+  display: none;
+}
+.ov25-label {
+  position: relative;
+  display: inline-block;
+  white-space: nowrap;
+  font: 700 13px/1.25 'Atkinson Hyperlegible', system-ui, sans-serif;
+  color: #f3f6f8;
+  -webkit-text-stroke: 3px #17324d;
+  paint-order: stroke fill;
+}
+.ov25-dot {
+  position: absolute;
+  left: -10px;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  margin-top: -4px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px #17324d;
+}
+.ov25-label--bot {
+  -webkit-text-stroke: 0;
+  paint-order: normal;
+  font-size: 12px;
+  padding: 1px 4px;
+  background: #2f6f73;
+}
+.ov25-bubble {
+  display: inline-block;
+  box-sizing: content-box;
+  max-width: 200px;
+  padding: 4px 6px;
+  background: #f3f6f8;
+  color: #17324d;
+  font: 400 13px/1.25 'Atkinson Hyperlegible', system-ui, sans-serif;
+  text-align: center;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.ov25-row--bubble:not([hidden]) .ov25-bubble {
+  animation: ov25-in 120ms ease-out;
+}
+.ov25-emote {
+  display: inline-block;
+  font: 20px/1.2 sans-serif;
+}
+@keyframes ov25-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ov25-row--bubble:not([hidden]) .ov25-bubble {
+    animation: none;
+  }
 }

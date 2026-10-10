@@ -28,6 +28,15 @@
       "notes": "Drawn in code (apps/web/src/game/textures.ts). To be replaced by LPC layers (PLAN P2.5)."
     },
     {
+      "path": "generated:characters/agora-paper-avatars",
+      "title": "Agora paper avatars (2.5D, drawn in code)",
+      "authors": ["Vincent (Agora project)", "Claude"],
+      "license": "CC0",
+      "source": "",
+      "modified": false,
+      "notes": "Drawn in code (apps/web/src/game3d/paperAvatar.ts), smooth 64×96 cut-outs for the 2.5D view (P16.7, ADR-052). Same catalog choices as the 2D avatars."
+    },
+    {
       "path": "npm:@fontsource/atkinson-hyperlegible",
       "title": "Atkinson Hyperlegible",
       "authors": ["Braille Institute of America", "Applied Design Works"],

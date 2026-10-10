@@ -1,0 +1,206 @@
+<title>Agora 2.5D Styles</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+  /* Layout: a review sheet. Each style gets a full-width day/evening pair, then tilt and avatars, then the picks form. Agora DESIGN.md tokens. */
+  :root {
+    --bg: #F3F6F8; --panel: #FFFFFF; --fg: #17324D; --muted: #4A5866; --line: #D5DDE4;
+    --accent: #17324D; --accent-fg: #FFFFFF; --ok: #2F7D5B; --live: #F2A900; --chip: #E7EDF2;
+    --ui: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg: #0D1823; --panel: #12202E; --fg: #E6EDF2; --muted: #A3B2BF; --line: #24384B; --accent: #8FB8DE; --accent-fg: #0D1823; --chip: #1A2C3D; color-scheme: dark; }
+  }
+  :root[data-theme="dark"] { --bg: #0D1823; --panel: #12202E; --fg: #E6EDF2; --muted: #A3B2BF; --line: #24384B; --accent: #8FB8DE; --accent-fg: #0D1823; --chip: #1A2C3D; color-scheme: dark; }
+  html, body { background: var(--bg); color: var(--fg); }
+  body { font: 15px/1.5 var(--ui); padding-inline: 16px; padding-block: 28px 56px; }
+  main { max-width: 1100px; margin: 0 auto; display: grid; gap: 36px; }
+  h1 { font-size: 22px; margin: 0; text-wrap: balance; }
+  h2 { font-size: 18px; margin: 0; text-wrap: balance; }
+  h3 { font-size: 15px; margin: 0; }
+  p { margin: 0; max-width: 68ch; }
+  .muted { color: var(--muted); }
+  .tag { font-size: 13px; color: var(--muted); }
+  header, section { display: grid; gap: 12px; }
+  .pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 10px; }
+  figure { margin: 0; display: grid; gap: 4px; min-width: 0; }
+  figure img { width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--line); display: block; image-rendering: auto; }
+  figcaption { font-size: 13px; color: var(--muted); }
+  .notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px 24px; font-size: 14px; }
+  .notes div { min-width: 0; }
+  .notes b { display: block; font-size: 13px; color: var(--muted); }
+  .tilts { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 18px; display: grid; gap: 16px; }
+  fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: 6px; }
+  legend { font-weight: 700; margin-bottom: 4px; }
+  .opts { display: flex; flex-wrap: wrap; gap: 8px; }
+  .opts label { display: inline-flex; gap: 8px; align-items: center; border: 1px solid var(--line); border-radius: 8px; padding: 7px 12px; cursor: pointer; background: var(--bg); }
+  .opts label:has(input:checked) { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+  textarea { font: 15px var(--ui); color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; width: 100%; min-height: 80px; box-sizing: border-box; }
+  button { font: 700 15px var(--ui); border-radius: 8px; padding: 9px 16px; cursor: pointer; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-fg); }
+  button:disabled { opacity: .55; cursor: default; }
+  :focus-visible { outline: 3px solid var(--live); outline-offset: 2px; }
+  .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .status { font-size: 13px; color: var(--muted); }
+  .status.ok { color: var(--ok); font-weight: 700; }
+  a { color: var(--accent); }
+  hr { border: 0; border-top: 1px solid var(--line); margin: 0; }
+</style>
+
+<main>
+  <header>
+    <span class="tag">Phase 16 · P16.2 art spike · Checkpoint I</span>
+    <h1>Agora 2.5D styles</h1>
+    <p class="muted">The same Jungle corner (the waterfall, the pond, a desk pod on each side) in three styles, by day and in the evening, with the new paper avatars. Every image was made in code from Agora's own art. At the end, pick the engine, the style, the tilt and the avatar look; your picks are saved for Claude.</p>
+  </header>
+
+  <section aria-labelledby="s1">
+    <h2 id="s1">Pixel diorama</h2>
+    <div class="pair">
+      <figure><img src="img/diorama-day.webp" alt="Pixel diorama by day: pixel-art floor and desks in 3D, paper avatars around the pond, blurred top and bottom" width="1600" height="1000"><figcaption>Day</figcaption></figure>
+      <figure><img src="img/diorama-evening.webp" alt="Pixel diorama in the evening: the same scene in warm low sunlight" width="1600" height="1000" loading="lazy"><figcaption>Evening</figcaption></figure>
+    </div>
+    <div class="notes">
+      <div><b>What it is</b>Today's tiles, unchanged, on 3D shapes: desks are extruded from their art, walls get height, plants and chairs stand up. A tilt-shift blur and soft glow give the toy-model (Octopath "HD-2D") look.</div>
+      <div><b>Art cost</b>Lowest. Every wing already has its tiles, so all of HQ can be converted without redrawing.</div>
+      <div><b>Watch for</b>The avatars (48 × 64) are sharper than the 32 px tiles. Pixels can shimmer while the camera moves; you can check that in the benchmark's "Walk around".</div>
+    </div>
+  </section>
+
+  <hr>
+
+  <section aria-labelledby="s2">
+    <h2 id="s2">Storybook paper</h2>
+    <div class="pair">
+      <figure><img src="img/storybook-day.webp" alt="Storybook paper by day: smoothed, painted floors, objects with white cut-out edges" width="1600" height="1000" loading="lazy"><figcaption>Day</figcaption></figure>
+      <figure><img src="img/storybook-evening.webp" alt="Storybook paper in the evening" width="1600" height="1000" loading="lazy"><figcaption>Evening</figcaption></figure>
+    </div>
+    <div class="notes">
+      <div><b>What it is</b>The same tiles redrawn automatically: smoothed to 4×, ground painted into flat patches, a white cut-out edge on every object, a paper grain over everything. Closest to Paper Mario in spirit.</div>
+      <div><b>Art cost</b>Highest. This is only a direction: a real version means drawing every tile again in this style, wing by wing.</div>
+      <div><b>Watch for</b>The automatic redraw leaves rough pond and path edges and keeps some pixel detail on desks. A hand-made pass would fix both.</div>
+    </div>
+  </section>
+
+  <hr>
+
+  <section aria-labelledby="s3">
+    <h2 id="s3">Low-poly models</h2>
+    <div class="pair">
+      <figure><img src="img/lowpoly-day.webp" alt="Low-poly by day: flat-coloured 3D desks, trees and walls with soft shadows" width="1600" height="1000" loading="lazy"><figcaption>Day</figcaption></figure>
+      <figure><img src="img/lowpoly-evening.webp" alt="Low-poly in the evening" width="1600" height="1000" loading="lazy"><figcaption>Evening</figcaption></figure>
+    </div>
+    <div class="notes">
+      <div><b>What it is</b>Simple flat-shaded models built in code (desks with legs, chairs, cone plants, block trees), with no textures. Real shadows read best here.</div>
+      <div><b>Art cost</b>Medium. Each object type needs a small model, but no texture work.</div>
+      <div><b>Watch for</b>It loses the character of the current art, and the paper people look less at home among solid models.</div>
+    </div>
+  </section>
+
+  <hr>
+
+  <section aria-labelledby="s4">
+    <h2 id="s4">Camera tilt</h2>
+    <p class="muted">Pixel diorama by day at four tilts. At 45° and steeper, the upright paper people get squashed because the camera looks down on them. 30–35° keeps them readable.</p>
+    <div class="tilts">
+      <figure><img src="img/diorama-day-tilt30.webp" alt="Tilt 30 degrees" width="1600" height="1000" loading="lazy"><figcaption>30°</figcaption></figure>
+      <figure><img src="img/diorama-day.webp" alt="Tilt 35 degrees" width="1600" height="1000" loading="lazy"><figcaption>35° (used above)</figcaption></figure>
+      <figure><img src="img/diorama-day-tilt45.webp" alt="Tilt 45 degrees" width="1600" height="1000" loading="lazy"><figcaption>45°</figcaption></figure>
+      <figure><img src="img/diorama-day-tilt55.webp" alt="Tilt 55 degrees" width="1600" height="1000" loading="lazy"><figcaption>55°</figcaption></figure>
+    </div>
+  </section>
+
+  <section aria-labelledby="s5">
+    <h2 id="s5">Paper avatars</h2>
+    <p class="muted">Built from today's avatar choices (skin, hair, colours, glasses, headphones), so saved avatars carry over. Four directions; the last frames of each row are the card flip when turning left ↔ right.</p>
+    <figure><img src="img/avatars.webp" alt="Avatar sheet: pixel and smooth paper avatars at 48 by 64 and 64 by 96, four directions each, with flip frames" width="1600" height="1000" loading="lazy"></figure>
+  </section>
+
+  <section class="panel" aria-labelledby="picks-h">
+    <h2 id="picks-h">Your picks for Checkpoint I</h2>
+    <p class="muted">Run the <a href="https://claude.ai/artifact/6Vb9nNwK7tivBizCULGZxF" target="_blank" rel="noopener">Agora 2.5D benchmark</a> on your laptop and phone before picking the engine.</p>
+    <form id="picks">
+      <div style="display:grid;gap:18px">
+        <fieldset>
+          <legend>Engine</legend>
+          <div class="opts">
+            <label><input type="radio" name="engine" value="three" id="e-three"> Three.js</label>
+            <label><input type="radio" name="engine" value="phaser" id="e-phaser"> Phaser 4, faked depth</label>
+            <label><input type="radio" name="engine" value="numbers" id="e-numbers"> Let the benchmark numbers decide</label>
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>World style</legend>
+          <div class="opts">
+            <label><input type="radio" name="style" value="diorama" id="st-diorama"> Pixel diorama</label>
+            <label><input type="radio" name="style" value="storybook" id="st-storybook"> Storybook paper</label>
+            <label><input type="radio" name="style" value="lowpoly" id="st-lowpoly"> Low-poly</label>
+            <label><input type="radio" name="style" value="mix" id="st-mix"> A mix (say which in the note)</label>
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>Tilt</legend>
+          <div class="opts">
+            <label><input type="radio" name="tilt" value="30" id="t-30"> 30°</label>
+            <label><input type="radio" name="tilt" value="35" id="t-35"> 35°</label>
+            <label><input type="radio" name="tilt" value="45" id="t-45"> 45°</label>
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>Avatar look</legend>
+          <div class="opts">
+            <label><input type="radio" name="avatar" value="pixel-48x64" id="a-p48"> Pixel 48 × 64</label>
+            <label><input type="radio" name="avatar" value="pixel-64x96" id="a-p64"> Pixel 64 × 96</label>
+            <label><input type="radio" name="avatar" value="smooth-48x64" id="a-s48"> Smooth 48 × 64</label>
+            <label><input type="radio" name="avatar" value="smooth-64x96" id="a-s64"> Smooth 64 × 96</label>
+          </div>
+        </fieldset>
+        <label for="note" style="display:grid;gap:4px"><b>Note (optional)</b>
+          <textarea id="note" name="note" placeholder="Anything to change: the evening is too dark, bigger heads, keep the tilt-shift blur…"></textarea>
+        </label>
+        <div class="row">
+          <button type="submit" id="save">Save picks</button>
+          <span class="status" id="status" role="status"></span>
+        </div>
+      </div>
+    </form>
+  </section>
+</main>
+
+<script>
+const form = document.getElementById('picks');
+const statusEl = document.getElementById('status');
+let db = null;
+function fill(d) {
+  for (const k of ['engine', 'style', 'tilt', 'avatar']) {
+    const el = form.querySelector(`input[name="${k}"][value="${d?.[k]}"]`);
+    if (el) el.checked = true;
+  }
+  if (typeof d?.note === 'string') form.note.value = d.note;
+}
+(async () => {
+  try { db = await window.claude?.use('db'); } catch { db = null; }
+  if (!db) { statusEl.textContent = 'Saving is not available in this view.'; document.getElementById('save').disabled = true; return; }
+  try {
+    const snap = await db.doc('checkpoint/I').get();
+    if (snap.exists) { fill(snap.data()); statusEl.textContent = 'Your saved picks are loaded.'; }
+  } catch { /* first visit */ }
+})();
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (!db) return;
+  const fd = new FormData(form);
+  const data = { engine: fd.get('engine') || '', style: fd.get('style') || '', tilt: fd.get('tilt') || '', avatar: fd.get('avatar') || '', note: String(fd.get('note') || '').slice(0, 4000), savedAt: Date.now() };
+  const btn = document.getElementById('save');
+  btn.disabled = true;
+  statusEl.className = 'status';
+  statusEl.textContent = 'Saving…';
+  try {
+    await db.doc('checkpoint/I').set(data);
+    statusEl.className = 'status ok';
+    statusEl.textContent = 'Saved. Tell Claude you have picked.';
+  } catch (err) {
+    statusEl.textContent = `Could not save (${err?.code || 'error'}). Try again in a moment.`;
+  } finally { btn.disabled = false; }
+});
+</script>
