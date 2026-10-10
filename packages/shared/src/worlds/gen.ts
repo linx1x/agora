@@ -18,6 +18,23 @@ export const NoiseLayerSchema = z.strictObject({
 });
 export type NoiseLayer = z.infer<typeof NoiseLayerSchema>;
 
+/** River tuning (rivers.ts): where water starts, how far it may run, and how lakes form. */
+export const RiverParamsSchema = z.strictObject({
+  /** One candidate source per sourceGrid x sourceGrid block of cells. */
+  sourceGrid: z.number().int().min(4).max(64),
+  /** Chance that a block's candidate becomes a source. */
+  sourceChance: z.number().min(0).max(1),
+  /** A source must be this far (0..1 elevation) above the sea. */
+  sourceHeight: z.number().min(0).max(1),
+  /** Longest trace in steps; longer traces are dropped everywhere. Max 256 keeps regions bounded. */
+  maxSteps: z.number().int().min(8).max(256),
+  /** Lakes spread this many cells from their lowest cell. */
+  lakeRadius: z.number().int().min(1).max(16),
+  /** A lake floods land up to this elevation above its lowest cell. */
+  lakeRise: z.number().min(0).max(0.1),
+});
+export type RiverParams = z.infer<typeof RiverParamsSchema>;
+
 export const WorldGenParamsSchema = z.strictObject({
   elevation: NoiseLayerSchema,
   temperature: NoiseLayerSchema,
@@ -28,6 +45,7 @@ export const WorldGenParamsSchema = z.strictObject({
   beachWidth: z.number().min(0).max(0.3),
   /** Elevation (0..1) from which a biome's alpine block is used. */
   alpineElevation: z.number().min(0.05).max(1),
+  rivers: RiverParamsSchema,
 });
 export type WorldGenParams = z.infer<typeof WorldGenParamsSchema>;
 

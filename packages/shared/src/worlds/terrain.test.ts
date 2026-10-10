@@ -3,6 +3,7 @@ import { BLOCKS, WORLD_BIOMES, getBlock } from './registry';
 import { CHUNK_SIZE, LEVEL_MAX } from './constants';
 import { WORLDGEN } from './gen';
 import { worldSeedFor } from './noise';
+import { NO_RIVER, riverAt } from './rivers';
 import {
   BEACH_BLOCK,
   WATER_BLOCK,
@@ -22,7 +23,7 @@ const SEED = worldSeedFor('golden-1');
 // bump genVersion and keep the old params (ADR-053).
 describe('golden terrain', () => {
   it('chunk digests match the reference values', () => {
-    expect(chunkDigest(generateChunk(SEED, 0, 0, P))).toBe(2891967380);
+    expect(chunkDigest(generateChunk(SEED, 0, 0, P))).toBe(503316246);
     expect(chunkDigest(generateChunk(SEED, -3, 7, P))).toBe(3756192143);
     expect(chunkDigest(generateChunk(SEED, 12, -9, P))).toBe(1932215716);
   });
@@ -103,14 +104,18 @@ describe('generateChunk', () => {
     expect(surfaces.length).toBe(WORLD_BIOMES.list.length);
   });
 
-  it('keeps water at or below sea level, land at or above it, and no decor on water or beach', () => {
+  it('keeps ocean at or below sea level, rivers and land at or above it, and no decor on water or beach', () => {
     const seaLevel = levelOf(P.seaElevation);
     for (let cx = 0; cx < 3; cx++) {
       const chunk = generateChunk(SEED, cx, 4, P);
       for (let k = 0; k < chunk.block.length; k++) {
         const level = chunk.level[k] ?? 0;
+        const x = cx * CHUNK_SIZE + (k % CHUNK_SIZE);
+        const y = 4 * CHUNK_SIZE + Math.floor(k / CHUNK_SIZE);
         if (chunk.block[k] === WATER_BLOCK) {
-          expect(level).toBeLessThanOrEqual(seaLevel);
+          // Ocean sits at or below the sea level; a river is land, carved at its own level.
+          if (riverAt(SEED, x, y, P) === NO_RIVER) expect(level).toBeLessThanOrEqual(seaLevel);
+          else expect(level).toBeGreaterThanOrEqual(seaLevel);
           expect(chunk.decor[k]).toBe('');
         } else {
           expect(level).toBeGreaterThanOrEqual(seaLevel);

@@ -11,6 +11,7 @@ const base = {
     seaElevation: 0.39,
     beachWidth: 0.03,
     alpineElevation: 0.7,
+    rivers: { sourceGrid: 16, sourceChance: 0.3, sourceHeight: 0.2, maxSteps: 128, lakeRadius: 6, lakeRise: 0.008 },
   },
 };
 
@@ -48,6 +49,12 @@ describe('parseWorldGen', () => {
     const raw = clone(base);
     (raw.params.elevation as { octaves: number }).octaves = 0;
     expect(() => parseWorldGen(raw)).toThrow(/worldgen\.json: params\.elevation\.octaves:/);
+  });
+
+  it('bounds the river tuning so regions stay small', () => {
+    const raw = clone(base);
+    raw.params.rivers.maxSteps = 1000;
+    expect(() => parseWorldGen(raw)).toThrow(/params\.rivers\.maxSteps/);
   });
 
   it('rejects unknown keys and a sea level out of range', () => {
