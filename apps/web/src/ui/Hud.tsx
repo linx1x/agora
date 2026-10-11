@@ -71,7 +71,7 @@ export function Hud() {
       {(kind === 'private' || kind === 'desk' || kind === 'world') && (
         <div className="private-frame" aria-hidden />
       )}
-      <div className="room-name" role="status">
+      <div className={`room-name${kind === 'world' ? ' in-world' : ''}`} role="status">
         {spaceName && <span className="room-space">{spaceName}</span>}
         <span className="room-title">
           {kind === 'private' || kind === 'desk' || kind === 'world' ? (

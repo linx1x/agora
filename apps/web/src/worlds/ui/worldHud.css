@@ -96,16 +96,52 @@
   text-align: start;
   min-height: 44px;
 }
-@media (max-width: 600px) {
-  .wh-hud {
-    bottom: 8px;
-  }
-  /* nine slots of 44 px do not fit a 390 px phone in one row: five, then four */
-  .wh-slots {
-    flex-wrap: wrap;
-    justify-content: center;
-    max-width: 236px;
-  }
+/*
+ * Phones (P17.15c): one compact strip above the dock. Status on one line (the energy numbers stay in
+ * the bar's accessible name), the nine slots in one row at 36 px (above the 24 px minimum target), no
+ * keyboard hint on touch screens.
+ */
+.wh-hud[hidden] {
+  display: none;
+}
+.app.compact .wh-hud {
+  bottom: calc(var(--dock-space, 72px) + 6px);
+  gap: 4px 8px;
+  padding: 6px 8px;
+  max-width: calc(100vw - 16px);
+}
+.app.compact .wh-status {
+  flex-wrap: nowrap;
+  gap: 8px;
+  width: auto;
+}
+.app.compact .wh-energy-label,
+.app.compact .wh-energy-text {
+  display: none;
+}
+.app.compact .wh-energy-track {
+  width: 72px;
+}
+.app.compact .wh-clock,
+.app.compact .wh-money,
+.app.compact .wh-hand {
+  font-size: 0.78rem;
+}
+.app.compact .wh-slots {
+  flex-wrap: nowrap;
+  gap: 3px;
+}
+.app.compact .wh-slot {
+  min-width: 36px;
+  min-height: 36px;
+  width: 36px;
+}
+.app.compact .wh-open {
+  min-height: 36px;
+  padding: 0 10px;
+}
+.app.touch .wh-hint {
+  display: none;
 }
 
 /* The clock and the energy bar (P17.23): their own row above the money. No motion: the bar jumps. */

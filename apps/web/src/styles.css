@@ -1914,6 +1914,17 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/*
+ * P17.15c: inside a world the hint is the privacy promise ("only the people in this world hear you"):
+ * never cut it. The world has no office minimap, so the card may use the width the minimap left.
+ */
+.app.compact .room-name.in-world {
+  max-width: calc(100% - 16px - var(--safe-l) - var(--safe-r));
+}
+.app.compact .room-name.in-world .room-hint {
+  white-space: normal;
+  overflow: visible;
+}
 .app.compact .room-title {
   white-space: nowrap;
   overflow: hidden;
@@ -2299,4 +2310,15 @@ body {
   .ov25-row--bubble:not([hidden]) .ov25-bubble {
     animation: none;
   }
+}
+
+/* P17.15c: in a personal world the farming HUD sits above the dock; the joystick and hold-to-talk rise above it */
+.app.in-world {
+  --world-hud-h: 118px;
+}
+.app.in-world .joystick,
+.app.in-world .hold-talk,
+.app.compact.in-world .joystick,
+.app.compact.in-world .hold-talk {
+  bottom: calc(var(--dock-space) + var(--world-hud-h) + 10px);
 }

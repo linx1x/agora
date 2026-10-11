@@ -251,7 +251,7 @@ function SpaceApp({ slug }: { slug: string }) {
 
   return (
     <div
-      className={`app${compact ? ' compact' : ''}${touch ? ' touch' : ''}`}
+      className={`app${compact ? ' compact' : ''}${touch ? ' touch' : ''}${inWorld ? ' in-world' : ''}`}
       onPointerDown={() => media.unlockAudio()}
     >
       <h1 className="sr-only">Agora</h1>

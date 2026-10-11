@@ -32,6 +32,14 @@ describe('WorldHud (P17.20)', () => {
     expect(html.match(/title="worlds\.hud\.slotEmpty"/g)).toHaveLength(HOTBAR_SLOTS - 2);
   });
 
+  it('steps the hotbar aside when asked (a phone sheet is open), and shows it otherwise (P17.15c)', () => {
+    const store = createHudStore();
+    const shown = renderToStaticMarkup(createElement(WorldHud, { store }));
+    const aside = renderToStaticMarkup(createElement(WorldHud, { store, barHidden: true }));
+    expect(shown).not.toMatch(/<nav[^>]*hidden/);
+    expect(aside).toMatch(/<nav[^>]*class="wh-hud"[^>]*hidden=""/);
+  });
+
   it('says nothing is in hand, and keeps the inventory closed until asked', () => {
     const html = renderToStaticMarkup(createElement(WorldHud, { store: createHudStore() }));
     expect(html).toContain('worlds.hud.nothingInHand');

@@ -17,7 +17,16 @@ import './worldHud.css';
  * the world screen, only while the person is in a world: `<WorldHud />`, fed by `applyWorldHudMessage`
  * from the world client's message handler.
  */
-export function WorldHud({ store = worldHud, onAsk = () => undefined }: { store?: HudStore; onAsk?: WorldAsk }) {
+export function WorldHud({
+  store = worldHud,
+  onAsk = () => undefined,
+  barHidden = false,
+}: {
+  store?: HudStore;
+  onAsk?: WorldAsk;
+  /** the hotbar steps aside (a phone's side sheet is open); its panels stay */
+  barHidden?: boolean;
+}) {
   const { t } = useTranslation();
   const state = useSyncExternalStore(store.subscribe, store.get, store.get);
   const [inventoryOpen, setInventoryOpen] = useState(false);
@@ -43,7 +52,7 @@ export function WorldHud({ store = worldHud, onAsk = () => undefined }: { store?
   // the panels stand outside the hotbar: its transform would make their fixed backdrops its own
   return (
     <>
-      <nav className="wh-hud" aria-label={t('worlds.hud.hotbar')}>
+      <nav className="wh-hud" aria-label={t('worlds.hud.hotbar')} hidden={barHidden}>
         {(state.time !== null || state.maxEnergy > 0) && (
           <div className="wh-status">
             {state.time !== null && (
