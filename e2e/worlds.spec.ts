@@ -1,9 +1,11 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
+import { runView } from './views';
 
 /**
  * Personal worlds (P17.14, ADR-053): a claimed desk is a door to its owner's world. The owner
  * walks, crosses a level step, comes back to the desk; a visitor is held at the knock and let in.
- * Runs in the 2D project only: the world is drawn flat until P17.15 (the 2.5D view comes after).
+ * Runs in both views (P17.15): the flat `2d` project and the `2.5d` project, which draws the same
+ * world in 3D (WorldRoom3DView). The specs read the same hooks in both (`window.__agora.view`).
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -29,13 +31,18 @@ const world = (p: Page) => A(p)(() => (window as any).__agora.view.world());
 
 /** Enter the office as a dev user (the same path as world.spec.ts). */
 async function enter(browser: Browser, devUser: number, hour = 13): Promise<Page> {
+  const mode = runView();
   const ctx = await browser.newContext();
-  await ctx.addInitScript(() => {
-    localStorage.setItem(
-      'agora.settings',
-      JSON.stringify({ lighting: true, sounds: false, autoSit: true, precheck: false }),
-    );
-  });
+  await ctx.addInitScript(
+    ([v]) => {
+      localStorage.setItem(
+        'agora.settings',
+        JSON.stringify({ lighting: v === '2d', sounds: false, autoSit: true, precheck: false }),
+      );
+      if (v === '2.5d') localStorage.setItem('agora.worldView', v);
+    },
+    [mode] as const,
+  );
   const page = await ctx.newPage();
   opened.push(page);
   await page.goto(`/?hour=${hour}`);
@@ -51,7 +58,7 @@ async function enter(browser: Browser, devUser: number, hour = 13): Promise<Page
     const s = w.__agora.store.get();
     return s.conn === 'online' && !!s.me && w.__agora.rendered.has(s.me);
   });
-  expect(await view(page).then((v) => v.engine)).toBe('2d');
+  expect(await view(page).then((v) => v.engine)).toBe(mode === '2.5d' ? '2.5d' : '2d');
   return page;
 }
 
@@ -134,6 +141,10 @@ async function waitWorld(p: Page, timeout = 30_000) {
     timeout,
     polling: 200,
   });
+  // the world is drawn in the view the device chose (P17.15): 2.5D in the `2.5d` project, flat in `2d`
+  expect(await p.evaluate(() => (window as any).__agora.view.engine)).toBe(
+    runView() === '2.5d' ? '2.5d' : '2d',
+  );
 }
 
 /** Claim the Jungle desk J-6 as Alice (sit, claim, stand, step into the pod off the chair). */

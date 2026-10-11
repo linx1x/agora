@@ -465,6 +465,14 @@ export class WorldRoomScene extends Phaser.Scene {
     if (JSON.stringify(prompt) !== JSON.stringify(cur ?? null)) store.set({ prompt });
   }
 
+  /**
+   * A tool swing by a person (P17.21b): the same hook as the 2.5D view (WorldRoom3DView). The swing
+   * frames per direction, sparks and the shake are not drawn yet.
+   */
+  playSwing(_personId: string, _dir: Dir, _tier: number): void {
+    // TODO(P17.21b): swing frames per direction from worlds/tools/swing.ts, sparks, the shake (off under reduced motion)
+  }
+
   // ───────────────────────────────────────────── e2e handles
   private testApi(): ViewTestApi & WorldTestApi {
     const cam = () => this.cameras.main;
