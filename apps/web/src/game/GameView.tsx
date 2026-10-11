@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import Phaser from 'phaser';
 import { WorldScene } from './WorldScene';
+import { WorldRoomScene } from '../worlds/view2d/WorldRoomScene';
 import { installInput } from './input';
 import { loadSheets } from './sprites';
 import { chooseEngine, readStoredView, rememberView, rememberViewFromUrl } from '../game3d/engine';
@@ -13,6 +14,9 @@ export function GameView() {
   // 2.5D (P16.6) when the flag and this device ask for it, build mode included (P16.13).
   // A choice made in this session (Settings, or the automatic switch to 2D) wins.
   const engine = chooseEngine({ world25d }, location.search, readStoredView(), choice);
+  // P17.14: inside a personal world the world view replaces the office view (a remount); the
+  // 2.5D world view is P17.15, so a world is drawn flat for now.
+  const inWorld = useStore((s) => s.worldId !== null);
 
   useEffect(() => {
     installInput();
@@ -24,7 +28,11 @@ export function GameView() {
     let unmount: (() => void) | undefined;
     void loadSheets().then(async () => {
       if (cancelled || !ref.current) return;
-      const stop = engine === '2.5d' ? await start25d(ref.current) : start2d(ref.current);
+      const stop = inWorld
+        ? start2d(ref.current, WorldRoomScene)
+        : engine === '2.5d'
+          ? await start25d(ref.current)
+          : start2d(ref.current, WorldScene);
       if (cancelled) stop();
       else unmount = stop;
     });
@@ -32,13 +40,13 @@ export function GameView() {
       cancelled = true;
       unmount?.();
     };
-  }, [engine]);
+  }, [engine, inWorld]);
 
   return <div ref={ref} className="world-canvas" aria-hidden="true" />;
 }
 
-/** Returns the teardown. */
-function start2d(parent: HTMLDivElement): () => void {
+/** Returns the teardown. The office and a personal world are two scenes; one is in the game at a time. */
+function start2d(parent: HTMLDivElement, scene: typeof WorldScene | typeof WorldRoomScene): () => void {
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent,
@@ -46,7 +54,7 @@ function start2d(parent: HTMLDivElement): () => void {
     roundPixels: true,
     backgroundColor: '#1b2733',
     scale: { mode: Phaser.Scale.RESIZE, width: '100%', height: '100%' },
-    scene: [WorldScene],
+    scene: [scene],
     banner: false,
     audio: { noAudio: true },
     input: { keyboard: false },

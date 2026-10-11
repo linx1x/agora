@@ -379,7 +379,12 @@
     "standBtn": "Se lever",
     "knockTouch": "Poste de {{name}} : frappez pour entrer",
     "talk": "Parler à {{name}} (X)",
-    "talkTouch": "{{name}} est tout près"
+    "talkTouch": "{{name}} est tout près",
+    "world": "X : entrer dans mon monde",
+    "worldVisit": "Monde de {{name}} : X pour entrer",
+    "worldBtn": "Entrer dans le monde",
+    "worldExit": "X : retourner au bureau",
+    "worldExitBtn": "Retourner au bureau"
   },
   "nav": {
     "unreachable": "Impossible de s'y rendre"
@@ -1003,7 +1008,11 @@
       "cap": "Ce monde ne peut plus enregistrer de changements.",
       "key_taken": "Quelqu'un d'autre a déjà fait cette action.",
       "conflict": "Le monde a changé pendant l'action. Rien n'a été fait : réessaie.",
-      "asleep": "Tu dors : tu te réveilleras demain matin."
+      "asleep": "Tu dors : tu te réveilleras demain matin.",
+      "unknown": "Cette porte ne mène nulle part.",
+      "outside": "Approchez-vous de la porte pour entrer.",
+      "no_permission": "Ce monde n'est pas ouvert pour vous.",
+      "no_world": "Ce monde n'est pas prêt pour l'instant."
     },
     "tuning": {
       "open": "Réglages du monde",
@@ -1217,6 +1226,7 @@
       "salt_snapper": "Vivaneau salé",
       "pearl_anchovy": "Anchois perlé",
       "deep_ray": "Raie des abysses"
-    }
+    },
+    "noRoute": "Pas de chemin jusque-là."
   }
 }

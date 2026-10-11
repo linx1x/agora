@@ -11,11 +11,16 @@ import { parseStarter, type Starter } from '@agora/shared';
 const here = dirname(fileURLToPath(import.meta.url));
 let cached: Starter | undefined;
 
-/** First existing path among the candidates (works from src/ with tsx and from dist/, like hq.tmj). */
-function starterPath(): string {
+/**
+ * First existing path among the candidates. `dir` is the folder of the running file: src/worlds
+ * under tsx, or dist/ once esbuild bundles the server (one level up, like app.ts's hq.tmj); the
+ * Docker image copies the file to /app/maps.
+ */
+export function starterPath(dir: string = here): string {
   const found = [
-    join(here, '../../../../packages/maps/worlds/starter.json'),
-    join(here, '../../maps/worlds/starter.json'),
+    join(dir, '../../../../packages/maps/worlds/starter.json'),
+    join(dir, '../../../packages/maps/worlds/starter.json'),
+    join(dir, '../maps/worlds/starter.json'),
     '/app/maps/worlds/starter.json',
   ]
     .map((p) => resolve(p))

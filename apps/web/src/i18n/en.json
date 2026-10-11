@@ -379,7 +379,12 @@
     "standBtn": "Stand up",
     "knockTouch": "{{name}}’s desk: knock to enter",
     "talk": "Talk to {{name}} (X)",
-    "talkTouch": "{{name}} is right here"
+    "talkTouch": "{{name}} is right here",
+    "world": "X: enter my world",
+    "worldVisit": "{{name}}'s world: X to enter",
+    "worldBtn": "Enter the world",
+    "worldExit": "X: back to the office",
+    "worldExitBtn": "Back to the office"
   },
   "nav": {
     "unreachable": "Can't get there"
@@ -1003,7 +1008,11 @@
       "cap": "This world cannot store more changes.",
       "key_taken": "Someone else already did that action.",
       "conflict": "The world changed during the action. Nothing was done: try again.",
-      "asleep": "You are asleep: you wake up tomorrow morning."
+      "asleep": "You are asleep: you wake up tomorrow morning.",
+      "unknown": "This door leads nowhere.",
+      "outside": "Stand in the doorway to enter.",
+      "no_permission": "This world is not open to you.",
+      "no_world": "This world is not ready yet."
     },
     "tuning": {
       "open": "World tuning",
@@ -1217,6 +1226,7 @@
       "salt_snapper": "Salt snapper",
       "pearl_anchovy": "Pearl anchovy",
       "deep_ray": "Deep ray"
-    }
+    },
+    "noRoute": "No route there."
   }
 }
