@@ -39,68 +39,71 @@ export function WorldHud({ store = worldHud, onAsk = () => undefined }: { store?
   }, [store]);
 
   const slots = hotbarItems(state.items);
+  // the panels stand outside the hotbar: its transform would make their fixed backdrops its own
   return (
-    <nav className="wh-hud" aria-label={t('worlds.hud.hotbar')}>
-      {(state.time !== null || state.maxEnergy > 0) && (
-        <div className="wh-status">
-          {state.time !== null && (
-            <p className="wh-clock">
-              {t('worlds.hud.clock', {
-                time: clockText(state.time),
-                day: state.time.day,
-                season: t(`worlds.hud.seasons.${state.time.season}`),
-              })}
-            </p>
-          )}
-          {state.maxEnergy > 0 && <EnergyBar energy={state.energy} max={state.maxEnergy} />}
-        </div>
-      )}
-      <p className="wh-money">{t('worlds.hud.money', { amount: state.money })}</p>
-      <ol className="wh-slots">
-        {Array.from({ length: HOTBAR_SLOTS }, (_, i) => {
-          const item = slots[i] ?? null;
-          const n = i + 1;
-          const held = item !== null && item === state.inHand;
-          const label =
-            item === null
-              ? t('worlds.hud.slotEmpty', { n })
-              : t('worlds.hud.slot', { n, item: t(`worlds.item.${item}`), count: state.items[item] ?? 0 });
-          return (
-            <li key={n}>
-              <button
-                type="button"
-                className="wh-slot"
-                aria-pressed={held}
-                aria-label={label}
-                data-item={item ?? undefined}
-                onClick={() => store.pick(item)}
-              >
-                <span className="wh-key" aria-hidden="true">
-                  {n}
-                </span>
-                {item !== null && <span className="wh-name">{t(`worlds.item.${item}`)}</span>}
-                {item !== null && (
-                  <span className="wh-count" aria-hidden="true">
-                    {state.items[item]}
+    <>
+      <nav className="wh-hud" aria-label={t('worlds.hud.hotbar')}>
+        {(state.time !== null || state.maxEnergy > 0) && (
+          <div className="wh-status">
+            {state.time !== null && (
+              <p className="wh-clock">
+                {t('worlds.hud.clock', {
+                  time: clockText(state.time),
+                  day: state.time.day,
+                  season: t(`worlds.hud.seasons.${state.time.season}`),
+                })}
+              </p>
+            )}
+            {state.maxEnergy > 0 && <EnergyBar energy={state.energy} max={state.maxEnergy} />}
+          </div>
+        )}
+        <p className="wh-money">{t('worlds.hud.money', { amount: state.money })}</p>
+        <ol className="wh-slots">
+          {Array.from({ length: HOTBAR_SLOTS }, (_, i) => {
+            const item = slots[i] ?? null;
+            const n = i + 1;
+            const held = item !== null && item === state.inHand;
+            const label =
+              item === null
+                ? t('worlds.hud.slotEmpty', { n })
+                : t('worlds.hud.slot', { n, item: t(`worlds.item.${item}`), count: state.items[item] ?? 0 });
+            return (
+              <li key={n}>
+                <button
+                  type="button"
+                  className="wh-slot"
+                  aria-pressed={held}
+                  aria-label={label}
+                  data-item={item ?? undefined}
+                  onClick={() => store.pick(item)}
+                >
+                  <span className="wh-key" aria-hidden="true">
+                    {n}
                   </span>
-                )}
-              </button>
-            </li>
-          );
-        })}
-      </ol>
-      <p className="wh-hand">
-        {state.inHand === null
-          ? t('worlds.hud.nothingInHand')
-          : t('worlds.hud.inHand', { item: t(`worlds.item.${state.inHand}`) })}
-      </p>
-      <p className="wh-hint">{t('worlds.hud.keys')}</p>
-      <button type="button" className="wh-open" aria-haspopup="dialog" onClick={() => setInventoryOpen(true)}>
-        {t('worlds.hud.inventory')}
-      </button>
-      <p className="wh-notice" role="status">
-        {state.notice === null ? '' : t(`worlds.refused.${state.notice}`)}
-      </p>
+                  {item !== null && <span className="wh-name">{t(`worlds.item.${item}`)}</span>}
+                  {item !== null && (
+                    <span className="wh-count" aria-hidden="true">
+                      {state.items[item]}
+                    </span>
+                  )}
+                </button>
+              </li>
+            );
+          })}
+        </ol>
+        <p className="wh-hand">
+          {state.inHand === null
+            ? t('worlds.hud.nothingInHand')
+            : t('worlds.hud.inHand', { item: t(`worlds.item.${state.inHand}`) })}
+        </p>
+        <p className="wh-hint">{t('worlds.hud.keys')}</p>
+        <button type="button" className="wh-open" aria-haspopup="dialog" onClick={() => setInventoryOpen(true)}>
+          {t('worlds.hud.inventory')}
+        </button>
+        <p className="wh-notice" role="status">
+          {state.notice === null ? '' : t(`worlds.refused.${state.notice}`)}
+        </p>
+      </nav>
       {inventoryOpen && <InventoryPanel state={state} onPick={(item) => store.pick(item)} onClose={() => setInventoryOpen(false)} />}
       {state.chest !== null && (
         <ChestPanel chest={state.chest} hand={state.inHand} onAsk={onAsk} onClose={() => store.closeChest()} />
@@ -117,7 +120,7 @@ export function WorldHud({ store = worldHud, onAsk = () => undefined }: { store?
           onClose={() => store.closePanel()}
         />
       )}
-    </nav>
+    </>
   );
 }
 
