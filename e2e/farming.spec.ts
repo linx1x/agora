@@ -23,8 +23,43 @@ type AgoraWindow = {
 
 const opened: Page[] = [];
 test.afterEach(async () => {
-  for (const p of opened.splice(0)) await p.context().close().catch(() => {});
+  for (const p of opened.splice(0)) {
+    await giveBackDesk(p);
+    await p
+      .context()
+      .close()
+      .catch(() => {});
+  }
 });
+
+/**
+ * A desk owner joins the office at their desk (ADR-017), and a pod isolates media like a private
+ * room. Leave the world and release the desk claimed here, so the dev users of the specs that run
+ * after this one start at the usual spawn (world.spec.ts expects two people to link nearby).
+ */
+async function giveBackDesk(p: Page): Promise<void> {
+  const state = () =>
+    p.evaluate(
+      () =>
+        (window as any).__agora.store.get() as { worldId: string | null; myDesk: string | null },
+    );
+  try {
+    if ((await state()).worldId !== null) {
+      await p.evaluate(() => (window as any).__agoraWorld.send({ t: 'world:leave' }));
+      await p.waitForFunction(() => (window as any).__agora.store.get().worldId === null, null, {
+        timeout: 15_000,
+      });
+    }
+    if ((await state()).myDesk !== null) {
+      await p.evaluate(() => (window as any).__agoraWorld.send({ t: 'desk:release' }));
+      await p.waitForFunction(() => (window as any).__agora.store.get().myDesk === null, null, {
+        timeout: 15_000,
+      });
+    }
+  } catch {
+    // the page may already be gone; the next spec then shows the leak, which is what we want to see
+  }
+}
 
 const T = 32;
 const A = (p: Page) => p.evaluate.bind(p);
@@ -66,11 +101,18 @@ async function toJungle(p: Page) {
   if ((await st(p)).myRegion !== 'hub') return;
   const pad = (await st(p)).map.zones.find((z: any) => z.id === 'portal-hub-jungle');
   await goTo(p, Math.floor(pad.x / T), Math.floor(pad.y / T));
-  await p.waitForFunction(() => (window as any).__agora.store.get().prompt?.kind === 'teleport', undefined, {
-    timeout: 30_000,
-    polling: 200,
-  });
-  await p.getByRole('group', { name: /Téléporteur/ }).getByRole('button', { name: /Jungle/ }).click();
+  await p.waitForFunction(
+    () => (window as any).__agora.store.get().prompt?.kind === 'teleport',
+    undefined,
+    {
+      timeout: 30_000,
+      polling: 200,
+    },
+  );
+  await p
+    .getByRole('group', { name: /Téléporteur/ })
+    .getByRole('button', { name: /Jungle/ })
+    .click();
   await p.waitForFunction(() => (window as any).__agora.store.get().myRegion !== 'hub', undefined, {
     timeout: 10_000,
     polling: 200,
@@ -81,7 +123,8 @@ async function toJungle(p: Page) {
 /** Walk to a cell of the office (the same as a click on it). */
 const goTo = (p: Page, cx: number, cy: number) =>
   A(p)(
-    ([x, y]) => (window as unknown as AgoraWindow).__agora.store.set({ navRequest: { kind: 'point', x, y } }),
+    ([x, y]) =>
+      (window as unknown as AgoraWindow).__agora.store.set({ navRequest: { kind: 'point', x, y } }),
     [cx * T + 16, cy * T + 20] as const,
   );
 
@@ -96,10 +139,15 @@ async function waitPrompt(p: Page, kind: string, timeout = 40_000) {
 async function walkWorld(p: Page, cx: number, cy: number, timeout = 90_000) {
   const deadline = Date.now() + timeout;
   for (;;) {
-    const lv: number = await p.evaluate(([x, y]) => (window as any).__agora.view.levelAt(x, y), [cx, cy] as const);
+    const lv: number = await p.evaluate(([x, y]) => (window as any).__agora.view.levelAt(x, y), [
+      cx,
+      cy,
+    ] as const);
     await p.evaluate(
       ([x, y, lvl, t]) =>
-        (window as any).__agora.store.set({ navRequest: { kind: 'point', x: x * t + t / 2, y: y * t + t / 2 - 12 * lvl } }),
+        (window as any).__agora.store.set({
+          navRequest: { kind: 'point', x: x * t + t / 2, y: y * t + t / 2 - 12 * lvl },
+        }),
       [cx, cy, lv, T] as const,
     );
     const there = await p
@@ -111,7 +159,10 @@ async function walkWorld(p: Page, cx: number, cy: number, timeout = 90_000) {
         [cx, cy],
         { timeout: 20_000, polling: 200 },
       )
-      .then(() => true, () => false);
+      .then(
+        () => true,
+        () => false,
+      );
     if (there) return;
     if (Date.now() > deadline) throw new Error(`the walker did not reach ${cx},${cy}`);
   }
@@ -136,10 +187,14 @@ async function claimJungle6(p: Page) {
     await goTo(p, spot.chair.cx, spot.chair.cy);
     await waitPrompt(p, 'claim');
     await p.getByRole('button', { name: 'Réclamer ce poste' }).click();
-    await p.waitForFunction(() => (window as any).__agora.store.get().myDesk === 'jungle-6', undefined, {
-      timeout: 30_000,
-      polling: 200,
-    });
+    await p.waitForFunction(
+      () => (window as any).__agora.store.get().myDesk === 'jungle-6',
+      undefined,
+      {
+        timeout: 30_000,
+        polling: 200,
+      },
+    );
     await p.keyboard.press('x'); // stand up
   }
   await goTo(p, spot.guest.cx, spot.guest.cy);
@@ -155,10 +210,10 @@ async function hold(p: Page, item: string) {
 /** A click on the top face of a world cell, as a player does. */
 async function clickCell(p: Page, cx: number, cy: number) {
   const info = await cellInfo(p, cx, cy);
-  const at = await p.evaluate(
-    ([x, y]) => (window as any).__agora.view.toClient(x, y),
-    [cx * T + T / 2, cy * T + T / 2 - 12 * info!.level] as const,
-  );
+  const at = await p.evaluate(([x, y]) => (window as any).__agora.view.toClient(x, y), [
+    cx * T + T / 2,
+    cy * T + T / 2 - 12 * info!.level,
+  ] as const);
   await p.mouse.click(at.x, at.y);
 }
 
@@ -166,7 +221,13 @@ async function clickCell(p: Page, cx: number, cy: number) {
 async function freeCell(p: Page, cells: readonly (readonly [number, number])[]) {
   for (const [x, y] of cells) {
     const info = await cellInfo(p, x, y);
-    if (info && (info.block === 'meadow_dirt' || info.block === 'meadow_grass') && info.decor === '' && info.plot === null) return [x, y] as const;
+    if (
+      info &&
+      (info.block === 'meadow_dirt' || info.block === 'meadow_grass') &&
+      info.decor === '' &&
+      info.plot === null
+    )
+      return [x, y] as const;
   }
   throw new Error('no free meadow cell in reach');
 }
@@ -175,9 +236,20 @@ async function freeCell(p: Page, cells: readonly (readonly [number, number])[]) 
 async function flatCell(p: Page, cells: readonly (readonly [number, number])[]) {
   for (const [x, y] of cells) {
     const c = await cellInfo(p, x, y);
-    if (!c || (c.block !== 'meadow_dirt' && c.block !== 'meadow_grass') || c.decor !== '' || c.plot !== null) continue;
+    if (
+      !c ||
+      (c.block !== 'meadow_dirt' && c.block !== 'meadow_grass') ||
+      c.decor !== '' ||
+      c.plot !== null
+    )
+      continue;
     let flat = true;
-    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+    for (const [dx, dy] of [
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1],
+    ] as const) {
       const n = await cellInfo(p, x + dx, y + dy);
       if (!n || n.level < c.level || n.level > c.level + 1) flat = false;
     }
@@ -186,7 +258,9 @@ async function flatCell(p: Page, cells: readonly (readonly [number, number])[]) 
   throw new Error('no flat meadow cell in reach');
 }
 
-test('farming in my world: till, plant, water, chop, and a refusal with its message', async ({ browser }) => {
+test('farming in my world: till, plant, water, chop, and a refusal with its message', async ({
+  browser,
+}) => {
   test.setTimeout(400_000);
   const a = await enter(browser, 0, 20);
   await claimJungle6(a);
@@ -231,7 +305,9 @@ test('farming in my world: till, plant, water, chop, and a refusal with its mess
     [sx, sy],
     { timeout: 30_000, polling: 200 },
   );
-  await expect.poll(async () => (await inventory(a)).dawn_radish_seed ?? 0, { timeout: 30_000 }).toBe(seeds - 1);
+  await expect
+    .poll(async () => (await inventory(a)).dawn_radish_seed ?? 0, { timeout: 30_000 })
+    .toBe(seeds - 1);
 
   // water: the can wets the plot for tomorrow's growth step (a watering on day D sets D + 1)
   await hold(a, 'can_1');
@@ -269,7 +345,9 @@ test('farming in my world: till, plant, water, chop, and a refusal with its mess
   expect((await cellInfo(a, sx, sy))?.plot).not.toBeNull();
 });
 
-test('building in my world: a wall placed and picked up, the ground raised, and a chest that holds a stack', async ({ browser }) => {
+test('building in my world: a wall placed and picked up, the ground raised, and a chest that holds a stack', async ({
+  browser,
+}) => {
   test.setTimeout(400_000);
   const a = await enter(browser, 0, 20);
   await claimJungle6(a);
@@ -293,21 +371,36 @@ test('building in my world: a wall placed and picked up, the ground raised, and 
   const walls = (await inventory(a)).wood_wall ?? 0;
   await hold(a, 'wood_wall');
   await clickCell(a, wx, wy);
-  await a.waitForFunction(([x, y]) => (window as any).__agora.view.cellInfo(x, y)?.decor === 'wood_wall', [wx, wy], {
-    timeout: 30_000,
-    polling: 200,
-  });
-  await expect.poll(async () => (await inventory(a)).wood_wall ?? 0, { timeout: 30_000 }).toBe(walls - 1);
+  await a.waitForFunction(
+    ([x, y]) => (window as any).__agora.view.cellInfo(x, y)?.decor === 'wood_wall',
+    [wx, wy],
+    {
+      timeout: 30_000,
+      polling: 200,
+    },
+  );
+  await expect
+    .poll(async () => (await inventory(a)).wood_wall ?? 0, { timeout: 30_000 })
+    .toBe(walls - 1);
   await hold(a, 'pick_1');
   await clickCell(a, wx, wy);
-  await a.waitForFunction(([x, y]) => (window as any).__agora.view.cellInfo(x, y)?.decor === '', [wx, wy], {
-    timeout: 30_000,
-    polling: 200,
-  });
-  await expect.poll(async () => (await inventory(a)).wood_wall ?? 0, { timeout: 30_000 }).toBe(walls);
+  await a.waitForFunction(
+    ([x, y]) => (window as any).__agora.view.cellInfo(x, y)?.decor === '',
+    [wx, wy],
+    {
+      timeout: 30_000,
+      polling: 200,
+    },
+  );
+  await expect
+    .poll(async () => (await inventory(a)).wood_wall ?? 0, { timeout: 30_000 })
+    .toBe(walls);
 
   // the shovel raises a flat cell by one level (Shift would lower it)
-  const [rx, ry] = await flatCell(a, around.filter(([x, y]) => x !== wx || y !== wy));
+  const [rx, ry] = await flatCell(
+    a,
+    around.filter(([x, y]) => x !== wx || y !== wy),
+  );
   const before = (await cellInfo(a, rx, ry))!.level;
   await hold(a, 'shovel_1');
   await clickCell(a, rx, ry);
@@ -324,10 +417,14 @@ test('building in my world: a wall placed and picked up, the ground raised, and 
   );
   await hold(a, 'chest');
   await clickCell(a, cx, cy);
-  await a.waitForFunction(([x, y]) => (window as any).__agora.view.cellInfo(x, y)?.decor === 'chest', [cx, cy], {
-    timeout: 30_000,
-    polling: 200,
-  });
+  await a.waitForFunction(
+    ([x, y]) => (window as any).__agora.view.cellInfo(x, y)?.decor === 'chest',
+    [cx, cy],
+    {
+      timeout: 30_000,
+      polling: 200,
+    },
+  );
 
   // the walls go into the chest: the whole stack leaves the bag, and the hand is empty again
   await hold(a, 'wood_wall');
@@ -340,12 +437,16 @@ test('building in my world: a wall placed and picked up, the ground raised, and 
   const panel = a.getByRole('dialog', { name: 'Coffre' });
   await expect(panel).toBeVisible({ timeout: 30_000 });
   await panel.getByRole('button', { name: /Prendre Mur de bois/ }).click();
-  await expect.poll(async () => (await inventory(a)).wood_wall ?? 0, { timeout: 30_000 }).toBe(walls);
+  await expect
+    .poll(async () => (await inventory(a)).wood_wall ?? 0, { timeout: 30_000 })
+    .toBe(walls);
   await panel.getByRole('button', { name: 'Fermer le coffre' }).click();
   await expect(panel).toBeHidden();
 });
 
-test('crafting in my world: a bench placed from the bag opens its recipes, and a craft the bag cannot pay for is refused', async ({ browser }) => {
+test('crafting in my world: a bench placed from the bag opens its recipes, and a craft the bag cannot pay for is refused', async ({
+  browser,
+}) => {
   test.setTimeout(300_000);
   const a = await enter(browser, 0, 20);
   await claimJungle6(a);
@@ -368,10 +469,14 @@ test('crafting in my world: a bench placed from the bag opens its recipes, and a
   const [bx, by] = await freeCell(a, around);
   await hold(a, 'workbench');
   await clickCell(a, bx, by);
-  await a.waitForFunction(([x, y]) => (window as any).__agora.view.cellInfo(x, y)?.decor === 'workbench', [bx, by], {
-    timeout: 30_000,
-    polling: 200,
-  });
+  await a.waitForFunction(
+    ([x, y]) => (window as any).__agora.view.cellInfo(x, y)?.decor === 'workbench',
+    [bx, by],
+    {
+      timeout: 30_000,
+      polling: 200,
+    },
+  );
   await expect.poll(async () => (await inventory(a)).workbench ?? 0, { timeout: 30_000 }).toBe(0);
   await expect(a.locator('.wh-hand')).toHaveText(/Rien en main/, { timeout: 30_000 });
 
@@ -382,7 +487,9 @@ test('crafting in my world: a bench placed from the bag opens its recipes, and a
 
   // a fence needs softwood and fiber, which the starter bag does not hold: the server refuses it
   await panel.getByRole('button', { name: /Clôture/ }).click();
-  await expect(a.locator('.wh-notice')).toHaveText(/Il te manque quelque chose/, { timeout: 30_000 });
+  await expect(a.locator('.wh-notice')).toHaveText(/Il te manque quelque chose/, {
+    timeout: 30_000,
+  });
   expect((await inventory(a)).fence ?? 0).toBe(0);
   expect((await cellInfo(a, bx, by))!.decor).toBe('workbench');
 });
