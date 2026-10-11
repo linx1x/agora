@@ -47,13 +47,12 @@ test.describe('office cat (ADR-040)', () => {
     expect(people.some((id) => id.includes('cat'))).toBe(false);
   });
 
-  test('the cat is drawn on the floor', async ({ page }) => {
-    test.skip(
-      true,
-      'the 2.5D view does not draw the office cat yet: petsDrawn() is 0 (ADR-054; checkpoint K)',
-    );
+  test('the cat is drawn in the 2.5D view (P16.23)', async ({ page }) => {
     await enter(page);
     await page.waitForFunction(() => (window as any).__agora.store.get().pets.length === 1);
-    expect(await page.evaluate(() => (window as any).__agora.view.petsDrawn() > 0)).toBe(true);
+    // the card gets its art on the next frames
+    await page.waitForFunction(() => (window as any).__agora.view.petsDrawn() === 1, undefined, {
+      timeout: 10_000,
+    });
   });
 });

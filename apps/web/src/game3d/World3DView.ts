@@ -8,7 +8,7 @@
  * status, emotes and bubbles (`overlays.ts`). Lights (P16.10) and blended tiles and animated
  * tiles (P16.12) are drawn, and placed props stand on their surfaces (P16.14). Build mode (P16.13,
  * `BuildMode3D.ts`) edits the region under its focus: while it is on, the focus follows the build
- * cursor and the camera stays in that region. Not yet: pets (checkpoint J).
+ * cursor and the camera stays in that region. The office cat is a pixel card (`petFigures.ts`, P16.23).
  */
 import * as THREE from 'three';
 import {
@@ -80,6 +80,7 @@ import {
 } from './pick3d';
 import { baseHeightPx, propFaces, propQuad, type PropFace } from './propFaces';
 import { surfaceHeightPx, propTo3D } from './props3d';
+import { PetFigures } from './petFigures';
 import { propDef, resolveProps, surfaceTop, TILESET_COLUMNS, type WorldMap } from '@agora/shared';
 
 /** Pan to a point, then follow again after this long (the 2D view's 500 ms pan and 2200 ms hold). */
@@ -185,6 +186,8 @@ export class World3DView implements WorldView {
 
   private people: PaperFigures;
   private npcs: PaperFigures;
+  private pets: PetFigures;
+  private petsSeen: unknown = null;
   private overlays: Overlays;
   private npcAt = new Map<string, { x: number; y: number }>();
 
@@ -293,6 +296,7 @@ export class World3DView implements WorldView {
     const scale = paperScale(window.devicePixelRatio || 1);
     this.people = new PaperFigures(this.scene, scale);
     this.npcs = new PaperFigures(this.scene, scale);
+    this.pets = new PetFigures(this.scene, (x, y) => this.surfaceAt(x, y));
     // after the canvas and the fade: the overlay goes between them
     this.overlays = new Overlays(parent);
     this.buildOverlay = new BuildOverlay(parent);
@@ -355,6 +359,7 @@ export class World3DView implements WorldView {
     this.post?.dispose();
     this.people.dispose();
     this.npcs.dispose();
+    this.pets.dispose();
     this.overlays.destroy();
     this.build.destroy();
     this.buildOverlay.destroy();
@@ -733,6 +738,12 @@ export class World3DView implements WorldView {
     this.people.keep(drawn);
 
     this.placeNpcs(s, dtMs, now);
+    // P16.23: the cats of pet:state (the store keeps the last list; sync only when it changed)
+    if (s.pets !== this.petsSeen) {
+      this.petsSeen = s.pets;
+      this.pets.sync(s.pets);
+    }
+    this.pets.update(now, dtMs, reducedMotion());
 
     // the camera moves first, so names sit on this frame's heads
     this.updateCamera(now, dtMs, s);
@@ -1267,8 +1278,7 @@ export class World3DView implements WorldView {
       previewCells: () => this.build.previewCells(),
       settled: () => this.builtKey !== null,
       avatarFrame: (id) => this.people.info(id)?.frame ?? null,
-      // pets at checkpoint J
-      petsDrawn: () => 0,
+      petsDrawn: () => this.pets.drawn(),
     };
   }
 }
