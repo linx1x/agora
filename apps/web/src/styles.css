@@ -803,7 +803,7 @@ textarea {
 .avatar-preview img {
   image-rendering: pixelated;
 }
-/* P16.7: 2.5D paper preview beside the small 2D view (flag world25d). The preview card is light in
+/* P16.7: 2.5D paper preview beside the small 2D view (ADR-054: always on). The preview card is light in
    both themes, so its text is set dark here. */
 .avatar-previews {
   display: flex;

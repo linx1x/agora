@@ -46,8 +46,6 @@ export const DEFAULT_FLAGS = {
   npcVoice: false,
   /** P15.8 (ADR-049): characters may search the public web (your own SearXNG) for some questions; needs `npcTalk` and a cloud model */
   npcWeb: false,
-  /** Phase 16 (ADR-052): the 2.5D view (Three.js, tilted camera, paper avatars); off until checkpoint K */
-  world25d: false,
   /** Phase 17 (ADR-053): personal worlds behind desks (procedural biomes, farming, economy); off until checkpoint O */
   worlds: false,
 } as const;

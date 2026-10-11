@@ -4,8 +4,9 @@
  * lamps, and blob shadows under the trees. The maths is in `lightingMath.ts` and `blobs.ts`; this
  * file only applies it to Three.js objects.
  *
- * Settings "Lighting" off: the scene keeps a plain midday light, no point lights, no shadows, no
- * blobs at night. The sun shadow map is on the desktop tier only (`tier.ts`).
+ * Settings "Lighting" off, or a quality rung that turns the lights off (`tier.ts`, ADR-054): the
+ * scene keeps a plain midday light, no point lights, no shadows, no blobs at night. The pool and
+ * the sun shadow map follow the rung (`setQuality`): the desktop tier has the shadows at the top.
  */
 import * as THREE from 'three';
 import { timeOfDay } from '../game/lighting';
@@ -20,7 +21,7 @@ import {
   sunAt,
   type LampKind,
 } from './lightingMath';
-import { POINT_LIGHTS, sunShadows, type Tier } from './tier';
+import type { Quality } from './tier';
 
 /** A light of the region, in tiles (x east, y up, z south). */
 export interface LampSource {
@@ -58,7 +59,9 @@ interface Slot {
 export class LightRig {
   private readonly scene: THREE.Scene;
   private readonly renderer: THREE.WebGLRenderer;
-  private tier: Tier;
+  /** the point-light pool's size, and whether the sun casts shadows (both from the quality rung) */
+  private pool = 0;
+  private shadowsAllowed = false;
   readonly hemi = new THREE.HemisphereLight(0xffffff, 0x000000, 1);
   readonly sun = new THREE.DirectionalLight(0xffffff, 1);
   private readonly slots: Slot[] = [];
@@ -69,11 +72,12 @@ export class LightRig {
   day = 1;
   private on = true;
 
-  constructor(scene: THREE.Scene, renderer: THREE.WebGLRenderer, tier: Tier) {
+  constructor(scene: THREE.Scene, renderer: THREE.WebGLRenderer, quality: Quality) {
     this.scene = scene;
     this.renderer = renderer;
-    this.tier = tier;
     scene.add(this.hemi, this.sun, this.sun.target);
+    this.pool = quality.pointLights;
+    this.shadowsAllowed = quality.shadows;
     this.makeSlots();
     this.sun.shadow.mapSize.set(2048, 2048);
     Object.assign(this.sun.shadow.camera, {
@@ -91,11 +95,11 @@ export class LightRig {
     this.applyShadows();
   }
 
-  /** The pool of point lights for a tier (replaces the old pool). */
+  /** The pool of point lights (replaces the old pool). */
   private makeSlots(): void {
     for (const s of this.slots) s.light.removeFromParent();
     this.slots.length = 0;
-    for (let i = 0; i < POINT_LIGHTS[this.tier]; i++) {
+    for (let i = 0; i < this.pool; i++) {
       const light = new THREE.PointLight(0xffffff, 0, 1, 1.4);
       this.scene.add(light);
       this.slots.push({ light, seed: i * 1.7, src: null, base: 0 });
@@ -103,16 +107,20 @@ export class LightRig {
   }
 
   private applyShadows(): void {
-    const shadows = sunShadows(this.tier);
-    this.renderer.shadowMap.enabled = shadows;
-    this.sun.castShadow = shadows;
+    this.renderer.shadowMap.enabled = this.shadowsAllowed;
+    this.sun.castShadow = this.shadowsAllowed;
   }
 
-  /** Switch the tier at runtime (the probe, P16.11): the pool and the shadows follow it. */
-  setTier(tier: Tier): void {
-    if (tier === this.tier) return;
-    this.tier = tier;
-    this.makeSlots();
+  /**
+   * Apply a quality rung (P16.11, ADR-054): the pool and the shadows follow it. A pool of another
+   * size is rebuilt; the lights of the next refresh (about 3 Hz) take their places.
+   */
+  setQuality(q: Quality): void {
+    this.shadowsAllowed = q.shadows;
+    if (q.pointLights !== this.pool) {
+      this.pool = q.pointLights;
+      this.makeSlots();
+    }
     this.applyShadows();
   }
 
@@ -160,7 +168,7 @@ export class LightRig {
 
     this.sun.color.set(sun.color);
     this.sun.intensity = sun.intensity;
-    this.sun.castShadow = sunShadows(this.tier) && on && sun.intensity > 0;
+    this.sun.castShadow = this.shadowsAllowed && on && sun.intensity > 0;
     const tx = Math.round(target.x / SNAP) * SNAP;
     const tz = Math.round(target.z / SNAP) * SNAP;
     this.sun.target.position.set(tx, 0, tz);

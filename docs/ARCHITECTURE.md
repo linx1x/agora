@@ -130,22 +130,19 @@ format and the server are the same in both views. Height is client metadata: `sh
 (`packages/shared/src/shape3d.ts`) gives every tile a shape (`flat`, `wall`, `box`, `card`,
 `decal`, `none`), and a tile may override it with `TileDef.d3`.
 
-**Choosing the view** (`chooseEngine`, `game3d/engine.ts`, pure and tested). 2.5D needs the
-server flag `world25d`, which is off until checkpoint K. Then the first of these decides: the
-choice made this session (Settings "World view", shown only with the flag), `?view=2.5d|2d`
-(also saved), and the saved choice in `localStorage['agora.worldView']`. Build mode no longer
-forces 2D (P16.13).
+**One view** (ADR-054). The 2.5D view is the only world view: there is no setting, no `?view=`
+and no flag (`world25d` is retired). A device whose WebGL or view chunk fails gets a notice, and
+the People list still works (`GameView.tsx`).
 
-**Device tiers** (`game3d/tier.ts`). Desktop: 8 point lights, a 2048 px sun shadow, tilt-shift and
-bloom. Phone: 3 point lights, no shadow, no post-processing. A touch screen starts as phone. A
-3 s probe after 600 ms of warm-up then sets the tier: a software renderer (SwiftShader,
-llvmpipe) or a probe under 8 fps gets 2D, under 40 fps gets phone, otherwise desktop. The
-40 and 8 fps thresholds are first guesses until the mid-range phone run (checkpoint K).
-
-**Fallback** (`game3d/fallback.ts`, pure and tested). Under 20 fps for 15 s in a row switches the
-device to 2D (remembered; toast for 9 s). A software renderer, or a 2.5D start that throws (no
-WebGL, chunk load failure), switches the same way. Lighting has its own guard (`FpsGuard`): three
-5 s windows under 15 fps turn it off. With `?hour=` the device checks are off.
+**Device tiers and the quality ladder** (`game3d/tier.ts`, pure and tested). Desktop: 8 point
+lights, a 2048 px sun shadow, tilt-shift and bloom. Phone: 3 point lights, no shadow, no
+post-processing. A touch screen starts as phone. A 3 s probe after 600 ms of warm-up then sets the
+tier: under 40 fps is phone; a software renderer (SwiftShader, llvmpipe) or a probe under 8 fps
+starts at the bottom rung. Under 20 fps for 15 s in a row steps the ladder down one rung: render
+scale 1 → 0.75 → 0.5, post-processing off, two point lights, lights off (no lamps, shadows or
+night blobs). The first step down says so once (a toast in the live region). The rung lasts for the
+visit (`store.qualityLevel`); a reload starts at the full look. A personal world steps only its
+render scale. The thresholds are first guesses until the mid-range phone run.
 
 **Scene pipeline** (`game3d/scene.ts`, pure). One map region becomes faces: 1 unit is one tile,
 x is east, y up, z south, and the camera never sees north-facing faces. Floors lie flat, walls
@@ -187,8 +184,8 @@ edited at a time: the focus follows the build cursor. The server still gets cell
 points.
 
 **Status (2026-10-11).** P16.1–P16.14 and P16.16–P16.17 are built. P16.15 (builder uploads in
-2.5D) waits for P9.15. `world25d` stays off until checkpoint K. Personal worlds draw in 2D only
-until P17.15 (`apps/web/src/worlds/view2d/`).
+2.5D) waits for P9.15. The flat 2D view is removed (ADR-054, P16.19–P16.22): the 2.5D view is
+always on, and personal worlds draw in 2.5D too (P17.15).
 
 ## 5. Proximity media design (LiveKit)
 

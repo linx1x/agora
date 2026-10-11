@@ -1,8 +1,7 @@
 /**
  * P16.6 (ADR-052): the 2.5D view. The tilted camera draws the region I am in, and a click on the
  * floor (ray-cast) walks me there through the same navigation as 2D. Zoom, resize and the compact
- * phone layout keep working. The view is chosen the way a player does it: this device's storage
- * key `agora.worldView` (the flag `world25d` is on in playwright.config.ts).
+ * phone layout keep working. The 2.5D view is the only view (ADR-054): there is no choice to make.
  */
 import { expect, test, type Browser, type Page } from '@playwright/test';
 
@@ -26,7 +25,7 @@ test.afterEach(async () => {
 
 async function enter(
   browser: Browser,
-  opts: { user: string; viewport?: Viewport; phone?: boolean; view?: '2.5d' | null; hour?: number },
+  opts: { user: string; viewport?: Viewport; phone?: boolean; hour?: number },
 ): Promise<Page> {
   const ctx = await browser.newContext(
     opts.phone
@@ -39,19 +38,12 @@ async function enter(
         }
       : { viewport: opts.viewport ?? { width: 1280, height: 800 }, locale: 'fr-CA' },
   );
-  // `view: null` means a device that never asked for 2.5D (the default)
-  const view = 'view' in opts ? opts.view : '2.5d';
-  await ctx.addInitScript(
-    ([view]) => {
-      localStorage.setItem(
-        'agora.settings',
-        JSON.stringify({ lighting: false, sounds: false, autoSit: false, precheck: false }),
-      );
-      if (view) localStorage.setItem('agora.worldView', view);
-      else localStorage.removeItem('agora.worldView');
-    },
-    [view] as const,
-  );
+  await ctx.addInitScript(() => {
+    localStorage.setItem(
+      'agora.settings',
+      JSON.stringify({ lighting: false, sounds: false, autoSit: false, precheck: false }),
+    );
+  });
   const page = await ctx.newPage();
   opened.push(page);
   page.on('pageerror', (e) => console.log(`[pageerror ${opts.user}]`, e.message));
@@ -146,7 +138,7 @@ async function waitAt(p: Page, cx: number, cy: number) {
   );
 }
 
-test('2.5D is used when the device asks for it, and the 2D view stays the default', async ({
+test('the 2.5D view is the only view: a new device gets it too, with one canvas (ADR-054)', async ({
   browser,
 }) => {
   const a = await enter(browser, { user: 'Alice Tremblay' });
@@ -163,8 +155,8 @@ test('2.5D is used when the device asks for it, and the 2D view stays the defaul
   expect(info.canvases).toBe(1);
   expect(info.region).toBe(info.myRegion);
 
-  const b = await enter(browser, { user: 'Benoît Gagnon', view: null });
-  expect(await b.evaluate(() => (window as any).__agora.view.engine)).toBe('2d');
+  const b = await enter(browser, { user: 'Benoît Gagnon' });
+  expect(await b.evaluate(() => (window as any).__agora.view.engine)).toBe('2.5d');
 });
 
 test('click-to-move: a click on the floor walks me there in 2.5D', async ({ browser }) => {
@@ -289,20 +281,22 @@ test('a portal moves me to another region and only that region is built', async 
   expect(built.built).toBe(built.myRegion);
 });
 
-test('forced low fps switches to 2D after 15 s under 20 fps: remembered, with a toast (P16.11)', async ({
+test('a slow device steps the 2.5D quality down after 15 s under 20 fps, and says so once (ADR-054)', async ({
   browser,
 }) => {
   // the 15 s hold on top of the entry, on a busy host (the portal test uses the same budget)
   test.setTimeout(120_000);
   const a = await enter(browser, { user: 'Alice Tremblay' });
-  // the fallback timer reads this frame rate instead of the measured one (`?hour=` pins the device checks)
+  // the ladder reads this frame rate instead of the measured one (`?hour=` pins the device checks)
   await a.evaluate(() => (window as any).__agora.view3d.forceFps(5));
-  await a.waitForFunction(() => (window as any).__agora.view?.engine === '2d', undefined, {
+  await a.waitForFunction(() => (window as any).__agora.view3d.rung() >= 1, undefined, {
     timeout: 40_000,
     polling: 250,
   });
-  await expect(a.getByRole('status').filter({ hasText: /trop lent|too slow/ })).toBeVisible();
-  expect(await a.evaluate(() => localStorage.getItem('agora.worldView'))).toBe('2d');
-  // the 2.5D view is torn down (its test hook is removed with it)
-  expect(await a.evaluate(() => !(window as any).__agora.view3d)).toBe(true);
+  // the first rung down is the render scale 0.75; the view stays 2.5D
+  expect(await a.evaluate(() => (window as any).__agora.view3d.lighting().scale)).toBe(0.75);
+  expect(await a.evaluate(() => (window as any).__agora.view.engine)).toBe('2.5d');
+  await expect(
+    a.getByRole('status').filter({ hasText: /Qualité réduite|Quality lowered/ }),
+  ).toBeVisible();
 });

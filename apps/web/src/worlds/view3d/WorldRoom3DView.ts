@@ -48,13 +48,19 @@ import { screenBox, type Subject } from '../../game3d/occlusionMath';
 import { PaperFigures } from '../../game3d/paperFigures';
 import { paperScale } from '../../game3d/paperLayout';
 import { Overlays } from '../../game3d/overlays';
-import { FrameRate, SlowWatch } from '../../game3d/fallback';
-import { PROBE_MS, PROBE_WARMUP_MS, decideTier, isSoftwareGpu } from '../../game3d/tier';
-import { rememberView } from '../../game3d/engine';
+import { QualityGovernor, SCALE_ONLY, type QualityChange } from '../../game3d/tier';
 import { pixelTexture } from '../../game3d/meshes';
 import { buildWorldAtlas, type WorldAtlas } from './atlas3d';
 import { buildChunk, type CellIn, type ChunkGeometry } from './geometry';
-import { cellOnRay, chunkKey, chunksIn, heightOf, windowOf, worldOfDrawn, type ChunkIndex } from './math3d';
+import {
+  cellOnRay,
+  chunkKey,
+  chunksIn,
+  heightOf,
+  windowOf,
+  worldOfDrawn,
+  type ChunkIndex,
+} from './math3d';
 import { SwingFx } from './swing3d';
 
 const BG = 0x1b2733;
@@ -131,12 +137,10 @@ export class WorldRoom3DView {
   private pathObj: THREE.Points | null = null;
   private goalObj: THREE.Points | null = null;
   private pathLen = 0;
-  private readonly gpu: string;
-  private readonly coarse: boolean;
-  private probe: FrameRate | null;
-  private readonly slowRate = new FrameRate(1000);
-  private readonly slowWatch = new SlowWatch();
-  private fellBack = false;
+  /** the quality ladder (P16.11, ADR-054): this view has only the render scale to step down */
+  private readonly gov: QualityGovernor;
+  /** the device pixel ratio, capped at 2 (the render scale multiplies it) */
+  private readonly devicePr: number;
   private lastFrame = 0;
   private lastSlow = Number.NEGATIVE_INFINITY;
   private raf = 0;
@@ -148,13 +152,18 @@ export class WorldRoom3DView {
   constructor(private readonly parent: HTMLElement) {
     this.atlas = buildWorldAtlas();
     this.renderer = new THREE.WebGLRenderer({ antialias: false });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     this.renderer.setClearColor(BG);
     parent.append(this.renderer.domElement);
     this.renderer.domElement.style.touchAction = 'none';
-    this.gpu = gpuName(this.renderer);
-    this.coarse = window.matchMedia?.('(pointer: coarse)').matches ?? false;
-    this.probe = pinnedHour() ? null : new FrameRate(PROBE_MS, PROBE_WARMUP_MS);
+    this.devicePr = Math.min(window.devicePixelRatio || 1, 2);
+    this.gov = new QualityGovernor({
+      coarse: window.matchMedia?.('(pointer: coarse)').matches ?? false,
+      gpu: gpuName(this.renderer),
+      pinned: pinnedHour(),
+      rung: store.get().qualityLevel,
+      features: SCALE_ONLY,
+    });
+    this.applyQuality();
 
     this.texture = pixelTexture(this.atlas.canvas);
     this.material = new THREE.MeshBasicMaterial({
@@ -372,9 +381,9 @@ export class WorldRoom3DView {
     const now = performance.now();
     const dtMs = this.lastFrame ? now - this.lastFrame : 16;
     this.lastFrame = now;
-    if (this.fellBack || !this.ensureWalker()) return;
-    this.watchRate(now);
-    if (this.fellBack || !this.walker) return;
+    if (!this.ensureWalker()) return;
+    this.watchQuality(now);
+    if (!this.walker) return;
 
     this.walker.step(dtMs, inputVector());
     if (this.walker.path.length !== this.pathLen) this.drawPath();
@@ -411,32 +420,25 @@ export class WorldRoom3DView {
   }
 
   /**
-   * The device probe and the fallback timer (P16.11), as the office view: a software renderer, or a
-   * device too slow for the 2.5D look, goes to 2D; 15 s in a row under 20 fps does too.
+   * The quality ladder (P16.11, ADR-054), as the office view: the probe sets the tier, and 15 s in a
+   * row under 20 fps steps the render scale down. The first step down says so, once.
    */
-  private watchRate(now: number): void {
-    if (this.probe) {
-      const fps = this.probe.frame(now);
-      if (fps !== null) {
-        this.probe = null;
-        if (decideTier({ coarse: this.coarse, gpu: this.gpu, probeFps: fps }) === 'off') {
-          this.fallBack(isSoftwareGpu(this.gpu) ? 'gpu' : 'slow');
-          return;
-        }
-      }
-    }
-    if (pinnedHour()) return;
-    const fps = this.slowRate.frame(now);
-    if (fps === null) return;
-    if (this.slowWatch.sample(now, fps)) this.fallBack('slow');
+  private watchQuality(now: number): void {
+    const change = this.gov.frame(now);
+    if (change) this.onQuality(change);
   }
 
-  /** Switch the device to 2D: remembered, and the store re-renders the world into the flat view. */
-  private fallBack(reason: 'gpu' | 'slow'): void {
-    this.fellBack = true;
-    rememberView('2d');
-    store.set({ viewChoice: '2d' });
-    toast(reason === 'gpu' ? 'toast.worldViewNoGpu' : 'toast.worldViewSlow', undefined, 9000);
+  /** A new rung: the render scale follows it, and the session keeps it (a remount starts there). */
+  private onQuality(c: QualityChange): void {
+    store.set({ qualityLevel: c.rung });
+    this.applyQuality();
+    this.layout();
+    if (c.dropped) toast('toast.qualityLower', undefined, 9000);
+  }
+
+  /** The render scale of the rung, times the device pixel ratio (this view has no lights or post). */
+  private applyQuality(): void {
+    this.renderer.setPixelRatio(this.devicePr * this.gov.quality.scale);
   }
 
   /** The fade-in from the dark on entering the world (none under reduced motion). */

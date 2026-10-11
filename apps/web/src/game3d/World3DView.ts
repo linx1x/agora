@@ -22,7 +22,7 @@ import {
   type S2CMsg,
 } from '@agora/shared';
 import { world } from '../net/client';
-import { saveSettings, store, toast } from '../state/store';
+import { store, toast } from '../state/store';
 import { COMPACT_QUERY, matches } from '../ui/layout';
 import { zoomStep } from '../ui/Minimap';
 import { AV_H } from '../game/avatars';
@@ -61,20 +61,10 @@ import { blendSlots, type BlendSlot } from './atlasMath';
 import { Occlusion, FADE_ATTR } from './occlusion';
 import { hits, occluderObjects, screenBox, type Subject } from './occlusionMath';
 import { blobShadows } from './blobs';
-import { FpsGuard, bloomStrength } from './lightingMath';
+import { bloomStrength } from './lightingMath';
 import { LightRig, type LampSource } from './lightRig';
 import { PostFx } from './postfx';
-import { FrameRate, SlowWatch } from './fallback';
-import {
-  PROBE_MS,
-  PROBE_WARMUP_MS,
-  decideTier,
-  isSoftwareGpu,
-  postFx,
-  startTier,
-  type Tier,
-} from './tier';
-import { rememberView } from './engine';
+import { ALL_FEATURES, QualityGovernor, type QualityChange } from './tier';
 import { PaperFigures, type FigureInfo } from './paperFigures';
 import { paperScale } from './paperLayout';
 import { Overlays } from './overlays';
@@ -161,22 +151,15 @@ export class World3DView implements WorldView {
   private renderer: THREE.WebGLRenderer;
   private scene = new THREE.Scene();
   private camera = new THREE.PerspectiveCamera(FOV, 1, 0.5, 200);
-  /** the lights and shadows of the view (P16.10), and the desktop post-processing */
+  /** the lights and shadows of the view (P16.10), and the post-processing: the quality rung sets them */
   private rig: LightRig;
   private post: PostFx | null = null;
-  private tier: Tier;
+  /** the device pixel ratio, capped at 2 (the render scale multiplies it) */
   private pr: number;
-  private fpsGuard = new FpsGuard();
-  /** the device probe (P16.11): the first 3 s of frames, then the tier; null when done or pinned */
-  private probe: FrameRate | null = null;
-  /** 1 s readings for the fallback timer (ADR-052): under 20 fps for 15 s → 2D */
-  private slowRate = new FrameRate(1000);
-  private slowWatch = new SlowWatch();
+  /** the quality ladder (P16.11, ADR-054): the probe sets the tier, slow frames step the rung down */
+  private gov: QualityGovernor;
   /** a test's forced frame rate (`view3d.forceFps`), read instead of the measured one */
   private fpsOverride: number | null = null;
-  private fellBack = false;
-  private gpu: string;
-  private coarse: boolean;
   /** the desk lamps of this region, kept current with their pods at the slow tick */
   private deskLamps: { src: LampSource; deskId: string }[] = [];
   private ctl: WorldController;
@@ -280,20 +263,20 @@ export class World3DView implements WorldView {
       .getImageData(0, 0, tileset.width, tileset.height).data;
 
     this.renderer = new THREE.WebGLRenderer({ antialias: false });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     this.renderer.setClearColor(BG);
     parent.append(this.renderer.domElement);
     this.canvas.style.touchAction = 'none';
 
     this.pr = Math.min(window.devicePixelRatio || 1, 2);
-    this.coarse = window.matchMedia?.('(pointer: coarse)').matches ?? false;
-    this.tier = startTier(this.coarse);
-    this.gpu = gpuName(this.renderer);
-    this.probe = pinnedHour() ? null : new FrameRate(PROBE_MS, PROBE_WARMUP_MS);
-    this.rig = new LightRig(this.scene, this.renderer, this.tier);
-    this.post = postFx(this.tier)
-      ? new PostFx(this.renderer, this.scene, this.camera, 1, 1, this.pr)
-      : null;
+    this.gov = new QualityGovernor({
+      coarse: window.matchMedia?.('(pointer: coarse)').matches ?? false,
+      gpu: gpuName(this.renderer),
+      pinned: pinnedHour(),
+      rung: store.get().qualityLevel,
+      features: ALL_FEATURES,
+    });
+    this.rig = new LightRig(this.scene, this.renderer, this.gov.quality);
+    this.applyQuality();
 
     this.fade = document.createElement('div');
     this.fade.setAttribute('aria-hidden', 'true');
@@ -329,13 +312,16 @@ export class World3DView implements WorldView {
         builtRegion: () => this.builtId,
         figure: (id: string): FigureInfo | null => this.people.info(id) ?? this.npcs.info(id),
         faded: (): string[] => this.occlusion?.fadedKeys() ?? [],
-        tier: () => this.tier,
-        // the frame rate the fallback timer reads (null: the measured one): a test forces a slow view
+        tier: () => this.gov.tier,
+        rung: () => this.gov.rung,
+        // the frame rate the ladder reads (null: the measured one): a test forces a slow view
         forceFps: (fps: number | null) => {
           this.fpsOverride = fps;
         },
         lighting: () => ({
-          tier: this.tier,
+          tier: this.gov.tier,
+          rung: this.gov.rung,
+          scale: this.gov.quality.scale,
           on: this.rig.lightingOn,
           lit: this.rig.lampsLit(),
           shadows: this.rig.shadowsOn(),
@@ -434,7 +420,7 @@ export class World3DView implements WorldView {
       this.pr,
       this.building,
     );
-    this.post?.setSize(w, h, this.pr);
+    this.post?.setSize(w, h, this.pr * this.gov.quality.scale);
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
     this.zoomNow = s.zoom ?? fitZoom(w, h);
@@ -723,9 +709,7 @@ export class World3DView implements WorldView {
     const now = performance.now();
     const dtMs = this.lastFrame ? now - this.lastFrame : 16;
     this.lastFrame = now;
-    if (this.fellBack) return;
-    this.watchRate(now);
-    if (this.fellBack) return;
+    this.watchQuality(now);
 
     this.ctl.step(now, dtMs);
     const avatars = this.ctl.avatars(now);
@@ -778,86 +762,62 @@ export class World3DView implements WorldView {
     if (this.building) this.build.update();
     this.anim?.tick(now, reducedMotion());
     this.rig.frame(now, reducedMotion());
-    this.watchFps(s, now);
     // the post-processing is part of the lit look: with Lighting off it is skipped too
     if (this.post && lightingOn(s)) this.post.render(bloomStrength(this.rig.day));
     else this.renderer.render(this.scene, this.camera);
   };
 
   /**
-   * The device probe and the fallback timer (P16.11). The probe sets the tier once, after 3 s of
-   * frames: a software renderer, or a device too slow for any 2.5D look, goes to 2D. The timer
-   * switches to 2D after 15 s in a row under 20 fps.
+   * The quality ladder (P16.11, ADR-054): the probe sets the tier after 3 s of frames, and 15 s in a
+   * row under 20 fps steps the look down one rung. The governor decides; this applies the change.
    */
-  private watchRate(now: number) {
-    if (this.probe) {
-      const fps = this.probe.frame(now);
-      if (fps !== null) {
-        this.probe = null;
-        const d = decideTier({ coarse: this.coarse, gpu: this.gpu, probeFps: fps });
-        if (d === 'off') this.fallBack(isSoftwareGpu(this.gpu) ? 'gpu' : 'slow');
-        else this.applyTier(d);
-        if (this.fellBack) return;
-      }
-    }
-    if (pinnedHour() && this.fpsOverride === null) return;
-    const fps = this.slowRate.frame(now);
-    if (fps === null) return;
-    if (this.slowWatch.sample(now, this.fpsOverride ?? fps)) this.fallBack('slow');
+  private watchQuality(now: number) {
+    const change = this.gov.frame(now, this.fpsOverride);
+    if (change) this.onQuality(change);
   }
 
-  /** Switch the device to 2D: remembered, and the store re-renders the world into the flat view. */
-  private fallBack(reason: 'gpu' | 'slow') {
-    this.fellBack = true;
-    rememberView('2d');
-    store.set({ viewChoice: '2d' });
-    toast(reason === 'gpu' ? 'toast.worldViewNoGpu' : 'toast.worldViewSlow', undefined, 9000);
+  /**
+   * A new rung or tier: the render scale, the post-processing and the lights follow it, and the
+   * session keeps the rung (a remount starts there). The first step down says so, once.
+   */
+  private onQuality(c: QualityChange) {
+    store.set({ qualityLevel: c.rung });
+    this.applyQuality();
+    this.layout();
+    if (c.dropped) toast('toast.qualityLower', undefined, 9000);
   }
 
-  /** The probe's tier: the point-light pool, the shadows and the post-processing follow it. */
-  private applyTier(t: Tier) {
-    this.tier = t;
-    this.rig.setTier(t);
-    if (postFx(t) && !this.post)
+  /** The quality rung's look: the render scale, the post-processing (created or disposed) and the lights. */
+  private applyQuality() {
+    const q = this.gov.quality;
+    this.renderer.setPixelRatio(this.pr * q.scale);
+    this.rig.setQuality(q);
+    if (q.post && !this.post)
       this.post = new PostFx(
         this.renderer,
         this.scene,
         this.camera,
         this.cam.w,
         this.cam.h,
-        this.pr,
+        this.pr * q.scale,
       );
-    else if (!postFx(t) && this.post) {
+    else if (!q.post && this.post) {
       this.post.dispose();
       this.post = null;
     }
   }
 
-  /** Lighting at about 3 Hz: the Québec hour, the Lighting setting, the desks' lamps (P16.10). */
+  /** Lighting at about 3 Hz: the Québec hour, the Lighting setting and the rung, the desks' lamps (P16.10). */
   private lightsSlow(s: ReturnType<typeof store.get>) {
     for (const d of this.deskLamps) {
       const desk = s.desks.find((x) => x.id === d.deskId);
       d.src.owned = !!desk?.ownerName;
       d.src.deskColor = LAMP_COLORS[desk?.decor.lamp ?? 0];
     }
-    this.rig.refresh(quebecHour(), lightingOn(s), { x: this.cam.tx, z: this.cam.tz });
-  }
-
-  /**
-   * The under-15-fps switch-off of the 2D view (ADR-018), for the lights here: three slow five-second
-   * windows in a row turn Lighting off and say so. Not while a test fixes the hour (`?hour=`).
-   */
-  private watchFps(s: ReturnType<typeof store.get>, now: number) {
-    if (!lightingOn(s)) {
-      this.fpsGuard.reset();
-      return;
-    }
-    if (!this.fpsGuard.frame(now)) return;
-    if (new URLSearchParams(location.search).has('hour')) return;
-    const settings = { ...s.settings, lighting: false };
-    saveSettings(settings);
-    store.set({ settings });
-    toast('toast.lightingOff', undefined, 6000);
+    this.rig.refresh(quebecHour(), lightingOn(s) && this.gov.quality.lights, {
+      x: this.cam.tx,
+      z: this.cam.tz,
+    });
   }
 
   /**

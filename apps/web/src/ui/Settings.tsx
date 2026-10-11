@@ -5,7 +5,6 @@ import { stopNpcVoices } from '../media/npcVoice';
 import { media } from '../media/MediaManager';
 import { Dialog, LanguageSwitcher } from './common';
 import { useTouchControls } from './layout';
-import { chooseEngine, readStoredView, rememberView } from '../game3d/engine';
 import { saveSettings, store, useStore, type Settings as S } from '../state/store';
 
 type BoolKey = { [K in keyof S]: S[K] extends boolean ? K : never }[keyof S];
@@ -32,8 +31,6 @@ export function Settings({
   const settings = useStore((s) => s.settings);
   const npcTalkOn = useStore((s) => s.config?.flags.npcTalk === true);
   const npcVoiceOn = useStore((s) => s.config?.flags.npcVoice === true);
-  const world25dOn = useStore((s) => s.config?.flags.world25d === true);
-  const viewChoice = useStore((s) => s.viewChoice);
   const canUnlock = useStore(
     (s) => (s.builderCodeAvailable && !s.builder) || (s.adminCodeAvailable && !s.admin),
   );
@@ -145,28 +142,6 @@ export function Settings({
             </span>
           </label>
         ))}
-        {world25dOn && (
-          <label className="field compact">
-            <span>{t('settings.worldView')}</span>
-            <select
-              value={chooseEngine(
-                { world25d: true },
-                location.search,
-                readStoredView(),
-                viewChoice,
-              )}
-              onChange={(e) => {
-                const view = e.target.value === '2.5d' ? '2.5d' : '2d';
-                rememberView(view);
-                store.set({ viewChoice: view });
-              }}
-            >
-              <option value="2.5d">{t('settings.worldView25d')}</option>
-              <option value="2d">{t('settings.worldView2d')}</option>
-            </select>
-            <span className="muted small">{t('settings.worldViewHint')}</span>
-          </label>
-        )}
         {settings.pushToTalk && !touch && (
           <label className="field compact">
             <span>{t('settings.pttKey')}</span>

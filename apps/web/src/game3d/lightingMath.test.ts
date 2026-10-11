@@ -4,7 +4,6 @@ import {
   BLOOM_MAX,
   DAY_END,
   DAY_START,
-  FpsGuard,
   NOON_ELEVATION,
   SUN_INTENSITY,
   ambientAt,
@@ -156,54 +155,5 @@ describe('mixHex', () => {
     expect(mixHex('#102030', '#405060', 0)).toBe('#102030');
     expect(mixHex('#102030', '#405060', 1)).toBe('#405060');
     expect(mixHex('#102030', '#405060', 3)).toBe('#405060');
-  });
-});
-
-describe('FpsGuard (the under-15-fps switch-off)', () => {
-  /** frames at a steady rate for `ms` milliseconds; returns the frame results */
-  function run(g: FpsGuard, start: number, fps: number, ms: number): { now: number; hits: number } {
-    let hits = 0;
-    const step = 1000 / fps;
-    for (let t = start; t <= start + ms; t += step) if (g.frame(t)) hits += 1;
-    return { now: start + ms, hits };
-  }
-
-  it('trips on the third slow five-second window in a row, once', () => {
-    const g = new FpsGuard();
-    let t = run(g, 0, 10, 0).now;
-    let hits = 0;
-    for (let w = 0; w < 4; w++) {
-      const r = run(g, t, 10, 5000);
-      t = r.now;
-      hits += r.hits;
-    }
-    expect(hits).toBe(1);
-  });
-
-  it('a fast window in between clears the count', () => {
-    const g = new FpsGuard();
-    let t = run(g, 0, 10, 0).now;
-    let hits = 0;
-    for (const fps of [10, 10, 60, 10, 10]) {
-      const r = run(g, t, fps, 5000);
-      t = r.now;
-      hits += r.hits;
-    }
-    expect(hits).toBe(0);
-  });
-
-  it('a smooth view never trips it', () => {
-    const g = new FpsGuard();
-    const r = run(g, 0, 30, 60_000);
-    expect(r.hits).toBe(0);
-  });
-
-  it('reset forgets the windows so far', () => {
-    const g = new FpsGuard();
-    let t = run(g, 0, 10, 0).now;
-    for (let w = 0; w < 2; w++) t = run(g, t, 10, 5000).now;
-    g.reset();
-    const r = run(g, t, 10, 5000 * 2);
-    expect(r.hits).toBe(0);
   });
 });

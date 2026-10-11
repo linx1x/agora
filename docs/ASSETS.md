@@ -127,7 +127,7 @@ The Oasis wing uses its sheet the same way (ADR-024): fountain pool, cabanas, sa
 
 ## Current state (2026-10-11, ADR-052, ADR-053)
 
-- **Office art is unchanged.** The 2.5D view (ADR-052, flag `world25d`, off until checkpoint K)
+- **Office art is unchanged.** The 2.5D view (ADR-052; the only view since ADR-054)
   draws the same tiles on 3D shapes (`packages/shared/src/shape3d.ts`). Jungle, Atrium, Oasis,
   Boreal and Zen needed no new art to get their shapes (P16.12, P16.16, P16.17).
 - **Paper avatars** for the 2.5D view are drawn in code: `generated:characters/agora-paper-avatars`

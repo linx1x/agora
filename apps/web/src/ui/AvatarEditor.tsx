@@ -15,7 +15,6 @@ import {
 import { avatarPreviewDataUrl } from '../game/textures';
 import { paperPreviewDataUrl } from '../game3d/paperAvatar';
 import type { PaperDir } from '../game3d/paperLayout';
-import { useStore } from '../state/store';
 import { Dialog } from './common';
 
 /** Order in which the Turn button cycles the paper preview: face, right, back, left. */
@@ -55,16 +54,12 @@ export function AvatarEditor({
   firstTime?: boolean;
 }) {
   const { t } = useTranslation();
-  const world25d = useStore((s) => s.config?.flags.world25d === true);
   const [a, setA] = useState<Avatar>(initial);
   const [name, setName] = useState(initialName);
   const [dir, setDir] = useState<PaperDir>('down');
-  // Flag off: the same 128×160 pixel preview as before. Flag on: the 2.5D paper art plus a 64×80 2D view.
-  const preview = useMemo(() => avatarPreviewDataUrl(a, world25d ? 2 : 4), [a, world25d]);
-  const paperPreview = useMemo(
-    () => (world25d ? paperPreviewDataUrl(a, dir) : ''),
-    [a, dir, world25d],
-  );
+  // the 2.5D paper art (the world's own look) plus a 64×80 2D view (the small one, ADR-052)
+  const preview = useMemo(() => avatarPreviewDataUrl(a, 2), [a]);
+  const paperPreview = useMemo(() => paperPreviewDataUrl(a, dir), [a, dir]);
   const step = (k: keyof Avatar, n: number, d: number) =>
     setA((v) => ({ ...v, [k]: (v[k] + d + n) % n }));
 
@@ -72,51 +67,45 @@ export function AvatarEditor({
     <Dialog title={t(firstTime ? 'avatar.titleFirst' : 'avatar.title')} onClose={onClose}>
       <div className="avatar-editor">
         <div className="avatar-preview">
-          {world25d ? (
-            <>
-              <div className="avatar-previews">
-                <figure className="avatar-fig">
-                  <img
-                    className="avatar-paper-img"
-                    data-testid="avatar-paper-preview"
-                    src={paperPreview}
-                    alt={t('avatar.paperPreviewAlt')}
-                    width={140}
-                    height={204}
-                  />
-                  <figcaption>{t('avatar.paperCaption')}</figcaption>
-                </figure>
-                <figure className="avatar-fig">
-                  <img
-                    data-testid="avatar-pixel-preview"
-                    src={preview}
-                    alt={t('avatar.pixelPreviewAlt')}
-                    width={64}
-                    height={80}
-                  />
-                  <figcaption>{t('avatar.pixelCaption')}</figcaption>
-                </figure>
-              </div>
-              <div className="avatar-turn-row">
-                <button
-                  type="button"
-                  className="btn secondary"
-                  data-testid="avatar-turn"
-                  onClick={() => setDir((d) => NEXT_DIR[d])}
-                >
-                  <RotateCw size={16} aria-hidden /> {t('avatar.turn')}
-                </button>
-                <span className="avatar-dir" aria-hidden>
-                  {t(`avatar.dir.${dir}`)}
-                </span>
-                <span className="sr-only" aria-live="polite">
-                  {t(`avatar.dir.${dir}`)}
-                </span>
-              </div>
-            </>
-          ) : (
-            <img src={preview} alt={t('avatar.previewAlt')} width={128} height={160} />
-          )}
+          <div className="avatar-previews">
+            <figure className="avatar-fig">
+              <img
+                className="avatar-paper-img"
+                data-testid="avatar-paper-preview"
+                src={paperPreview}
+                alt={t('avatar.paperPreviewAlt')}
+                width={140}
+                height={204}
+              />
+              <figcaption>{t('avatar.paperCaption')}</figcaption>
+            </figure>
+            <figure className="avatar-fig">
+              <img
+                data-testid="avatar-pixel-preview"
+                src={preview}
+                alt={t('avatar.pixelPreviewAlt')}
+                width={64}
+                height={80}
+              />
+              <figcaption>{t('avatar.pixelCaption')}</figcaption>
+            </figure>
+          </div>
+          <div className="avatar-turn-row">
+            <button
+              type="button"
+              className="btn secondary"
+              data-testid="avatar-turn"
+              onClick={() => setDir((d) => NEXT_DIR[d])}
+            >
+              <RotateCw size={16} aria-hidden /> {t('avatar.turn')}
+            </button>
+            <span className="avatar-dir" aria-hidden>
+              {t(`avatar.dir.${dir}`)}
+            </span>
+            <span className="sr-only" aria-live="polite">
+              {t(`avatar.dir.${dir}`)}
+            </span>
+          </div>
           <button type="button" className="btn secondary" onClick={() => setA(randomAvatar())}>
             <Shuffle size={16} aria-hidden /> {t('avatar.randomize')}
           </button>
