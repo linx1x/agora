@@ -13,7 +13,7 @@ reference: the code draws the same things, so a new drawing must read the same a
 - One cell is one 32 × 32 px tile (`WORLD_CELL_PX`). Draw on the grid: no sub-pixel positions, no
   anti-aliasing, no soft edges. The renderer scales with nearest neighbour.
 - **Ground and solid blocks:** top face 32 × 24 px (rows 0–23), side band 32 × 8 px (rows 24–31).
-  The flat view repeats the side band down a cliff; the 2.5D view uses it as the front face.
+  The side band repeats down a cliff; the 2.5D view uses it as the front face.
 - **Decor:** the whole 32 × 32 frame, transparent around the object, the object's base on the bottom
   row (its floor point).
 - **Tall decor** (`height` ≥ 2 in `blocks.json`): a base tile and a crown tile above it, one 32 × 64
@@ -28,7 +28,7 @@ reference: the code draws the same things, so a new drawing must read the same a
   shadow painted into the art.
 - In 2.5D the sun moves (east, south, west) and the engine adds lit, front and side shade as vertex
   colours. Do not bake a side shade into a top face. The 8-row side band is the material's own dark
-  step, as in the flat view.
+  step.
 - Warm light is the accent of every biome: the lamp ramp of the batch (`lantern` in Jungle, `brass`
   elsewhere) only. The campfire's `fire` ramp is the one exception.
 
@@ -111,6 +111,6 @@ credit.
 3. The block id in `packages/shared/data/worlds/blocks.json` (a row with the sprite key) for block
    art; tools, items, crops and UI need their own loader.
 4. The loader. `resolveTile(sprite, files)` picks a file over the placeholder, but no code builds
-   the `files` map yet: the flat view draws placeholders only. The first drawn row waits for that
+   the `files` map yet: the views draw placeholders only. The first drawn row waits for that
    small task, which is not part of P17.38.
 5. The row's status in `docs/ASSETS.md` § Worlds changed from "to add" to "drawn".

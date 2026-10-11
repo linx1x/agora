@@ -1,6 +1,6 @@
 /**
  * P16.6 (ADR-052): the 2.5D view. The tilted camera draws the region I am in, and a click on the
- * floor (ray-cast) walks me there through the same navigation as 2D. Zoom, resize and the compact
+ * floor (ray-cast) walks me there through the same navigation as the office's walking. Zoom, resize and the compact
  * phone layout keep working. The 2.5D view is the only view (ADR-054): there is no choice to make.
  */
 import { expect, test, type Browser, type Page } from '@playwright/test';

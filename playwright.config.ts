@@ -11,8 +11,6 @@ const OFF = Number(process.env.E2E_PORT_OFFSET ?? 0) || 0;
 const PORT = 3123 + OFF;
 /** second server in AUTH_MODE=passkey; its owner setup link lands in SETUP_LINK_FILE */
 export const PASSKEY_PORT = 3124 + OFF;
-/** the server of the `2.5d` project: its own process, so its in-memory state starts fresh (see below) */
-const VIEW_25D_PORT = 3125 + OFF;
 // One file per run (workers inherit the env), outside test-results/ which Playwright empties.
 process.env.AGORA_E2E_RUN ??= `${Date.now()}-${process.pid}`;
 export const SETUP_LINK_FILE = join(tmpdir(), `agora-e2e-setup-${process.env.AGORA_E2E_RUN}.txt`);
@@ -39,8 +37,7 @@ const livekitEnv = LIVEKIT_BIN
   : {};
 /**
  * The dev-login server the specs play against. The server keeps its state (people, desk pods,
- * positions) in memory for as long as it runs, so the projects that share a server would see each
- * other's people: the `2.5d` project has a server of its own.
+ * positions) in memory for as long as it runs; the specs share it, one after another (workers: 1).
  */
 const devServer = (port: number) => ({
   command: `node apps/server/dist/index.js`,
@@ -85,17 +82,8 @@ export default defineConfig({
     },
     permissions: ['camera', 'microphone'],
   },
-  // The specs written for both world views (world, worlds, mobile, media, build, farming) run once in each
-  // (P16.12, P16.13, P17.15 and P17.21c, see e2e/views.ts); the 2.5D-only specs (world25d*) run in the default `2d` project.
-  // The farming spec runs in 2.5D too: the flat view is removed (ADR-054), so the 2.5D project is the one that counts.
-  projects: [
-    { name: '2d' },
-    {
-      name: '2.5d',
-      testMatch: /(world|worlds|mobile|media|build|farming)\.spec\.ts$/,
-      use: { baseURL: `http://localhost:${VIEW_25D_PORT}` },
-    },
-  ],
+  // One project: every spec runs in the 2.5D view, the only world view (ADR-054).
+  projects: [{ name: '2.5d' }],
   webServer: [
     ...(VOICE_E2E
       ? [
@@ -119,7 +107,6 @@ export default defineConfig({
         ]
       : []),
     devServer(PORT),
-    devServer(VIEW_25D_PORT),
     // Invite-only accounts with passkeys (e2e/auth.spec.ts)
     {
       command: `node apps/server/dist/index.js`,

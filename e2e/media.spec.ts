@@ -1,5 +1,4 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
-import { entryPath, runView } from './views';
 
 /** The pages this file opened: each is left and its context closed after its test (no ghost person in a shared space). */
 const opened: Page[] = [];
@@ -50,26 +49,23 @@ async function signIn(browser: Browser, devUser: number, precheck = false, tone 
         return s;
       };
     });
-  // the `2.5d` project (playwright.config.ts) runs the privacy tests in the 2.5D view too (P16.12)
-  const view = runView();
   await ctx.addInitScript(
-    ([pc, v]) => {
+    ([pc]) => {
       try {
         localStorage.setItem(
           'agora.settings',
           JSON.stringify({ lighting: false, sounds: false, autoSit: true, precheck: pc }),
         );
-        if (v === '2.5d') localStorage.setItem('agora.worldView', v);
       } catch {
         /* about:blank */
       }
     },
-    [precheck, view] as const,
+    [precheck] as const,
   );
   const page = await ctx.newPage();
   opened.push(page);
   page.on('pageerror', (e) => console.log(`[pageerror ${devUser}]`, e.message));
-  await page.goto(entryPath(view));
+  await page.goto('/?hour=13');
   await page.getByRole('button', { name: NAMES[devUser]! }).click();
   const enterBtn = page
     .getByRole('dialog')
@@ -81,9 +77,7 @@ async function signIn(browser: Browser, devUser: number, precheck = false, tone 
   await ready;
   if (!precheck) {
     await online(page);
-    expect(await page.evaluate(() => (window as any).__agora.view.engine)).toBe(
-      view === '2.5d' ? '2.5d' : '2d',
-    );
+    expect(await page.evaluate(() => (window as any).__agora.view.engine)).toBe('2.5d');
   }
   return page;
 }

@@ -1,5 +1,4 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
-import { runView } from './views';
 
 /**
  * Farming in my world, played from the client (P17.21b, ADR-053): the item in hand acts on a cell
@@ -11,8 +10,8 @@ import { runView } from './views';
  * that holds a stack until it is taken back out of the dialog.
  * P17.25 adds the craft test: a bench placed from the bag, its recipes opened by an empty hand, and a craft
  * the bag cannot pay for, refused by the server with its message.
- * Runs in the 2.5D project (the view of ADR-054) and, until P16.22 removes it, in the 2D project. Every
- * step goes through the view-neutral hooks (`view.world()`, `inventory()`, `cellInfo()`, `toClient`).
+ * Runs in the 2.5D view, the only view (ADR-054). Every step goes through the view's hooks
+ * (`view.world()`, `inventory()`, `cellInfo()`, `toClient`).
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -101,20 +100,13 @@ const cellInfo = (p: Page, cx: number, cy: number) =>
 
 /** Enter the office as a dev user (the same path as worlds.spec.ts). */
 async function enter(browser: Browser, devUser: number, hour = 13): Promise<Page> {
-  const mode = runView();
   const ctx = await browser.newContext();
-  // the 2.5D project chooses the 2.5D view by the saved choice (as worlds.spec.ts): without it the
-  // world is drawn flat, and this spec would not test 2.5D at all
-  await ctx.addInitScript(
-    ([v]) => {
-      localStorage.setItem(
-        'agora.settings',
-        JSON.stringify({ lighting: v === '2d', sounds: false, autoSit: true, precheck: false }),
-      );
-      if (v === '2.5d') localStorage.setItem('agora.worldView', v);
-    },
-    [mode] as const,
-  );
+  await ctx.addInitScript(() => {
+    localStorage.setItem(
+      'agora.settings',
+      JSON.stringify({ lighting: false, sounds: false, autoSit: true, precheck: false }),
+    );
+  });
   const page = await ctx.newPage();
   opened.push(page);
   await page.goto(`/?hour=${hour}`);
@@ -214,10 +206,7 @@ async function waitWorld(p: Page, timeout = 30_000) {
     timeout,
     polling: 200,
   });
-  // the world is drawn in the view the project runs (2.5D in the `2.5d` project, flat in `2d`)
-  expect(await p.evaluate(() => (window as any).__agora.view.engine)).toBe(
-    runView() === '2.5d' ? '2.5d' : '2d',
-  );
+  expect(await p.evaluate(() => (window as any).__agora.view.engine)).toBe('2.5d');
 }
 
 /** Claim the Jungle desk J-6 (or keep it if an earlier spec on this server did), and stand in my pod. */

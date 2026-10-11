@@ -1,26 +1,19 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
-import { runView } from './views';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const T = 32;
 
 /**
- * Runs in both world views (P16.13): the `2.5d` project sets the view on the device; every check
- * below goes through `window.__agora.view`, which both views implement.
+ * Build mode in the 2.5D view (the only view, ADR-054). Every check goes through `window.__agora.view`.
  */
 async function enter(browser: Browser, devUser: number): Promise<Page> {
-  const view = runView();
   const ctx = await browser.newContext();
-  await ctx.addInitScript(
-    ([v]) => {
-      localStorage.setItem(
-        'agora.settings',
-        JSON.stringify({ lighting: false, sounds: false, autoSit: true, precheck: false }),
-      );
-      if (v === '2.5d') localStorage.setItem('agora.worldView', v);
-    },
-    [view] as const,
-  );
+  await ctx.addInitScript(() => {
+    localStorage.setItem(
+      'agora.settings',
+      JSON.stringify({ lighting: false, sounds: false, autoSit: true, precheck: false }),
+    );
+  });
   const page = await ctx.newPage();
   page.on('pageerror', (e) => console.log(`[pageerror ${devUser}]`, e.message));
   await page.goto('/?hour=13');
@@ -36,9 +29,7 @@ async function enter(browser: Browser, devUser: number): Promise<Page> {
     const s = w.__agora.store.get();
     return s.conn === 'online' && !!s.me && w.__agora.rendered.has(s.me);
   });
-  expect(await page.evaluate(() => (window as any).__agora.view.engine)).toBe(
-    view === '2.5d' ? '2.5d' : '2d',
-  );
+  expect(await page.evaluate(() => (window as any).__agora.view.engine)).toBe('2.5d');
   return page;
 }
 
@@ -361,17 +352,6 @@ test('placement (P9.16–P9.20): several items on a desk, Alt, nudge, stack, str
   expect(lamp.y).toBeLessThanOrEqual(books.y);
   // drawn raised by the books' height on Ben's screen: the lamp sits above the books
   expect((await propPoint(ben, lamp.id)).y).toBeLessThan((await propPoint(ben, books.id)).y);
-  if (runView() === '2d') {
-    // flat view only: the exact base offset of a prop resting on a 12 px surface
-    const baseY = await ben.evaluate(
-      (id) =>
-        (window as any).__agoraGame.scene
-          .getScene('world')
-          .propsView.boxes.find((b: any) => b.id === id)?.baseY,
-      lamp.id,
-    );
-    expect(baseY).toBe(lamp.y - 12);
-  }
 
   // stretch: select the first desk's run and lengthen it west with Shift+←
   await alice.keyboard.press('c');

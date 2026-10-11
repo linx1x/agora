@@ -1,6 +1,6 @@
 /**
- * P16.7 (ADR-052): the 2.5D paper avatar. With the flag `world25d` on (playwright.config.ts), the
- * avatar editor shows the paper cut-out (140×204) beside the 2D look, a Turn button cycles the
+ * P16.7 (ADR-052): the 2.5D paper avatar. The avatar editor shows the paper cut-out (140×204) beside
+ * the small pixel look, a Turn button cycles the
  * paper preview through four directions, and the catalog choices redraw it. The paper art is
  * also listed in the Credits page with its licence row (ASSETS.md).
  */

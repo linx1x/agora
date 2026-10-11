@@ -16,7 +16,7 @@
 ```
 Browser (staff)
  ├─ React UI chrome (panels, chat, settings, video tiles)  ─┐
- ├─ Phaser 4 world canvas (tilemap, avatars, interactions) ─┤ apps/web
+ ├─ Three.js 2.5D world canvas (tiles, avatars, clicks)    ─┤ apps/web
  ├─ livekit-client (A/V, screen share)                      │
  ├─ Excalidraw + Yjs (whiteboard, notes, kanban)            ─┘
  │
@@ -41,8 +41,10 @@ can be split into processes later (Colyseus supports Redis presence if needed).
 
 ```
 apps/
-  web/            Vite + React + Phaser
-    src/game/       Phaser scenes, avatar renderer, input, interpolation
+  web/            Vite + React + Three.js
+    src/game/       world controller, navigation, input, pure blend and build maths
+    src/game3d/     the 2.5D office view (Three.js): scene, figures, camera, quality ladder
+    src/worlds/     personal worlds (ADR-053): walking, farming, and their 2.5D view
     src/ui/         React components (panels, dialogs, video strip)
     src/media/      LiveKit wrapper, proximity subscriber, audio graph
     src/collab/     Yjs providers, whiteboard, kanban, notes
@@ -108,25 +110,26 @@ around furniture. Same code on client (prediction) and server (validation).
 - Zone membership is computed **on the server** after each accepted move and stored
   in player state (`zoneId`). This drives media access and chat scope.
 
-### Rendering: two views of the office (ADR-052, Phase 16)
+### Rendering: the 2.5D view (ADR-052, ADR-054, Phase 16)
 
-The client draws the office in one of two renderers behind one seam. `WorldController`
+The client draws the world with Three.js behind one seam. `WorldController`
 (`apps/web/src/game/controller.ts`) owns movement, paths, sitting, prompts, the drawn
-positions and the presence tick. A view implements `WorldView` (`game/view.ts`: draw the path,
+positions and the presence tick. The view implements `WorldView` (`game/view.ts`: draw the path,
 teleport, pan, follow me, where a character is drawn, whether build mode owns the pointer) and
-runs its own frame loop. Both publish `window.__agora.view` (`ViewTestApi`), so one e2e spec
-drives either view. `playwright.config.ts` has a `2d` project (every spec) and a `2.5d` project
-(the `world`, `mobile`, `media` and `build` specs, which hold the privacy tests); `runView()` asserts
-which engine ran.
+runs its own frame loop. It publishes `window.__agora.view` (`ViewTestApi`), which the e2e specs
+drive, and `window.__agora.view3d` for the hooks of the 2.5D office.
 
-- **Flat view**: `WorldScene` (Phaser 4, `game/WorldScene.ts`), 32 px tiles, 32×40 avatars. The
-  default, and the fallback.
-- **2.5D view**: `World3DView` (`apps/web/src/game3d/World3DView.ts`, Three.js). Its chunk loads
-  only when the view is on. The camera is fixed: perspective, tilted 35°, facing north, never
-  rotating. Zoom moves the camera closer and keeps the angle.
+- **Office**: `World3DView` (`apps/web/src/game3d/World3DView.ts`, Three.js). Its chunk loads when
+  the game view mounts. The camera is fixed: perspective, tilted 35°, facing north, never rotating.
+  Zoom moves the camera closer and keeps the angle.
+- **Personal worlds**: `WorldRoom3DView` (`apps/web/src/worlds/view3d/`), the same camera rules,
+  drawn as one merged mesh per chunk of 32 × 32 cells.
+
+The e2e suite runs one Playwright project, `2.5d` (`playwright.config.ts`), and every spec asserts
+`view.engine === '2.5d'` at entry.
 
 Only presentation changes. Positions, collision, zones, proximity, media, `planEdit`, the map
-format and the server are the same in both views. Height is client metadata: `shape3d`
+format and the server do not depend on the view. Height is client metadata: `shape3d`
 (`packages/shared/src/shape3d.ts`) gives every tile a shape (`flat`, `wall`, `box`, `card`,
 `decal`, `none`), and a tile may override it with `TileDef.d3`.
 
@@ -158,7 +161,7 @@ region the player is in is built, and it is rebuilt on a portal.
 `figureMath.ts`): 64×96 smooth art, one upright card per figure facing the camera, shared sheets
 per look, a 120 ms card flip on a left↔right turn (at once under reduced motion). Names, status,
 emotes and bubbles are HTML over the canvas (`overlays.ts`, aria-hidden; the People panel is the
-accessible list). Props keep their 2D base point; `props3d.ts` places them on a surface and maps
+accessible list). Props keep their ground base point; `props3d.ts` places them on a surface and maps
 back.
 
 **Occlusion** (`occlusion.ts`, `occlusionMath.ts`). Cells whose faces are walls, vines or cards at
@@ -168,24 +171,25 @@ stays opaque, needs no sorting and stays one draw call. 30 % is kept while hidde
 reduced motion jumps.
 
 **Lighting** (`lightRig.ts`, `lightingMath.ts`, `blobs.ts`, `postfx.ts`). The hemisphere takes the
-Québec hour's ambient tint from the same curve as 2D (`game/lighting.ts`). A sun runs an arc from
+Québec hour's ambient tint from `timeOfDay` (`game/lighting.ts`), the curve the flat view used. A sun runs an arc from
 6 h to 20 h (46° at noon, east through south to west). A fixed pool of point lights (8 desktop,
 3 phone) holds the lamps, windows, fires, portals and desk lamps nearest the camera, re-picked
 at 3 Hz. Trees have blob shadows. Lighting off: plain midday light, no point lights, no shadows,
 no blobs, no post-processing.
 
 **Build mode in 3D** (`BuildMode3D.ts`, `pick3d.ts`, `ghost3d.ts`, `propFaces.ts`,
-`buildOverlay.ts`). The same edits, shared rules and keys as the flat `BuildMode.ts`, whose
-pure helpers now live in `game/buildMath.ts`. The pointer picks the nearest opaque face under
-it along a ray (props are hit anywhere in their card), else the floor. The 2D point the server
+`buildOverlay.ts`). The edits, rules and keys are the 2.5D build mode's own; the pure helpers it
+shares with the tests live in `game/buildMath.ts`. The pointer picks the nearest opaque face under
+it along a ray (props are hit anywhere in their card), else the floor. The ground point the server
 checks is the image of that hit (`aimOf`). The preview runs the server's own plan on a copy of the
 map and draws the changed cells, translucent and red when the server would refuse. One region is
-edited at a time: the focus follows the build cursor. The server still gets cells and 2D prop
+edited at a time: the focus follows the build cursor. The server still gets cells and ground
 points.
 
 **Status (2026-10-11).** P16.1–P16.14 and P16.16–P16.17 are built. P16.15 (builder uploads in
-2.5D) waits for P9.15. The flat 2D view is removed (ADR-054, P16.19–P16.22): the 2.5D view is
-always on, and personal worlds draw in 2.5D too (P17.15).
+2.5D) waits for P9.15. The flat 2D view is removed (ADR-054: P16.19 one view, P16.20 the Phaser
+office view, P16.21 `view2d/`, P16.22 e2e on one view): the 2.5D view is the only view, and personal
+worlds draw in 2.5D too (P17.15). Pets are not drawn in 2.5D yet (ADR-040 cat, checkpoint K).
 
 ## 5. Proximity media design (LiveKit)
 
@@ -421,9 +425,10 @@ and NPC gifts are JSON in `packages/shared/data/worlds/`, each checked by zod at
 palette until a sprite file exists under its key (`apps/web/src/worlds/placeholders.ts`). The
 art manifest is in `docs/ASSETS.md` § Worlds.
 
-**Rendering.** The flat view is `apps/web/src/worlds/view2d/`: cells lift 12 px per level with a
-darker side strip under each step, and the farm layer is drawn over the ground. The 2.5D view of
-worlds comes with P17.15, on the same `WorldView` seam as the office (section 4).
+**Rendering.** Cells lift 12 px per level with a darker side strip under each step (`worlds/cellMath.ts`),
+and the farm layer is drawn over the ground. Personal worlds are drawn in 2.5D by
+`worlds/view3d/WorldRoom3DView.ts`, on the same `WorldView` seam as the office (section 4). The flat
+view was removed in P16.21.
 
 **Progression (P17.31).** Five skills (`SKILLS`: farming, foraging, mining, fishing, combat), one
 xp curve (`levelXp`) for all of them. Each action earns the xp its `progression.xp` row names

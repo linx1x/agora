@@ -4,7 +4,6 @@
  * touch prompts. Real touches go through CDP so the browser makes the pointer events.
  */
 import { expect, test, type Browser, type CDPSession, type Page } from '@playwright/test';
-import { entryPath, runView } from './views';
 
 /** The pages this file opened: each is left and its context closed after its test (no ghost person in a shared space). */
 const opened: Page[] = [];
@@ -44,29 +43,24 @@ const touch = (cdp: CDPSession, type: string, pts: Pt[]) =>
     touchPoints: pts.map((p, i) => ({ x: p.x, y: p.y, id: p.id ?? i, radiusX: 4, radiusY: 4 })),
   });
 
-/** The `2.5d` project (playwright.config.ts) runs this spec in the 2.5D view (P16.12), as world.spec.ts does. */
+/** The compact phone layout of the 2.5D view (the only view, ADR-054). */
 async function enterPhone(browser: Browser): Promise<{ page: Page; cdp: CDPSession }> {
-  const view = runView();
   const ctx = await browser.newContext({
     viewport: { width: 390, height: 844 },
     deviceScaleFactor: 2,
     isMobile: true,
     hasTouch: true,
   });
-  await ctx.addInitScript(
-    ([v]) => {
-      localStorage.setItem(
-        'agora.settings',
-        JSON.stringify({ lighting: false, sounds: false, autoSit: false, precheck: false }),
-      );
-      if (v === '2.5d') localStorage.setItem('agora.worldView', v);
-    },
-    [view] as const,
-  );
+  await ctx.addInitScript(() => {
+    localStorage.setItem(
+      'agora.settings',
+      JSON.stringify({ lighting: false, sounds: false, autoSit: false, precheck: false }),
+    );
+  });
   const page = await ctx.newPage();
   opened.push(page);
   page.on('pageerror', (e) => console.log('[pageerror]', e.message));
-  await page.goto(entryPath(view));
+  await page.goto('/?hour=13');
   await page.getByRole('button', { name: 'Chloé Roy' }).click();
   const enterBtn = page
     .getByRole('dialog')
@@ -77,9 +71,7 @@ async function enterPhone(browser: Browser): Promise<{ page: Page; cdp: CDPSessi
     const s = a.store.get();
     return s.conn === 'online' && !!s.me && a.rendered.has(s.me);
   });
-  expect(await page.evaluate(() => (window as any).__agora.view.engine)).toBe(
-    view === '2.5d' ? '2.5d' : '2d',
-  );
+  expect(await page.evaluate(() => (window as any).__agora.view.engine)).toBe('2.5d');
   await page.waitForTimeout(500);
   return { page, cdp: await ctx.newCDPSession(page) };
 }

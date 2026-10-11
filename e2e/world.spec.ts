@@ -1,6 +1,5 @@
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 import { expect, test, type Browser, type Page } from '@playwright/test';
-import { runView } from './views';
 
 /** The pages this file opened: each is left and its context closed after its test (no ghost person in a shared space). */
 const opened: Page[] = [];
@@ -25,30 +24,22 @@ type AgoraWindow = {
     setHeld: (codes: string[]) => void;
     rendered: Map<string, { x: number; y: number }>;
   };
-  __agoraGame: any;
 };
 const A = (p: Page) => p.evaluate.bind(p);
 const T = 32;
 
 /**
- * The `2.5d` project (playwright.config.ts) runs these specs in the 2.5D view (P16.12): this
- * device is told through its storage, lighting is off there (the software GPU cannot draw the lit
- * 2.5D look in time; the lit look has its own tests in world25d.spec.ts), and the engine is checked.
+ * The 2.5D view (the only view, ADR-054). Lighting is off here (the software GPU cannot draw the lit 2.5D look in time; the lit look has
+ * its own tests in world25d.spec.ts), and the engine is checked (the 2.5D view is the only view).
  */
 async function enter(browser: Browser, devUser: number, hour = 13): Promise<Page> {
-  const view = runView();
   const ctx = await browser.newContext();
-  // keep lighting on in tests regardless of the software GPU's frame rate (2D)
-  await ctx.addInitScript(
-    ([v]) => {
-      localStorage.setItem(
-        'agora.settings',
-        JSON.stringify({ lighting: v === '2d', sounds: false, autoSit: true, precheck: false }),
-      );
-      if (v === '2.5d') localStorage.setItem('agora.worldView', v);
-    },
-    [view] as const,
-  );
+  await ctx.addInitScript(() => {
+    localStorage.setItem(
+      'agora.settings',
+      JSON.stringify({ lighting: false, sounds: false, autoSit: true, precheck: false }),
+    );
+  });
   const page = await ctx.newPage();
   opened.push(page);
   page.on('pageerror', (e) => console.log(`[pageerror ${devUser}]`, e.message));
@@ -65,9 +56,7 @@ async function enter(browser: Browser, devUser: number, hour = 13): Promise<Page
     const s = w.__agora.store.get();
     return s.conn === 'online' && !!s.me && w.__agora.rendered.has(s.me);
   });
-  expect(await page.evaluate(() => (window as any).__agora.view.engine)).toBe(
-    view === '2.5d' ? '2.5d' : '2d',
-  );
+  expect(await page.evaluate(() => (window as any).__agora.view.engine)).toBe('2.5d');
   return page;
 }
 
@@ -158,23 +147,8 @@ test('two people see each other move and stop, chat, and connect media nearby', 
   await b.getByRole('tab', { name: /Clavardage/ }).click();
   await expect(b.locator('.messages')).toContainText('Bonjour Benoît!');
   await a.locator('#chat-input').blur();
-  // the doc screenshot and the tileset export are the 2D view's (the 2.5D run leaves them alone)
-  if (runView() === '2d') {
-    mkdirSync('docs/screenshots', { recursive: true });
-    await a.screenshot({ path: 'docs/screenshots/agora-two-people.png' });
-
-    const png = await A(a)(() =>
-      (window as unknown as AgoraWindow).__agoraGame.textures
-        .get('agora-office')
-        .getSourceImage()
-        .toDataURL('image/png'),
-    );
-    mkdirSync('apps/web/public/assets/tiles', { recursive: true });
-    writeFileSync(
-      'apps/web/public/assets/tiles/agora-office.png',
-      Buffer.from(png.split(',')[1]!, 'base64'),
-    );
-  }
+  mkdirSync('docs/screenshots', { recursive: true });
+  await a.screenshot({ path: 'docs/screenshots/agora-two-people.png' });
   await a.context().close();
   await b.context().close();
 });
