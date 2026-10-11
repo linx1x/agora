@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { blipFrequency, BLIP_HZ } from './blip';
+import { blipFrequency, BLIP_HZ } from './sound';
 import { shakeIntensity, sparkCount, swingParams } from './swing';
 
 describe('the hit juice of a tool (P17.21b)', () => {

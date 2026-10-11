@@ -1,7 +1,8 @@
 /**
- * The sound of a tool hit (P17.21b): one short tone made in code (Web Audio, no file), its pitch
- * the tier's playback rate from `swing.ts`. Silent when the player has sounds off, as the office
- * chimes are (`settings.sounds`); the caller passes that flag, so this file reads no store.
+ * The sound of a tool hit, shared by the world views (P17.21b, P17.21c): one short tone made in code
+ * (Web Audio, no file), its pitch the tier's playback rate from `swing.ts`. Silent when the player
+ * has sounds off, as the office chimes are (`settings.sounds`); the caller passes that flag, so this
+ * file reads no store.
  */
 
 /** The tone of a tier-1 hit, in hertz, before the tier's pitch. */
@@ -14,7 +15,7 @@ export function blipFrequency(pitch: number): number {
 
 let ctx: AudioContext | null = null;
 
-export function swingBlip(pitch: number, sounds: boolean): void {
+export function playSwingSound(pitch: number, sounds: boolean): void {
   if (!sounds) return;
   try {
     ctx ??= new AudioContext();

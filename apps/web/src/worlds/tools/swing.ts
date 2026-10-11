@@ -4,10 +4,27 @@
  * tier swings faster, throws bigger sparks, shakes the screen harder and rings a little higher.
  * Reduced motion turns the shake off; the swing itself stays, it is the player's own action.
  */
-import type { Tool } from '@agora/shared';
+import { loadGameData, type Tool } from '@agora/shared';
 
 export type Facing = 'up' | 'down' | 'left' | 'right';
 export const FACINGS: readonly Facing[] = ['up', 'down', 'left', 'right'];
+
+/** The step a facing points at, in cells (x east, y south): the direction a tool head reaches. */
+export const FACING_UNIT: Readonly<Record<Facing, readonly [number, number]>> = {
+  up: [0, -1],
+  down: [0, 1],
+  left: [-1, 0],
+  right: [1, 0],
+};
+
+/** The hand is this far above the feet, in world pixels: the swing is drawn around it. */
+export const HAND_PX = 10;
+/** Reach of the tool head from the hand, in world pixels. */
+export const HEAD_PX = 12;
+/** Where the impact is, as a share of the swing's duration (the head meets the cell). */
+export const IMPACT_AT = 0.66;
+/** The tools that swing (a rod casts, a seed and food are used by hand). */
+const SWINGING = new Set(['hoe', 'can', 'axe', 'pick']);
 
 /** Frames per facing; the swing plays them in order and holds the last one. */
 export const SWING_FRAMES = 3;
@@ -95,4 +112,13 @@ export function sparkCount(tier: number): number {
  */
 export function shakeIntensity(shakePx: number, viewWidth: number): number {
   return shakePx > 0 && viewWidth > 0 ? (2 * shakePx) / viewWidth : 0;
+}
+
+/**
+ * The playback speed of a swing at a tier, when the server only said the tier (another person's
+ * swing): the speed of a swinging tool of that tier in tools.json (1 when there is none).
+ */
+export function speedOfTier(tier: number): number {
+  const tool = loadGameData().tools.find((t) => t.tier === tier && SWINGING.has(t.tool));
+  return tool?.speed ?? 1;
 }

@@ -12,12 +12,7 @@ import { inputVector, isTyping } from '../../game/input';
 import { exposeTestApi, type ViewTestApi } from '../../game/view';
 import {
   avatarKey,
-  baseItemOf,
-  inReach,
-  loadGameData,
-  toolOf,
   type Avatar,
-  type CellRef,
   type Dir,
   type GridCell,
   type PlotState,
@@ -30,10 +25,11 @@ import { WorldWalker, cellFeet } from '../walker';
 import { portalOfPrompt, worldPromptAt } from '../prompts';
 import { TEX, addWorldTextures } from './atlas';
 import { cropFrameName } from './art';
-import { worldActs } from '../actLink';
-import { NO_FACTS, actionFor, factsOf, faceCell } from '../inputActs';
 import { worldHud } from '../ui/hudState';
-import { playSwing2d, speedOfTier } from './swing2d';
+import * as use from '../use';
+import { liveUse } from '../useLive';
+import { playSwing2d } from './swing2d';
+import { speedOfTier } from '../tools/swing';
 import {
   CELL,
   RANK,
@@ -158,13 +154,13 @@ export class WorldRoomScene extends Phaser.Scene {
 
     this.onKey = (e: KeyboardEvent) => {
       if (
-        isTyping() ||
-        e.metaKey ||
-        e.ctrlKey ||
-        e.altKey ||
-        store.get().dialog ||
-        worldHud.get().chest !== null ||
-        worldHud.get().panel !== null
+        use.keysBusy({
+          typing: isTyping(),
+          modifier: e.metaKey || e.ctrlKey || e.altKey,
+          dialog: !!store.get().dialog,
+          chest: worldHud.get().chest !== null,
+          panel: worldHud.get().panel !== null,
+        })
       )
         return;
       if (e.key === 'x' || e.key === 'X') this.act();
@@ -267,13 +263,20 @@ export class WorldRoomScene extends Phaser.Scene {
     if (id !== null) link.send({ t: 'portal:enter', id });
   }
 
-  // ───────────────────────────────────────────── tools (P17.21b)
+  // ───────────────────────────────────────────── tools (P17.21b; the rules are in use.ts, P17.21c)
+  /** The input's world: my own swing shakes the screen, and the swing is played from here. */
+  private useEnv(): use.UseEnv {
+    return liveUse(
+      (_at, tier, speed) => this.playSwing(worldSession.you, this.walker.d, tier, true, speed),
+      (key) => toast(key),
+    );
+  }
+
   /** Space: the held item acts on the cell in front of me. Nothing to do there says so. */
   private useFaced(shift: boolean): void {
     const focused = document.activeElement;
     if (focused instanceof HTMLElement && focused.closest('.wh-hud')) focused.blur();
-    const w = this.walker;
-    if (!this.useOn(faceCell(w.x, w.y, w.d), shift)) toast('worlds.hud.nothingToDo');
+    use.useFaced(this.useEnv(), this.walker, shift);
   }
 
   /** A click on a cell within reach: the held item acts on it (true). Otherwise the click walks (false). */
@@ -281,34 +284,7 @@ export class WorldRoomScene extends Phaser.Scene {
     const t = worldSession.terrain;
     if (!t) return false;
     const cell = pickCell(wx, wy, (cx, cy) => t.cellAt(cx, cy).level);
-    const at: CellRef = { x: cell.cx, y: cell.cy };
-    return inReach(this.walker.x, this.walker.y, at) && this.useOn(at, shift);
-  }
-
-  /** Asks the server for the held item's action on a cell (it decides), and swings for a tool. */
-  private useOn(at: CellRef, shift = false): boolean {
-    const world = worldSession.worldId;
-    const hand = worldHud.get().inHand;
-    const data = loadGameData();
-    const cell = worldSession.terrain?.cellAt(at.x, at.y);
-    const facts = cell ? factsOf(cell, data) : NO_FACTS;
-    if (world === null) return false;
-    // an empty hand on a shop board or a station opens its panel; the server decides each action in it
-    if (hand === null && cell && (facts.shop || facts.station)) {
-      const panelAt = { x: at.x, y: at.y };
-      worldHud.openPanel(
-        facts.shop
-          ? { kind: 'shop', at: panelAt }
-          : { kind: 'craft', at: panelAt, block: cell.decor },
-      );
-      return true;
-    }
-    const kind = actionFor(hand, data, facts, shift);
-    if (kind === null) return false;
-    worldActs.submit(world, { kind, at, ...(hand !== null ? { item: hand } : {}) });
-    const tool = hand === null ? undefined : toolOf(data, baseItemOf(hand));
-    if (tool) this.playSwing(worldSession.you, this.walker.d, tool.tier, true, tool.speed);
-    return true;
+    return use.useAt(this.useEnv(), this.walker, { x: cell.cx, y: cell.cy }, shift);
   }
 
   /**
