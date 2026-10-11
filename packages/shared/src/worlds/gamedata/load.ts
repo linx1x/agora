@@ -7,6 +7,7 @@ import {
   ItemsFileSchema,
   ProgressionFileSchema,
   RecipesFileSchema,
+  TOOL_SKILL,
   ToolsFileSchema,
   type Animal,
   type Crop,
@@ -167,6 +168,24 @@ export function checkCrossRefs(data: Omit<GameData, 'itemsById'>): string[] {
   // The starter kit: every item exists.
   for (const id of Object.keys(data.progression.starterKit.items)) {
     if (!itemsById.has(id)) issues.push(`progression.starterKit.items: unknown item ${id}`);
+  }
+
+  // Unlocks (P17.31): a tool, once, on the skill it trains; every tool above tier 1 has one.
+  const unlocked = new Set<string>();
+  for (const unlock of data.progression.unlocks) {
+    const where = `progression.unlocks.${unlock.item}`;
+    const found = kindOf(unlock.item);
+    if (found === undefined) issues.push(`${where}: unknown item ${unlock.item}`);
+    else if (found !== 'tool') issues.push(`${where}: is ${found}, expected tool`);
+    if (unlocked.has(unlock.item)) issues.push(`${where}: unlocked twice`);
+    unlocked.add(unlock.item);
+    const tool = data.tools.find((t) => t.id === unlock.item);
+    if (tool && TOOL_SKILL[tool.tool] !== unlock.skill)
+      issues.push(`${where}: a ${tool.tool} trains ${TOOL_SKILL[tool.tool]}, not ${unlock.skill}`);
+  }
+  for (const tool of data.tools) {
+    if (tool.tier > 1 && !unlocked.has(tool.id))
+      issues.push(`progression.unlocks: tool ${tool.id} (tier ${tool.tier}) has no unlock`);
   }
 
   // Gifts: every item exists.

@@ -24,6 +24,8 @@ import type { WorldTime } from './worlds/clock';
 import type { PlotState } from './worlds/gamedata/state';
 import { ACTION_KINDS, type ActionChanges, type WorldRefusal } from './worlds/actions/kinds';
 import { WORLD_COORD_LIMIT } from './worlds/constants';
+import { SKILLS } from './worlds/gamedata/schema';
+import type { Badge } from './worlds/progression';
 
 /** Client → server messages, all validated with zod on the server. */
 export const C2S = z.discriminatedUnion('t', [
@@ -67,6 +69,8 @@ export const C2S = z.discriminatedUnion('t', [
     target: z.string().min(1).max(64).optional(),
     key: z.string().min(8).max(64),
   }),
+  /** P17.31: the skill to show on the card (null shows none). The server shows only a level that is earned. */
+  z.object({ t: z.literal('badge'), skill: z.enum(SKILLS).nullable() }),
   z.object({ t: z.literal('desk:claim'), deskId: z.string().min(1).max(32) }),
   z.object({ t: z.literal('desk:release') }),
   z.object({
@@ -175,6 +179,8 @@ export interface PlayerProfile {
   screen: boolean;
   /** false while the seat is held for a reconnecting client */
   online: boolean;
+  /** P17.31: the skill this person shows, at the level they have earned (absent when none) */
+  badge?: Badge;
 }
 /** Compact dynamic state sent every tick. */
 export interface PlayerPos {

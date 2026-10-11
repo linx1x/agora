@@ -7,6 +7,7 @@ import { avatarUrl } from '../game/textures';
 import { zoneName } from '../game/controller';
 import { world } from '../net/client';
 import { store, useStore } from '../state/store';
+import { ShowOffPicker, SkillBadge } from './SkillBadge';
 
 const NEEDS = ['energy', 'social', 'focus', 'caffeine'] as const;
 const hhmm = (m: number) =>
@@ -138,6 +139,12 @@ function People() {
                 {p.online ? zoneName(areas[p.id]) : t('people.reconnecting')}
                 {p.statusMsg ? ` · ${p.statusMsg}` : ''}
               </div>
+              {p.badge && (
+                <div className="small">
+                  <SkillBadge badge={p.badge} />
+                </div>
+              )}
+              {p.id === me && <ShowOffPicker badge={p.badge} />}
             </div>
             <span className="person-icons">
               {p.mic ? (

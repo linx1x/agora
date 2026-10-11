@@ -49,7 +49,27 @@
       "mine": {
         "skill": "mining",
         "amount": 4
+      },
+      "catch": {
+        "skill": "fishing",
+        "amount": 6
+      },
+      "kill": {
+        "skill": "combat",
+        "amount": 5
       }
-    }
+    },
+    "unlocks": [
+      { "item": "hoe_2", "skill": "farming", "level": 1 },
+      { "item": "can_2", "skill": "farming", "level": 1 },
+      { "item": "axe_2", "skill": "foraging", "level": 1 },
+      { "item": "pick_2", "skill": "mining", "level": 1 },
+      { "item": "rod_2", "skill": "fishing", "level": 1 },
+      { "item": "hoe_3", "skill": "farming", "level": 3 },
+      { "item": "can_3", "skill": "farming", "level": 3 },
+      { "item": "axe_3", "skill": "foraging", "level": 3 },
+      { "item": "pick_3", "skill": "mining", "level": 3 },
+      { "item": "rod_3", "skill": "fishing", "level": 3 }
+    ]
   }
 }

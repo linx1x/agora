@@ -1,5 +1,13 @@
 import { expect } from 'vitest';
-import { localIndexOf, chunkOfCell, WORLD_CELL_PX, worldTime, type ChunkDelta, type S2CMsg } from '@agora/shared';
+import {
+  localIndexOf,
+  chunkOfCell,
+  loadGameData,
+  WORLD_CELL_PX,
+  worldTime,
+  type ChunkDelta,
+  type S2CMsg,
+} from '@agora/shared';
 import { opened, type Backend } from './testStores';
 import type { WorldStore } from './worldStore';
 import type { WorldMember } from './worldRoom';
@@ -83,6 +91,19 @@ export async function grant(store: WorldStore, uid: string, items: Record<string
  */
 export async function setEnergy(store: WorldStore, uid: string, energy: number, day = worldTime(0, Date.now()).day): Promise<void> {
   await store.withTxn((tx) => tx.saveProgress(uid, { skills: {}, energy, day, rest: null }));
+}
+
+/**
+ * Sets a person's total xp per skill (P17.31), keeping their energy and day. A person with no row
+ * yet starts with full energy.
+ */
+export async function setSkills(store: WorldStore, uid: string, skills: Record<string, number>): Promise<void> {
+  await store.withTxn(async (tx) => {
+    const row = await tx.progressOf(uid, true);
+    const energy = row?.energy ?? loadGameData().progression.energy.max;
+    const day = row?.day ?? worldTime(0, Date.now()).day;
+    await tx.saveProgress(uid, { skills, energy, day, rest: row?.rest ?? null });
+  });
 }
 
 /** The cell the person stands on: always within reach of them. */

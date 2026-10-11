@@ -247,8 +247,18 @@ export const GiftProfileSchema = z
   });
 export type GiftProfile = z.infer<typeof GiftProfileSchema>;
 
-export const SKILLS = ['farming', 'foraging', 'mining'] as const;
+/** The five skills (P17.31). Fishing and combat have no action yet: their xp rows wait for P17.34 and combat. */
+export const SKILLS = ['farming', 'foraging', 'mining', 'fishing', 'combat'] as const;
 export type Skill = (typeof SKILLS)[number];
+
+/** The skill each tool kind trains: its xp goes there, and an unlock of the tool is on that skill. */
+export const TOOL_SKILL: Readonly<Record<ToolKind, Skill>> = {
+  hoe: 'farming',
+  can: 'farming',
+  axe: 'foraging',
+  pick: 'mining',
+  rod: 'fishing',
+};
 
 const XpGrantSchema = z.object({ skill: z.enum(SKILLS), amount: int(1, 100) });
 export type XpGrant = z.infer<typeof XpGrantSchema>;
@@ -256,6 +266,10 @@ export type XpGrant = z.infer<typeof XpGrantSchema>;
 /** Energy, the starter kit and the xp of each action (P17.20; costs of tools live in tools.json). */
 /** Skill levels run 0 to 10; `levelXp` lists the total xp each level 1 to 10 needs. */
 export const SKILL_LEVEL_MAX = 10;
+
+/** A level that opens an item (P17.31): the held item may be used once the skill is at `level`. */
+const UnlockSchema = z.strictObject({ item: IdSchema, skill: z.enum(SKILLS), level: int(1, SKILL_LEVEL_MAX) });
+export type Unlock = z.infer<typeof UnlockSchema>;
 
 export const ProgressionSchema = z.object({
   energy: z.object({ max: int(1, 999) }),
@@ -274,7 +288,16 @@ export const ProgressionSchema = z.object({
     .array(int(1, 1_000_000))
     .length(SKILL_LEVEL_MAX)
     .refine((xp) => xp.every((need, i) => i === 0 || need > xp[i - 1]!), { message: 'levelXp must rise' }),
-  xp: z.object({ harvest: XpGrantSchema, chop: XpGrantSchema, mine: XpGrantSchema }),
+  /** The xp each action earns (the skill and the amount); the server reads it, never the rule's own figure. */
+  xp: z.object({
+    harvest: XpGrantSchema,
+    chop: XpGrantSchema,
+    mine: XpGrantSchema,
+    catch: XpGrantSchema,
+    kill: XpGrantSchema,
+  }),
+  /** Tools that a level opens. Every tool above tier 1 has one (checked in load.ts). */
+  unlocks: z.array(UnlockSchema).max(64),
 });
 export type Progression = z.infer<typeof ProgressionSchema>;
 

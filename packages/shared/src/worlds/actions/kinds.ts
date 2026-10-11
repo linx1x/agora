@@ -40,6 +40,7 @@ export const WORLD_REFUSALS = [
   'key_taken',
   'conflict',
   'asleep',
+  'locked',
 ] as const;
 export type WorldRefusal = (typeof WORLD_REFUSALS)[number];
 

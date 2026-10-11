@@ -427,3 +427,12 @@ art manifest is in `docs/ASSETS.md` § Worlds.
 **Rendering.** The flat view is `apps/web/src/worlds/view2d/`: cells lift 12 px per level with a
 darker side strip under each step, and the farm layer is drawn over the ground. The 2.5D view of
 worlds comes with P17.15, on the same `WorldView` seam as the office (section 4).
+
+**Progression (P17.31).** Five skills (`SKILLS`: farming, foraging, mining, fishing, combat), one
+xp curve (`levelXp`) for all of them. Each action earns the xp its `progression.xp` row names
+(harvest, chop and mine today). `progressionStep` (`packages/shared/src/worlds/progression.ts`) runs
+once inside `transact`, after the rule: it refuses a held tool whose unlock the actor has not earned
+(`locked`) and writes the xp from the table. Unlocks are derived from the actor's own levels, never
+from the owner's levels or grants, so a visitor's action is judged by the visitor's xp. The badge is
+a skill the person chose (`show_off` table, `badge` message); its level is computed from their xp,
+so an unearned level never shows.

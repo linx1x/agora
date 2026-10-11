@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { localIndexOf, randomAvatar, chunkOfCell, worldTime, type S2CMsg } from '@agora/shared';
+import { localIndexOf, loadGameData, randomAvatar, chunkOfCell, worldTime, type S2CMsg } from '@agora/shared';
 import { memory, postgres, PG_URL } from './testStores';
 import type { WorldStore } from './worldStore';
 import { WorldHub, type WorldActRequest, type WorldMember, type WorldRoom } from './worldRoom';
-import { FakeConn, OWNER, feetCell, grant, openWorld, setCells, setEnergy, waitFor } from './testWorld';
+import { FakeConn, OWNER, feetCell, grant, openWorld, setCells, setEnergy, setSkills, waitFor } from './testWorld';
 
 /**
  * Tools through the room with the real rules (P17.21): till and water change the farm layer, axe and
@@ -98,7 +98,7 @@ suite(`tools through the room on the ${backend.name} (P17.21)`, () => {
     room.leave(m);
   });
 
-  it('a tier-1 axe is refused on a jungle tree, and a tier-2 axe fells it', async () => {
+  it('a tier-1 axe is refused on a jungle tree, and a tier-2 axe fells it once foraging level 1 is earned (P17.31)', async () => {
     const store = await openWorld(backend);
     await grant(store, OWNER, { axe_2: 1 });
     const { room, m, c } = await enter(store);
@@ -108,9 +108,13 @@ suite(`tools through the room on the ${backend.name} (P17.21)`, () => {
     act(room, m, 1, 'k-low', 'chop', 'axe_1', at);
     expect(await reply(c, 1)).toEqual({ t: 'world:refused', op: 1, reason: 'tier' });
 
-    act(room, m, 2, 'k-high', 'chop', 'axe_2', at);
-    const out = await reply(c, 2);
-    expect(out).toMatchObject({ t: 'world:acted', op: 2, changes: { energy: -4 } });
+    act(room, m, 2, 'k-locked', 'chop', 'axe_2', at);
+    expect(await reply(c, 2)).toEqual({ t: 'world:refused', op: 2, reason: 'locked' });
+
+    await setSkills(store, OWNER, { foraging: loadGameData().progression.levelXp[0]! });
+    act(room, m, 3, 'k-high', 'chop', 'axe_2', at);
+    const out = await reply(c, 3);
+    expect(out).toMatchObject({ t: 'world:acted', op: 3, changes: { energy: -4 } });
     expect(out.t === 'world:acted' && (out.changes.items.hardwood ?? 0) >= 3).toBe(true);
     room.leave(m);
   });

@@ -971,6 +971,19 @@
       "sources": "Sources: {{sites}}"
     }
   },
+  "skill": {
+    "farming": "Farming",
+    "foraging": "Foraging",
+    "mining": "Mining",
+    "fishing": "Fishing",
+    "combat": "Combat",
+    "badge": "{{skill}} level {{level}}",
+    "showOff": {
+      "label": "Skill shown",
+      "none": "None",
+      "hint": "The badge appears once you reach level 1 in this skill."
+    }
+  },
   "worlds": {
     "hud": {
       "hotbar": "Hotbar",
@@ -1012,7 +1025,8 @@
       "unknown": "This door leads nowhere.",
       "outside": "Stand in the doorway to enter.",
       "no_permission": "This world is not open to you.",
-      "no_world": "This world is not ready yet."
+      "no_world": "This world is not ready yet.",
+      "locked": "You have not reached the level this tool needs yet."
     },
     "tuning": {
       "open": "World tuning",

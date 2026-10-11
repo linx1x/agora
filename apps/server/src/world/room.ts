@@ -51,6 +51,9 @@ import {
   type Tmj,
   type WorldMap,
   type Zone,
+  type Badge,
+  type Skill,
+  loadGameData,
 } from '@agora/shared';
 import type { RoomStore, StoredDesk } from '../db/store';
 import { Bucket } from './rate';
@@ -449,6 +452,7 @@ export class SpaceRoom {
     } else {
       if (this.connectedCount >= this.opts.capacity) return null;
       const stored = await this.store.getUser(user.uid).catch(() => null);
+      const badge = await this.badgeOf(user.uid);
       const myDesk = this.deskOf(user.uid);
       const spot = myDesk ? this.spots.get(myDesk.deskId) : undefined;
       let pos: { x: number; y: number };
@@ -511,6 +515,7 @@ export class SpaceRoom {
         },
       };
       p.profile.id = p.id;
+      if (badge) p.profile.badge = badge;
       p.zone = zoneAt(this.map, p.x, p.y);
       p.scope = mediaScope(this.placed(p));
       this.players.set(p.id, p);
@@ -583,6 +588,7 @@ export class SpaceRoom {
       return;
     }
     const m = parsed.data;
+    if (m.t === 'badge') return void this.onBadge(p, m.skill);
     if (p.world) return this.onWorldMessage(p, m);
     switch (m.t) {
       case 'move':
@@ -740,6 +746,33 @@ export class SpaceRoom {
     await this.store
       .saveMap({ id: this.opts.mapId, tmj: this.tmj, rev: this.mapRev, updatedBy: this.lastEditor })
       .catch((err) => this.log.warn({ err: String(err) }, 'saveMap failed'));
+  }
+
+  /** The badge a person shows (P17.31); none when the store cannot answer, so the office still opens. */
+  private async badgeOf(uid: string): Promise<Badge | undefined> {
+    try {
+      return await this.store.worlds.badgeOf(uid, loadGameData().progression);
+    } catch (err) {
+      this.log.warn({ err }, 'badge not read');
+      return undefined;
+    }
+  }
+
+  /** Brings a person's badge up to date (the xp they earned in a world); the space hears it only if it changed. */
+  private async refreshBadge(p: Player) {
+    const badge = await this.badgeOf(p.uid);
+    if (JSON.stringify(badge) !== JSON.stringify(p.profile.badge)) this.setProfile(p, { badge });
+  }
+
+  /** P17.31: the person chose the skill to show (null: none). Rate-limited like the other profile messages. */
+  private async onBadge(p: Player, skill: Skill | null) {
+    if (!p.buckets.misc.take()) return;
+    try {
+      const badge = await this.store.worlds.setShowOff(p.uid, skill, loadGameData().progression);
+      this.setProfile(p, { badge });
+    } catch (err) {
+      this.log.warn({ err }, 'badge not saved');
+    }
   }
 
   private setProfile(p: Player, patch: Partial<PlayerProfile>) {
@@ -923,6 +956,8 @@ export class SpaceRoom {
     this.broadcast({ t: 'profile', profile: p.profile }, p.id);
     this.recomputeLinks();
     p.conn?.send({ t: 'world:exit' });
+    // the xp earned in the world may have opened a level: the card shows it from now on (P17.31)
+    void this.refreshBadge(p);
     this.log.info({ player: p.id }, 'left world');
   }
 

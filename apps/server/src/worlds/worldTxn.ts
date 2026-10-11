@@ -13,6 +13,7 @@ import {
   type ChunkDelta,
   type Inventory,
   type RestState,
+  type Skill,
   type WorldSimState,
 } from '@agora/shared';
 import type { ChunkSave, StoredChunk, StoredWorld } from './worldStore';
@@ -61,6 +62,10 @@ export interface WorldTxn {
   saveAccount(userId: string, inventory: Inventory, expectedRev: number): Promise<number | null>;
   progressOf(userId: string, lock: boolean): Promise<ProgressRow | null>;
   saveProgress(userId: string, progress: ProgressRow): Promise<void>;
+  /** The skill a person shows on their card (P17.31), or null when none is chosen. */
+  showOffOf(userId: string): Promise<Skill | null>;
+  /** Chooses the skill to show, or null to show none. The progress row is not touched. */
+  saveShowOff(userId: string, skill: Skill | null): Promise<void>;
   simOf(worldId: string, lock: boolean): Promise<SimRow | null>;
   /** Replaces the farm state when `expectedRev` matches. Returns the new revision, or null on conflict. */
   saveSim(worldId: string, state: WorldSimState, expectedRev: number): Promise<number | null>;
@@ -84,6 +89,7 @@ export interface MemoryState {
   sims: Map<string, SimRow>;
   accounts: Map<string, AccountRow>;
   progress: Map<string, ProgressRow>;
+  showOff: Map<string, Skill>;
   ledger: Map<string, LedgerRow>;
 }
 
@@ -92,6 +98,7 @@ export const emptyMemoryState = (): MemoryState => ({
   sims: new Map(),
   accounts: new Map(),
   progress: new Map(),
+  showOff: new Map(),
   ledger: new Map(),
 });
 
@@ -101,6 +108,7 @@ export function cloneMemoryState(s: MemoryState): MemoryState {
     sims: new Map(s.sims),
     accounts: new Map(s.accounts),
     progress: new Map(s.progress),
+    showOff: new Map(s.showOff),
     ledger: new Map(s.ledger),
   };
 }
@@ -153,6 +161,15 @@ export class MemoryWorldTxn implements WorldTxn {
 
   async saveProgress(userId: string, progress: ProgressRow): Promise<void> {
     this.draft.progress.set(userId, structuredClone(progress));
+  }
+
+  async showOffOf(userId: string): Promise<Skill | null> {
+    return this.draft.showOff.get(userId) ?? null;
+  }
+
+  async saveShowOff(userId: string, skill: Skill | null): Promise<void> {
+    if (skill === null) this.draft.showOff.delete(userId);
+    else this.draft.showOff.set(userId, skill);
   }
 
   async simOf(worldId: string): Promise<SimRow | null> {
@@ -313,6 +330,23 @@ export class PgWorldTxn implements WorldTxn {
         progress.day,
         progress.rest === null ? null : JSON.stringify(progress.rest),
       ],
+    );
+  }
+
+  async showOffOf(userId: string): Promise<Skill | null> {
+    const r = await this.client.query<{ skill: Skill }>('SELECT skill FROM show_off WHERE user_id = $1', [userId]);
+    return r.rows[0]?.skill ?? null;
+  }
+
+  async saveShowOff(userId: string, skill: Skill | null): Promise<void> {
+    if (skill === null) {
+      await this.client.query('DELETE FROM show_off WHERE user_id = $1', [userId]);
+      return;
+    }
+    await this.client.query(
+      `INSERT INTO show_off (user_id, skill) VALUES ($1, $2)
+       ON CONFLICT (user_id) DO UPDATE SET skill = EXCLUDED.skill`,
+      [userId, skill],
     );
   }
 

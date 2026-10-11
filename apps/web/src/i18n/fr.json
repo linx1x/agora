@@ -971,6 +971,19 @@
       "sources": "Sources : {{sites}}"
     }
   },
+  "skill": {
+    "farming": "Agriculture",
+    "foraging": "Cueillette",
+    "mining": "Minage",
+    "fishing": "Pêche",
+    "combat": "Combat",
+    "badge": "{{skill}} niveau {{level}}",
+    "showOff": {
+      "label": "Compétence affichée",
+      "none": "Aucune",
+      "hint": "Le badge apparaît dès le niveau 1 atteint dans cette compétence."
+    }
+  },
   "worlds": {
     "hud": {
       "hotbar": "Barre d'outils",
@@ -1012,7 +1025,8 @@
       "unknown": "Cette porte ne mène nulle part.",
       "outside": "Approchez-vous de la porte pour entrer.",
       "no_permission": "Ce monde n'est pas ouvert pour vous.",
-      "no_world": "Ce monde n'est pas prêt pour l'instant."
+      "no_world": "Ce monde n'est pas prêt pour l'instant.",
+      "locked": "Tu n'as pas encore le niveau qu'il faut pour cet outil."
     },
     "tuning": {
       "open": "Réglages du monde",

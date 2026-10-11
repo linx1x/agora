@@ -5,7 +5,14 @@
  * save locks the world row, so saves to one world are serial and the revision check cannot race.
  */
 import type { Pool } from 'pg';
-import { WORLD_DELTA_CELL_CAP, type ChunkDelta } from '@agora/shared';
+import {
+  WORLD_DELTA_CELL_CAP,
+  badgeFrom,
+  type Badge,
+  type ChunkDelta,
+  type Progression,
+  type Skill,
+} from '@agora/shared';
 import {
   MemoryWorldTxn,
   PgWorldTxn,
@@ -69,6 +76,10 @@ export interface WorldStore {
    * (P17.20). Nothing is written when `fn` throws or calls `tx.abort()`.
    */
   withTxn<T>(fn: (tx: WorldTxn) => Promise<T>): Promise<T>;
+  /** The badge a person shows (P17.31): the chosen skill at the level their own xp has earned, if any. */
+  badgeOf(userId: string, progression: Progression): Promise<Badge | undefined>;
+  /** Chooses the skill to show (null shows none) and returns the badge it now shows. */
+  setShowOff(userId: string, skill: Skill | null, progression: Progression): Promise<Badge | undefined>;
 }
 
 /** Idempotent schema, run after the main schema (the users table must exist). */
@@ -121,9 +132,20 @@ CREATE TABLE IF NOT EXISTS world_sim (
   state JSONB NOT NULL,
   rev INTEGER NOT NULL
 );
+-- P17.31: the skill a person shows on their card (one row per person who chose one)
+CREATE TABLE IF NOT EXISTS show_off (
+  user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  skill TEXT NOT NULL
+);
 `;
 
 const chunkKey = (cx: number, cy: number) => `${cx},${cy}`;
+
+/** The badge a person shows, read in one transaction: the chosen skill at the level their xp has earned. */
+async function badgeIn(tx: WorldTxn, userId: string, progression: Progression): Promise<Badge | undefined> {
+  const row = await tx.progressOf(userId, false);
+  return badgeFrom(row?.skills ?? {}, await tx.showOffOf(userId), progression);
+}
 
 export class MemoryWorldStore implements WorldStore {
   private readonly worlds = new Map<string, StoredWorld>();
@@ -200,6 +222,17 @@ export class MemoryWorldStore implements WorldStore {
     return run;
   }
 
+  async badgeOf(userId: string, progression: Progression): Promise<Badge | undefined> {
+    return this.withTxn((tx) => badgeIn(tx, userId, progression));
+  }
+
+  async setShowOff(userId: string, skill: Skill | null, progression: Progression): Promise<Badge | undefined> {
+    return this.withTxn(async (tx) => {
+      await tx.saveShowOff(userId, skill);
+      return badgeIn(tx, userId, progression);
+    });
+  }
+
   async deleteWorldOf(ownerId: string): Promise<void> {
     await this.exclusive(async (draft) => {
       for (const w of [...this.worlds.values()]) {
@@ -211,6 +244,7 @@ export class MemoryWorldStore implements WorldStore {
       // the account's own rows, as the users cascade does in Postgres
       draft.state.accounts.delete(ownerId);
       draft.state.progress.delete(ownerId);
+      draft.state.showOff.delete(ownerId);
       for (const [key, row] of [...draft.state.ledger]) if (row.actor === ownerId) draft.state.ledger.delete(key);
       return { value: undefined, commit: true };
     });
@@ -324,6 +358,17 @@ export class PgWorldStore implements WorldStore {
     } finally {
       client.release();
     }
+  }
+
+  async badgeOf(userId: string, progression: Progression): Promise<Badge | undefined> {
+    return this.withTxn((tx) => badgeIn(tx, userId, progression));
+  }
+
+  async setShowOff(userId: string, skill: Skill | null, progression: Progression): Promise<Badge | undefined> {
+    return this.withTxn(async (tx) => {
+      await tx.saveShowOff(userId, skill);
+      return badgeIn(tx, userId, progression);
+    });
   }
 
   async deleteWorldOf(ownerId: string): Promise<void> {

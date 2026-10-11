@@ -21,6 +21,7 @@ import {
   inReach,
   localIndexOf,
   mergeDeltas,
+  progressionStep,
   settleDay,
   worldTime,
   type ActionChanges,
@@ -173,7 +174,14 @@ async function transact(tx: WorldTxn, input: ActionInput, planner: ActionPlanner
     tx.abort();
     return refused(outcome.reason);
   }
-  const { changes, edits, sim: nextSim, rest } = outcome.plan;
+  // progression (P17.31): the one hook. It refuses a locked tool and sets the xp this action earns
+  const step = progressionStep(data, req, skills, outcome.plan.changes);
+  if (!step.ok) {
+    tx.abort();
+    return refused(step.reason);
+  }
+  const changes = step.changes;
+  const { edits, sim: nextSim, rest } = outcome.plan;
 
   // a stack key may carry a quality (`id~q`): the limit is the base item's
   const nextAccount = applyInventoryChanges(account.inventory, changes, (key) => data.itemsById.get(baseItemOf(key))?.stack);

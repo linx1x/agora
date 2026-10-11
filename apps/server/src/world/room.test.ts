@@ -5,6 +5,7 @@ import {
   TILE,
   WORLDGEN,
   cellPos,
+  loadGameData,
   parseMap,
   remapTmj,
   worldGenParamsFor,
@@ -1059,5 +1060,49 @@ describe('SpaceRoom: world actions are routed to the world (P17.20)', () => {
     expect(rate.length).toBeGreaterThan(0);
     expect(rate.at(-1)).toBe(119);
     expect(rate).not.toContain(100);
+  });
+});
+
+describe('SpaceRoom: the badge on the card (P17.31)', () => {
+  const settle = () => new Promise((r) => setTimeout(r, 0));
+
+  it('shows the chosen skill at the level earned, to the space; an unearned level is not shown', async () => {
+    const store = new MemoryStore();
+    const room = makeRoom(store, 3);
+    await room.init();
+    await store.worlds.withTxn((tx) =>
+      tx.saveProgress('ua', { skills: { farming: 100 }, energy: 0, day: 0, rest: null }),
+    );
+    const ca = new FakeConn();
+    const cb = new FakeConn();
+    const a = (await room.join(ca, { uid: 'ua', name: 'A' }))!;
+    await room.join(cb, { uid: 'ub', name: 'B' });
+    const badgeSeenByB = () => cb.of('profile').filter((m) => m.profile.id === a.id).at(-1)?.profile.badge;
+
+    room.handle(a, { t: 'badge', skill: 'mining' });
+    await settle();
+    expect(badgeSeenByB()).toBeUndefined();
+
+    room.handle(a, { t: 'badge', skill: 'farming' });
+    await settle();
+    expect(badgeSeenByB()).toEqual({ skill: 'farming', level: 1 });
+
+    room.handle(a, { t: 'badge', skill: null });
+    await settle();
+    expect(badgeSeenByB()).toBeUndefined();
+  });
+
+  it('a person who joins sees the badge they chose before, in the welcome', async () => {
+    const store = new MemoryStore();
+    const room = makeRoom(store, 3);
+    await room.init();
+    await store.worlds.withTxn((tx) =>
+      tx.saveProgress('uc', { skills: { mining: 300 }, energy: 0, day: 0, rest: null }),
+    );
+    await store.worlds.setShowOff('uc', 'mining', loadGameData().progression);
+    const cc = new FakeConn();
+    const c = (await room.join(cc, { uid: 'uc', name: 'C' }))!;
+    const welcome = cc.of('welcome')[0]!;
+    expect(welcome.profiles.find((p) => p.id === c.id)?.badge).toEqual({ skill: 'mining', level: 2 });
   });
 });
