@@ -4,34 +4,10 @@
  * the owner granted them in the world settings, `deny` kinds never are.
  */
 import { ACTION_KINDS, type ActionKind } from './kinds';
+import { VISITOR_RULES } from './rules';
+import { grantsFor } from './visitors';
 
-export type VisitorRule = 'allow' | 'choice' | 'deny';
-
-/** The defaults from ADR-053. Changing one is a product decision, recorded in an ADR addendum. */
-export const VISITOR_RULES: Readonly<Record<ActionKind, VisitorRule>> = {
-  water: 'allow',
-  eat: 'allow',
-  harvest: 'choice',
-  till: 'deny',
-  plant: 'deny',
-  fertilize: 'deny',
-  place: 'deny',
-  chop: 'deny',
-  mine: 'deny',
-  sleep: 'deny',
-  raise: 'deny',
-  lower: 'deny',
-  remove: 'deny',
-  open: 'choice',
-  stash: 'choice',
-  take: 'choice',
-  // the farm, the shop and the bench are the owner's (P17.25)
-  buy: 'deny',
-  ship: 'deny',
-  feed: 'deny',
-  collect: 'deny',
-  craft: 'deny',
-};
+export { VISITOR_RULES, type VisitorRule } from './rules';
 
 export interface WorldAccess {
   readonly ownerId: string;
@@ -46,11 +22,14 @@ export function grantsOf(settings: Readonly<Record<string, unknown>>): ActionKin
   return raw.filter((kind): kind is ActionKind => typeof kind === 'string' && known.has(kind));
 }
 
-/** Whether `actorId` may ask for `kind` in this world. The owner override comes first. */
+/**
+ * Whether `actorId` may ask for `kind` in this world. The owner override comes first; a choice kind
+ * follows the visitor's own grants when the owner set them, else the world default (P17.27).
+ */
 export function canDo(world: WorldAccess, actorId: string, kind: ActionKind): boolean {
   if (actorId === world.ownerId) return true;
   const rule = VISITOR_RULES[kind];
   if (rule === 'allow') return true;
   if (rule === 'deny') return false;
-  return grantsOf(world.settings).includes(kind);
+  return grantsFor(world.settings, actorId).includes(kind);
 }

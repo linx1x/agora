@@ -357,7 +357,7 @@
     "pending": "Vous avez frappé. En attente de réponse…",
     "accepted": "Entrez, vous êtes attendu",
     "declined": "Pas maintenant, réessayez plus tard",
-    "away": "La personne n'est pas en ligne",
+    "away": "La personne n'est pas là, et sa règle d'absence ne vous laisse pas entrer",
     "busy": "La personne ne veut pas être dérangée"
   },
   "callover": {
@@ -1354,6 +1354,60 @@
       "money": "Pas assez d'argent.",
       "full": "Votre sac est plein.",
       "conflict": "Votre sac a changé entre-temps. Réessayez."
+    }
+  },
+  "visitors": {
+    "title": "Visiteurs de mon monde",
+    "open": "Visiteurs",
+    "openMine": "Visiteurs de mon monde",
+    "addToList": "Ajouter {{name}} à ma liste de visiteurs",
+    "always": "Tout visiteur peut se promener, parler et arroser. Rien d'autre sans votre accord; certaines actions (labourer, planter, couper, miner, construire, acheter, expédier) restent à vous seul.",
+    "defaults": "Ce que tout visiteur peut faire",
+    "away": "Quand je suis absent, qui peut entrer?",
+    "awayRule": {
+      "nobody": "Personne",
+      "list": "Les personnes de ma liste"
+    },
+    "people": "Personnes",
+    "none": "Personne pour l'instant. Ajoutez quelqu'un depuis le panneau Qui est ici, ou réglez les personnes en visite ici.",
+    "here": "dans votre monde",
+    "notHere": "pas là",
+    "listed": "Sur ma liste (peut entrer quand je suis absent)",
+    "ownGrants": "Permissions propres à cette personne",
+    "personKinds": "Ce que {{name}} peut faire",
+    "forget": "Retirer {{name}}",
+    "privacy": "Seul vous voyez cette liste. Les visiteurs voient seulement ce qu'ils peuvent faire.",
+    "youMay": "En visite : vous pouvez {{kinds}}.",
+    "kind": {
+      "till": "labourer",
+      "water": "arroser",
+      "plant": "planter",
+      "harvest": "récolter",
+      "fertilize": "fertiliser",
+      "place": "poser des blocs",
+      "chop": "couper du bois",
+      "mine": "miner",
+      "eat": "manger",
+      "sleep": "dormir",
+      "raise": "monter le terrain",
+      "lower": "creuser le terrain",
+      "remove": "retirer des blocs",
+      "open": "ouvrir les coffres",
+      "stash": "ranger dans les coffres",
+      "take": "prendre dans les coffres",
+      "buy": "acheter",
+      "ship": "expédier",
+      "feed": "nourrir les animaux",
+      "collect": "ramasser les produits",
+      "craft": "utiliser les ateliers"
+    },
+    "refused": {
+      "disabled": "Les mondes personnels sont fermés sur ce serveur.",
+      "rate": "Doucement : réessayez dans un instant.",
+      "no_world": "Vous n'avez pas encore de monde. Entrez dans votre poste une première fois.",
+      "unknown": "Cette personne n'est plus là.",
+      "full": "Votre liste est pleine (50 personnes).",
+      "self": "C'est vous!"
     }
   }
 }

@@ -24,12 +24,29 @@ import type { WorldTime } from './worlds/clock';
 import type { OfficeRefusal } from './worlds/office';
 import type { Taste } from './worlds/friendship';
 import type { AnimalState, MachineState, PlotState } from './worlds/gamedata/state';
-import { ACTION_KINDS, type ActionChanges, type WorldRefusal } from './worlds/actions/kinds';
+import { ACTION_KINDS, type ActionChanges, type ActionKind, type WorldRefusal } from './worlds/actions/kinds';
+import { AWAY_RULES, type AwayRule } from './worlds/actions/visitors';
 import { WORLD_COORD_LIMIT } from './worlds/constants';
 import { SKILLS } from './worlds/gamedata/schema';
 import type { Badge } from './worlds/progression';
 
 /** Client → server messages, all validated with zod on the server. */
+
+/** P17.27: an opaque name for a person in a world's visitor list (user ids never reach a client). */
+export const VISITOR_REF = z.string().regex(/^[a-f0-9]{16}$/);
+/** P17.27: why the owner's change to the visitor matrix did nothing. */
+export const VISITOR_REFUSALS = ['disabled', 'rate', 'no_world', 'unknown', 'full', 'self'] as const;
+export type VisitorRefusal = (typeof VISITOR_REFUSALS)[number];
+/** P17.27: one person in the owner's view of the matrix. */
+export interface VisitorView {
+  ref: string;
+  name: string;
+  /** their own grants, or null for the world default */
+  grants: ActionKind[] | null;
+  listed: boolean;
+  /** in the world right now */
+  here: boolean;
+}
 export const C2S = z.discriminatedUnion('t', [
   z.object({
     t: z.literal('move'),
@@ -96,6 +113,32 @@ export const C2S = z.discriminatedUnion('t', [
   }),
   /** P17.26b: my bag and money in the office (answered with `world:inv`), and my hearts (`friendship`). */
   z.object({ t: z.literal('office:inv') }),
+  /** P17.27: the owner reads their world's visitor matrix (answered with `world:visitors`, to them alone). */
+  z.object({ t: z.literal('world:visitors') }),
+  /**
+   * P17.27: the owner changes the matrix. A person is named by the `ref` the owner got in
+   * `world:visitors`, or by their session id (`player`) when they are here or in the office.
+   */
+  z.object({
+    t: z.literal('world:visitors:set'),
+    edit: z.discriminatedUnion('op', [
+      z.object({ op: z.literal('defaults'), grants: z.array(z.enum(ACTION_KINDS)).max(ACTION_KINDS.length) }),
+      z.object({ op: z.literal('away'), rule: z.enum(AWAY_RULES) }),
+      z.object({
+        op: z.literal('person'),
+        ref: VISITOR_REF.optional(),
+        player: z.string().min(1).max(64).optional(),
+        grants: z.array(z.enum(ACTION_KINDS)).max(ACTION_KINDS.length).nullable(),
+      }),
+      z.object({
+        op: z.literal('list'),
+        ref: VISITOR_REF.optional(),
+        player: z.string().min(1).max(64).optional(),
+        on: z.boolean(),
+      }),
+      z.object({ op: z.literal('forget'), ref: VISITOR_REF }),
+    ]),
+  }),
   z.object({ t: z.literal('desk:claim'), deskId: z.string().min(1).max(32) }),
   z.object({ t: z.literal('desk:release') }),
   z.object({
@@ -325,6 +368,8 @@ export type S2CMsg =
       t: 'world:welcome';
       worldId: string;
       owner: string;
+      /** P17.27: this is my own world (I may do everything, and set what visitors may do) */
+      mine?: boolean;
       you: string;
       seed: number;
       genVersion: number;
@@ -363,6 +408,12 @@ export type S2CMsg =
     }
   /** P17.26b: my hearts with each character (0 to 10), on join and after each gift. Only I get it. */
   | { t: 'friendship'; hearts: Record<string, number> }
+  /** P17.27: the visitor matrix of my world, to me (the owner) alone */
+  | { t: 'world:visitors'; away: AwayRule; grants: ActionKind[]; people: VisitorView[] }
+  /** P17.27: why my change to the matrix did nothing */
+  | { t: 'world:visitors:refused'; reason: VisitorRefusal }
+  /** P17.27: what I may do in the world I am visiting (each visitor hears only their own) */
+  | { t: 'world:perms'; kinds: ActionKind[] }
   /** P17.26b: the answer to an office purchase */
   | { t: 'office:bought'; key: string; item: string; ok: boolean; reason?: OfficeRefusal }
   /** P17.15b: the office roster again, for someone back from a world (who missed its changes) */

@@ -1,5 +1,6 @@
 export * from './kinds';
 export * from './permissions';
+export * from './visitors';
 export * from './inventory';
 export * from './plan';
 export * from './tools';

@@ -340,3 +340,56 @@ test('a visitor is held at the knock, then let into the owner world', async ({ b
   expect((await world(b)).people).toBe(1);
   expect((await st(b)).worldId).toBe((await world(b)).id);
 });
+
+test('the away rule (P17.27): a person on my list comes in while I am away, and learns what they may do', async ({
+  browser,
+}) => {
+  test.setTimeout(300_000);
+  const a = await enter(browser, 0, 20);
+  await claimJungle6(a);
+  await visitMyWorldOnce(a);
+  await a.getByRole('button', { name: 'Mon poste', exact: true }).click();
+  await a.getByText('Frapper', { exact: true }).click();
+  await a.getByRole('dialog').getByRole('button', { name: 'Enregistrer' }).click();
+  const b = await enter(browser, 1);
+  await toJungle(b);
+
+  // Alice puts Benoît on her list from the People panel, and lets her list in while she is away
+  await a.getByRole('button', { name: 'Ajouter Benoît Gagnon à ma liste de visiteurs' }).click();
+  const panel = a.getByRole('dialog', { name: 'Visiteurs de mon monde' });
+  await expect(panel.getByText('Benoît Gagnon', { exact: true })).toBeVisible();
+  await expect(panel.getByRole('checkbox', { name: /Sur ma liste/ })).toBeChecked();
+  await panel.getByRole('radio', { name: 'Les personnes de ma liste' }).check();
+  await expect(panel.getByRole('radio', { name: 'Les personnes de ma liste' })).toBeChecked();
+  await a.screenshot({ path: 'test-results/visitors-panel.png' });
+  // the list is Alice's alone
+  expect((await st(b)).worldVisitors).toBeNull();
+  await a.context().close();
+
+  // Alice is away: Benoît knocks and the rule lets him in, then he steps into her world
+  const spot = (await st(b)).map.desks.find((d: any) => d.id === 'jungle-6');
+  await goTo(b, spot.entrance.cx, spot.entrance.cy);
+  await waitPrompt(b, 'knock');
+  await b.getByRole('button', { name: 'Frapper', exact: true }).click();
+  await b.waitForFunction(
+    () => (window as any).__agora.store.get().admitted.includes('jungle-6'),
+    undefined,
+    { timeout: 30_000, polling: 200 },
+  );
+  await goTo(b, spot.guest.cx, spot.guest.cy);
+  await waitPrompt(b, 'world');
+  await b.keyboard.press('x');
+  await waitWorld(b);
+  await expect(b.getByText(/En visite : vous pouvez arroser/)).toBeVisible();
+  expect((await st(b)).worldMine).toBe(false);
+  await b.screenshot({ path: 'test-results/visitors-visit.png' });
+  await b.context().close();
+
+  // clean up for the specs after this one: nobody while away, Benoît off the list, the desk open
+  const a2 = await enter(browser, 0, 20);
+  await a2.getByRole('button', { name: 'Visiteurs de mon monde' }).click();
+  const p2 = a2.getByRole('dialog', { name: 'Visiteurs de mon monde' });
+  await p2.getByRole('radio', { name: 'Personne', exact: true }).check();
+  await p2.getByRole('button', { name: 'Retirer Benoît Gagnon' }).click();
+  await expect(p2.getByText('Benoît Gagnon', { exact: true })).toHaveCount(0);
+});

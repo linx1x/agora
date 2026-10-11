@@ -102,7 +102,14 @@ export class WorldSession {
         this.people.clear();
         for (const p of m.people) this.people.set(p.id, p);
         // the office's prompt and zone describe the office: the world sets its own
-        store.set({ worldId: m.worldId, worldOwner: m.owner, prompt: null, talkTo: null });
+        store.set({
+          worldId: m.worldId,
+          worldOwner: m.owner,
+          worldMine: m.mine === true,
+          worldPerms: null,
+          prompt: null,
+          talkTo: null,
+        });
         this.emit('welcome');
         return;
       }
@@ -169,7 +176,7 @@ export class WorldSession {
     this.correction = null;
     // the office position comes back with the next `state` tick (the server sends none on exit)
     if (me) link.samples.delete(me);
-    store.set({ worldId: null, worldOwner: '', prompt: null });
+    store.set({ worldId: null, worldOwner: '', worldMine: false, worldPerms: null, prompt: null });
     this.emit('exit');
   }
 }

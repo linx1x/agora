@@ -17,6 +17,9 @@ import type {
   NpcRefusal,
   OfficeRefusal,
   Taste,
+  ActionKind,
+  S2CMsg,
+  VisitorRefusal,
 } from '@agora/shared';
 
 export type ConnState =
@@ -275,6 +278,16 @@ export interface AppState {
   myDesk: string | null;
   /** P17.14: the personal world I am in (null: the office). GameView mounts the world view for it. */
   worldId: string | null;
+  /** P17.27: the world I am in is my own */
+  worldMine: boolean;
+  /** P17.27: what I may do in the world I am visiting (null: my own world, or not said yet) */
+  worldPerms: ActionKind[] | null;
+  /** P17.27: my world's visitor matrix as the server last sent it (owner only) */
+  worldVisitors: Extract<S2CMsg, { t: 'world:visitors' }> | null;
+  /** P17.27: the visitors panel is open */
+  visitorsOpen: boolean;
+  /** P17.27: why my last change to the matrix did nothing */
+  visitorsRefused: VisitorRefusal | null;
   /** FIX-1: the owner's display name of that world (the card says "Monde de <owner>"); '' when unknown */
   worldOwner: string;
   admitted: string[];
@@ -379,6 +392,11 @@ const initial: AppState = {
   officeShopRefused: null,
   myDesk: null,
   worldId: null,
+  worldMine: false,
+  worldPerms: null,
+  worldVisitors: null,
+  visitorsOpen: false,
+  visitorsRefused: null,
   worldOwner: '',
   admitted: [],
   prompt: null,

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { BellRing, Crosshair, Footprints, Mic, MicOff, Send, Video, X } from 'lucide-react';
+import { BellRing, Crosshair, Footprints, Mic, MicOff, Send, UserPlus, Video, X } from 'lucide-react';
 import { useCompactLayout } from './layout';
 import type { ChatMsg, NpcMindView } from '@agora/shared';
 import { avatarUrl } from '../game/textures';
@@ -147,6 +147,8 @@ function OfficePeople() {
   const minds = useStore((s) => s.npcMinds);
   const brain = useStore((s) => s.npcBrain);
   const hearts = useStore((s) => s.hearts);
+  // P17.27: someone with a desk (and so a world) keeps a list of visitors
+  const myWorld = useStore((s) => s.config?.flags.worlds === true && s.myDesk !== null);
   const compact = useCompactLayout();
   /** on phones the sheet covers the world: close it so you see where you go */
   const hide = compact ? { panelOpen: false } : {};
@@ -202,6 +204,16 @@ function OfficePeople() {
                 </div>
               )}
               {p.id === me && <ShowOffPicker badge={p.badge} />}
+              {p.id === me && myWorld && (
+                <button
+                  type="button"
+                  className="linklike small"
+                  aria-haspopup="dialog"
+                  onClick={() => store.set({ visitorsOpen: true, ...hide })}
+                >
+                  {t('visitors.openMine')}
+                </button>
+              )}
             </div>
             <span className="person-icons">
               {p.mic ? (
@@ -240,6 +252,21 @@ function OfficePeople() {
                 >
                   <Crosshair size={16} aria-hidden />
                 </button>
+                {myWorld && (
+                  <button
+                    type="button"
+                    className="icon-btn"
+                    aria-haspopup="dialog"
+                    onClick={() => {
+                      world.send({ t: 'world:visitors:set', edit: { op: 'list', player: p.id, on: true } });
+                      store.set({ visitorsOpen: true, ...hide });
+                    }}
+                    aria-label={t('visitors.addToList', { name: p.name })}
+                    title={t('visitors.addToList', { name: p.name })}
+                  >
+                    <UserPlus size={16} aria-hidden />
+                  </button>
+                )}
               </span>
             )}
           </li>

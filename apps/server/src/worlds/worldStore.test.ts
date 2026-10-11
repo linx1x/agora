@@ -63,6 +63,14 @@ function worldStoreContract(
       expect((await store.worlds.getWorld('u:w-a'))?.lastDay).toBe(42);
     });
 
+    it('changes the settings in one step: two changes at once both land, null keeps them (P17.27)', async () => {
+      const add = (k: string) => (s: Record<string, unknown>) => ({ ...s, [k]: true });
+      await Promise.all([store.worlds.updateSettings('u:w-a', add('a')), store.worlds.updateSettings('u:w-a', add('b'))]);
+      expect((await store.worlds.getWorld('u:w-a'))?.settings).toMatchObject({ visitors: 'open', a: true, b: true });
+      expect(await store.worlds.updateSettings('u:w-a', () => null)).toMatchObject({ a: true, b: true });
+      expect(await store.worlds.updateSettings('u:nobody', add('c'))).toBeNull();
+    });
+
     it('saves a chunk only from the current revision', async () => {
       expect(await store.worlds.saveChunk('u:w-a', 0, 0, patches(2), 0)).toEqual({ ok: true, rev: 1 });
       expect(await store.worlds.saveChunk('u:w-a', 0, 0, patches(3), 0)).toEqual({ ok: false, reason: 'conflict' });

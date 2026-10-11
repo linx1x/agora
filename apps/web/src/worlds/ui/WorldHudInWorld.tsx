@@ -1,4 +1,6 @@
-import { useStore } from '../../state/store';
+import { useTranslation } from 'react-i18next';
+import { store, useStore } from '../../state/store';
+import { permsToShow } from '../visitorsMath';
 import { useCompactLayout } from '../../ui/layout';
 import { worldActs } from '../actLink';
 import { worldSession } from '../session';
@@ -10,9 +12,32 @@ export function WorldHudInWorld() {
   // P17.15c: on a phone the People / Chat sheet covers the bottom of the screen; the hotbar steps aside
   const sheetOpen = useStore((s) => s.panelOpen);
   const compact = useCompactLayout();
+  const { t } = useTranslation();
+  const mine = useStore((s) => s.worldMine);
+  const perms = useStore((s) => s.worldPerms);
   if (!inWorld) return null;
+  // P17.27: the owner sets what visitors may do; a visitor is told what they may do here
+  const extra = mine ? (
+    <button
+      type="button"
+      className="wh-open"
+      aria-haspopup="dialog"
+      onClick={() => store.set({ visitorsOpen: true })}
+    >
+      {t('visitors.open')}
+    </button>
+  ) : perms ? (
+    <p className="wh-perms small">
+      {t('visitors.youMay', {
+        kinds: permsToShow(perms)
+          .map((k) => t(`visitors.kind.${k}`))
+          .join(', '),
+      })}
+    </p>
+  ) : null;
   return (
     <WorldHud
+      extra={extra}
       barHidden={compact && sheetOpen}
       onAsk={(kind, at, item, target) => {
         const world = worldSession.worldId;

@@ -1,4 +1,4 @@
-import { randomBytes, randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import {
   C2S,
   DEFAULT_DECOR,
@@ -9,6 +9,14 @@ import {
   NPC_TALK_SLACK_TILES,
   NPC_TALK_TILES,
   giftNpcOf,
+  applyVisitorEdit,
+  awayAllows,
+  awayOf,
+  cleanGrants,
+  visitorsOf,
+  type VisitorEdit,
+  type VisitorRefusal,
+  type VisitorView,
   officeDayOf,
   type OfficeRefusal,
   TILE,
@@ -676,6 +684,10 @@ export class SpaceRoom {
         return this.onKnock(p, m.deskId);
       case 'knock:answer':
         return this.onKnockAnswer(p, m.visitor, m.accept);
+      case 'world:visitors':
+        return void this.onVisitorsGet(p);
+      case 'world:visitors:set':
+        return void this.onVisitorsSet(p, m.edit);
       case 'callover':
         return this.onCallover(p, m.to);
       case 'ping':
@@ -1211,6 +1223,13 @@ export class SpaceRoom {
         if (isCaveId(m.id)) return void this.onCaveEnter(p, m.id);
         return p.conn?.send({ t: 'portal:refused', id: m.id, reason: 'unknown' });
       }
+      // P17.27: the owner answers a knock and edits the visitor matrix from inside their world too
+      case 'knock:answer':
+        return this.onKnockAnswer(p, m.visitor, m.accept);
+      case 'world:visitors':
+        return void this.onVisitorsGet(p);
+      case 'world:visitors:set':
+        return void this.onVisitorsSet(p, m.edit);
       case 'ping':
         return p.conn?.send({ t: 'pong', at: m.at });
       case 'leave':
@@ -1218,6 +1237,116 @@ export class SpaceRoom {
       default:
         return;
     }
+  }
+
+  // ───────────────────────────────────────────── visitor matrix (P17.27)
+  /** An opaque, stable name for a person in one world's list: user ids never reach a client. */
+  private visitorRef(worldId: string, uid: string): string {
+    return createHash('sha256').update(`agora-visitor:${worldId}:${uid}`).digest('hex').slice(0, 16);
+  }
+
+  /** The owner's view of their world's matrix: the people they set, and the visitors here now. */
+  private visitorView(worldId: string, ownerUid: string, settings: Record<string, unknown>) {
+    const entries = visitorsOf(settings);
+    const here = new Map<string, string>();
+    for (const room of this.worlds.openRoomsOf(worldId))
+      for (const person of room.people()) if (person.uid !== ownerUid) here.set(person.uid, person.name);
+    const people: VisitorView[] = [];
+    for (const [uid, e] of Object.entries(entries))
+      people.push({
+        ref: this.visitorRef(worldId, uid),
+        name: e.name,
+        grants: e.grants ? [...e.grants] : null,
+        listed: e.listed === true,
+        here: here.has(uid),
+      });
+    for (const [uid, name] of here)
+      if (!entries[uid])
+        people.push({ ref: this.visitorRef(worldId, uid), name, grants: null, listed: false, here: true });
+    people.sort((a, b) => Number(b.here) - Number(a.here) || a.name.localeCompare(b.name));
+    return { t: 'world:visitors' as const, away: awayOf(settings), grants: cleanGrants(settings.grants), people };
+  }
+
+  /** Every connection of a person, on the office floor or in a world. */
+  private reachableOf(uid: string): Player[] {
+    const out: Player[] = [];
+    for (const p of [...this.players.values(), ...this.away.values()]) if (p.uid === uid && p.conn) out.push(p);
+    return out;
+  }
+
+  private async onVisitorsGet(p: Player): Promise<void> {
+    const refuse = (reason: VisitorRefusal) => p.conn?.send({ t: 'world:visitors:refused', reason });
+    if (!this.officeOpen) return refuse('disabled');
+    if (!p.buckets.misc.take()) return refuse('rate');
+    const world = await this.store.worldOf(p.uid).catch(() => null);
+    if (!world) return refuse('no_world');
+    p.conn?.send(this.visitorView(world.id, p.uid, world.settings));
+  }
+
+  /**
+   * The owner changes their matrix. Only the owner's own world is ever written (looked up from their
+   * user id, never from the message); the people they name are resolved here. The change reaches the
+   * open rooms at once, so the next action of every visitor is judged by it.
+   */
+  private async onVisitorsSet(p: Player, edit: Extract<C2SMsg, { t: 'world:visitors:set' }>['edit']): Promise<void> {
+    const refuse = (reason: VisitorRefusal) => p.conn?.send({ t: 'world:visitors:refused', reason });
+    if (!this.officeOpen) return refuse('disabled');
+    if (!p.buckets.misc.take()) return refuse('rate');
+    const world = await this.store.worldOf(p.uid).catch(() => null);
+    if (!world) return refuse('no_world');
+    let change: VisitorEdit;
+    if (edit.op === 'defaults' || edit.op === 'away') change = edit;
+    else {
+      const who = this.resolveVisitor(world.id, world.settings, edit);
+      if (!who) return refuse('unknown');
+      if (who.uid === p.uid) return refuse('self');
+      change =
+        edit.op === 'forget'
+          ? { op: 'forget', uid: who.uid }
+          : edit.op === 'person'
+            ? { op: 'person', uid: who.uid, name: who.name, grants: edit.grants }
+            : { op: 'list', uid: who.uid, name: who.name, on: edit.on };
+    }
+    let refusal: VisitorRefusal | null = null;
+    const settings = await this.store.worlds
+      .updateSettings(world.id, (before) => {
+        const r = applyVisitorEdit(before, change);
+        if (!r.ok) {
+          refusal = r.reason;
+          return null;
+        }
+        return r.settings;
+      })
+      .catch((err: unknown) => {
+        this.log.warn({ err }, 'visitor matrix not saved');
+        return null;
+      });
+    if (!settings) return refuse('no_world');
+    if (refusal) return refuse(refusal);
+    for (const room of this.worlds.openRoomsOf(world.id)) room.setSettings(settings);
+    const view = this.visitorView(world.id, p.uid, settings);
+    for (const o of this.reachableOf(p.uid)) o.conn?.send(view);
+  }
+
+  /** A person named in an edit: by their ref in this world's list, or by a session id here or in a world. */
+  private resolveVisitor(
+    worldId: string,
+    settings: Record<string, unknown>,
+    edit: { ref?: string; player?: string },
+  ): { uid: string; name: string } | null {
+    if (edit.player) {
+      const q = this.players.get(edit.player) ?? this.away.get(edit.player);
+      if (q) return { uid: q.uid, name: q.profile.name };
+      for (const room of this.worlds.openRoomsOf(worldId))
+        for (const person of room.people()) if (person.id === edit.player) return person;
+      return null;
+    }
+    if (!edit.ref) return null;
+    for (const [uid, e] of Object.entries(visitorsOf(settings)))
+      if (this.visitorRef(worldId, uid) === edit.ref) return { uid, name: e.name };
+    for (const room of this.worlds.openRoomsOf(worldId))
+      for (const person of room.people()) if (this.visitorRef(worldId, person.uid) === edit.ref) return person;
+    return null;
   }
 
   private onClaim(p: Player, deskId: string) {
@@ -1287,13 +1416,36 @@ export class SpaceRoom {
       return p.conn?.send({ t: 'error', code: 'knock_too_far' });
     if (!d || d.access === 'open') return reply('accepted');
     if (d.access === 'closed') return reply('busy');
-    const owner = this.onlineOf(d.ownerUid);
-    if (!owner) return reply('away');
-    if (owner.profile.status === 'dnd') return reply('busy');
+    // P17.27: the owner hears a knock in the office or in their world; away, their away rule decides
+    const owners = this.reachableOf(d.ownerUid);
+    if (owners.length === 0) return void this.knockWhileAway(p, deskId, d.ownerUid, reply);
+    if (owners[0]!.profile.status === 'dnd') return reply('busy');
     p.knock = { deskId, until: Date.now() + KNOCK_MS };
-    for (const o of this.sessionsOf(d.ownerUid))
-      o.conn?.send({ t: 'knock', from: p.id, name: p.profile.name, deskId });
+    for (const o of owners) o.conn?.send({ t: 'knock', from: p.id, name: p.profile.name, deskId });
     reply('pending');
+  }
+
+  /**
+   * A knock while the owner is away (P17.27, ADR-053 "away rule"): with the rule `list`, a person on
+   * the owner's list is let in as if the owner had said yes; anyone else hears `away`. Read from the
+   * owner's world settings, so it holds in every space.
+   */
+  private async knockWhileAway(
+    p: Player,
+    deskId: string,
+    ownerUid: string,
+    reply: (result: 'accepted' | 'away') => void,
+  ): Promise<void> {
+    if (!this.officeOpen) return reply('away');
+    const world = await this.store.worldOf(ownerUid).catch(() => null);
+    const d = this.desks.get(deskId);
+    if (!world || !d || d.ownerUid !== ownerUid || !this.players.has(p.id)) return reply('away');
+    if (!awayAllows(world.settings, p.uid)) return reply('away');
+    // the owner may have come back meanwhile: a live answer is theirs to give, not the rule's
+    if (this.reachableOf(ownerUid).length > 0) return reply('away');
+    p.admitted.add(deskId);
+    p.conn?.send({ t: 'admitted', deskIds: [...p.admitted] });
+    reply('accepted');
   }
 
   private onKnockAnswer(owner: Player, visitorId: string, accept: boolean) {

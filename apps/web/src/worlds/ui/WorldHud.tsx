@@ -1,4 +1,4 @@
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { INVENTORY_SLOTS, type WorldTime } from '@agora/shared';
 import { Dialog } from '../../ui/common';
@@ -21,11 +21,14 @@ export function WorldHud({
   store = worldHud,
   onAsk = () => undefined,
   barHidden = false,
+  extra,
 }: {
   store?: HudStore;
   onAsk?: WorldAsk;
   /** the hotbar steps aside (a phone's side sheet is open); its panels stay */
   barHidden?: boolean;
+  /** controls the wrapper adds to the bar (P17.27: the owner's Visitors button, a visitor's rights) */
+  extra?: ReactNode;
 }) {
   const { t } = useTranslation();
   const state = useSyncExternalStore(store.subscribe, store.get, store.get);
@@ -111,6 +114,7 @@ export function WorldHud({
         <button type="button" className="wh-open" aria-haspopup="dialog" onClick={() => setInventoryOpen(true)}>
           {t('worlds.hud.inventory')}
         </button>
+        {extra}
         <p className="wh-notice" role="status">
           {state.notice === null ? '' : t(`worlds.refused.${state.notice}`)}
         </p>

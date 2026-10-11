@@ -16,6 +16,7 @@ import {
   cellFeet,
   loadGameData,
   parseCaveId,
+  visitorKinds,
   WORLD_CELL_PX,
   WORLD_SPAWN,
   WORLD_VIEW_CHUNKS,
@@ -183,7 +184,7 @@ export class WorldRoom {
   private readonly effective = new Map<string, ChunkDelta>();
   /** the starter stamp per chunk key (P17.10): the base of every chunk before stored edits */
   private readonly stamp: Map<string, ChunkDelta>;
-  private readonly world: StoredWorld;
+  private world: StoredWorld;
   private readonly store: WorldStore;
   private readonly planners: ActionPlanners | undefined;
   private readonly log: { warn: (o: object, m?: string) => void };
@@ -326,6 +327,28 @@ export class WorldRoom {
     m.conn.send({ t: 'world:farm', day: farm.day, plots, animals: farm.animals, machines: farm.machines });
   }
 
+  /** The owner changed the visitor matrix (P17.27): the next actions read it, and each visitor hears their own. */
+  setSettings(settings: Record<string, unknown>): void {
+    if (this.disposed) return;
+    this.world = { ...this.world, settings };
+    for (const m of this.members.values()) this.sendPerms(m);
+  }
+
+  /** What a visitor may do here (P17.27), to them alone; the owner gets nothing (they may do everything). */
+  private sendPerms(m: WorldMember): void {
+    if (m.uid === this.world.ownerId) return;
+    m.conn?.send({ t: 'world:perms', kinds: this.cave ? [] : visitorKinds(this.world.settings, m.uid) });
+  }
+
+  /** The people here by user id and name (the owner's view of the matrix marks who is here). */
+  people(): { uid: string; name: string; id: string }[] {
+    return [...this.members.values()].map((m) => ({ uid: m.uid, name: m.name, id: m.id }));
+  }
+
+  get ownerId(): string {
+    return this.world.ownerId;
+  }
+
   get size(): number {
     return this.members.size;
   }
@@ -388,6 +411,7 @@ export class WorldRoom {
       t: 'world:welcome',
       worldId: this.id,
       owner,
+      ...(m.uid === this.world.ownerId ? { mine: true } : {}),
       you: m.id,
       seed: this.seed,
       genVersion: this.genVersion,
@@ -398,6 +422,7 @@ export class WorldRoom {
     this.updateView(m);
     for (const o of others) o.conn?.send({ t: 'world:join', person: personOf(m) });
     this.sendPeers();
+    this.sendPerms(m);
     void this.grant(m);
     this.sendInventory(m);
     void this.farmReady.then(() => {
@@ -708,6 +733,13 @@ export class WorldHub {
       this.opening.set(worldId, pending);
     }
     return pending;
+  }
+
+  /** The open rooms of a world: the world itself and its caves (P17.27: settings reach them all). */
+  openRoomsOf(worldId: string): WorldRoom[] {
+    return [...this.rooms.values()].filter(
+      (r) => !r.disposed && (r.id === worldId || parseCaveId(r.id)?.worldId === worldId),
+    );
   }
 
   /** Close a room that has nobody in it (for example after a refused arrival). */

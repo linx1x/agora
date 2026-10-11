@@ -284,6 +284,15 @@ export class WorldClient {
         store.set({ npcMemory: {} });
         toast('talk.memory.forgot');
         break;
+      case 'world:perms':
+        store.set({ worldPerms: m.kinds });
+        break;
+      case 'world:visitors':
+        store.set({ worldVisitors: m, visitorsRefused: null });
+        break;
+      case 'world:visitors:refused':
+        store.set({ visitorsRefused: m.reason });
+        break;
       case 'friendship':
         store.set({ hearts: m.hearts });
         break;

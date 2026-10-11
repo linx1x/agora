@@ -357,7 +357,7 @@
     "pending": "You knocked. Waiting for an answer…",
     "accepted": "Come in, you're expected",
     "declined": "Not now, try again later",
-    "away": "That person isn't online",
+    "away": "They are not here, and their away rule does not let you in",
     "busy": "That person doesn't want to be disturbed"
   },
   "callover": {
@@ -1354,6 +1354,60 @@
       "money": "Not enough money.",
       "full": "Your bag is full.",
       "conflict": "Your bag changed meanwhile. Try again."
+    }
+  },
+  "visitors": {
+    "title": "Visitors to my world",
+    "open": "Visitors",
+    "openMine": "Visitors to my world",
+    "addToList": "Add {{name}} to my visitor list",
+    "always": "Any visitor may walk, talk and water. Nothing else without your say; some actions (tilling, planting, chopping, mining, building, buying, shipping) stay yours alone.",
+    "defaults": "What every visitor may do",
+    "away": "While I am away, who may come in?",
+    "awayRule": {
+      "nobody": "Nobody",
+      "list": "The people on my list"
+    },
+    "people": "People",
+    "none": "Nobody yet. Add someone from the Who's here panel, or set up people visiting here.",
+    "here": "in your world",
+    "notHere": "not here",
+    "listed": "On my list (may come in while I am away)",
+    "ownGrants": "Permissions of their own",
+    "personKinds": "What {{name}} may do",
+    "forget": "Remove {{name}}",
+    "privacy": "Only you see this list. Visitors only see what they may do.",
+    "youMay": "Visiting: you may {{kinds}}.",
+    "kind": {
+      "till": "till",
+      "water": "water",
+      "plant": "plant",
+      "harvest": "harvest",
+      "fertilize": "fertilize",
+      "place": "place blocks",
+      "chop": "chop wood",
+      "mine": "mine",
+      "eat": "eat",
+      "sleep": "sleep",
+      "raise": "raise the ground",
+      "lower": "dig the ground",
+      "remove": "remove blocks",
+      "open": "open chests",
+      "stash": "put things in chests",
+      "take": "take from chests",
+      "buy": "buy",
+      "ship": "ship",
+      "feed": "feed the animals",
+      "collect": "collect products",
+      "craft": "use the workbenches"
+    },
+    "refused": {
+      "disabled": "Personal worlds are closed on this server.",
+      "rate": "Easy: try again in a moment.",
+      "no_world": "You have no world yet. Step into your desk once first.",
+      "unknown": "That person is no longer here.",
+      "full": "Your list is full (50 people).",
+      "self": "That's you!"
     }
   }
 }

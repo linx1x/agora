@@ -54,6 +54,15 @@ export interface WorldStore {
   getWorld(id: string): Promise<StoredWorld | null>;
   worldOf(ownerId: string): Promise<StoredWorld | null>;
   setLastDay(id: string, day: number): Promise<void>;
+  /**
+   * Change a world's settings in one step (P17.27): `change` gets the stored settings and returns the
+   * new ones, or null to keep them. Returns what is stored after, or null when there is no such world.
+   * Two changes at once never lose one (the row is locked while `change` runs).
+   */
+  updateSettings(
+    id: string,
+    change: (settings: Record<string, unknown>) => Record<string, unknown> | null,
+  ): Promise<Record<string, unknown> | null>;
   /** the stored chunks among `keys` (chunks never edited are absent) */
   loadChunks(worldId: string, keys: readonly { cx: number; cy: number }[]): Promise<StoredChunk[]>;
   /** every stored chunk of a world: the room loads them all when it opens (P17.9) */
@@ -186,6 +195,17 @@ export class MemoryWorldStore implements WorldStore {
     if (w) this.worlds.set(id, { ...w, lastDay: day });
   }
 
+  async updateSettings(
+    id: string,
+    change: (settings: Record<string, unknown>) => Record<string, unknown> | null,
+  ): Promise<Record<string, unknown> | null> {
+    const w = this.worlds.get(id);
+    if (!w) return null;
+    const next = change(structuredClone(w.settings));
+    if (next) this.worlds.set(id, { ...w, settings: structuredClone(next) });
+    return structuredClone(this.worlds.get(id)!.settings);
+  }
+
   async loadChunks(worldId: string, keys: readonly { cx: number; cy: number }[]): Promise<StoredChunk[]> {
     const chunks = this.state.chunks.get(worldId);
     if (!chunks) return [];
@@ -314,6 +334,34 @@ export class PgWorldStore implements WorldStore {
 
   async setLastDay(id: string, day: number): Promise<void> {
     await this.pool.query('UPDATE worlds SET last_day = $2 WHERE id = $1', [id, day]);
+  }
+
+  async updateSettings(
+    id: string,
+    change: (settings: Record<string, unknown>) => Record<string, unknown> | null,
+  ): Promise<Record<string, unknown> | null> {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      const r = await client.query<{ settings: Record<string, unknown> | null }>(
+        'SELECT settings FROM worlds WHERE id = $1 FOR UPDATE',
+        [id],
+      );
+      if (r.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return null;
+      }
+      const before = r.rows[0]!.settings ?? {};
+      const next = change(before);
+      if (next) await client.query('UPDATE worlds SET settings = $2 WHERE id = $1', [id, JSON.stringify(next)]);
+      await client.query('COMMIT');
+      return next ?? before;
+    } catch (err) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw err;
+    } finally {
+      client.release();
+    }
   }
 
   async loadChunks(worldId: string, keys: readonly { cx: number; cy: number }[]): Promise<StoredChunk[]> {
