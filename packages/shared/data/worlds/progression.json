@@ -1,6 +1,8 @@
 {
   "progression": {
-    "energy": { "max": 270 },
+    "energy": {
+      "max": 270
+    },
     "starterKit": {
       "money": 500,
       "items": {
@@ -13,10 +15,31 @@
         "clover_bulb_seed": 4
       }
     },
+    "levelXp": [
+      100,
+      300,
+      700,
+      1200,
+      2000,
+      3000,
+      4500,
+      6500,
+      9000,
+      12500
+    ],
     "xp": {
-      "harvest": { "skill": "farming", "amount": 8 },
-      "chop": { "skill": "foraging", "amount": 4 },
-      "mine": { "skill": "mining", "amount": 4 }
+      "harvest": {
+        "skill": "farming",
+        "amount": 8
+      },
+      "chop": {
+        "skill": "foraging",
+        "amount": 4
+      },
+      "mine": {
+        "skill": "mining",
+        "amount": 4
+      }
     }
   }
 }

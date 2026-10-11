@@ -118,7 +118,7 @@ export const ToolSchema = z
     /** Energy per use before the farming-level reduction. */
     energy: int(0, 10),
     power: int(1, 5),
-    /** Multiplier on the action time; 1 is the base speed. */
+    /** Swing speed-up: 1 is the base speed, 1.5 swings half as long again as fast (swing.ts). */
     speed: z.number().min(0.5).max(3),
     /** 0 = one tile; 1 = the 3 x 3 block around the target. */
     radius: int(0, 2),
@@ -233,6 +233,9 @@ const XpGrantSchema = z.object({ skill: z.enum(SKILLS), amount: int(1, 100) });
 export type XpGrant = z.infer<typeof XpGrantSchema>;
 
 /** Energy, the starter kit and the xp of each action (P17.20; costs of tools live in tools.json). */
+/** Skill levels run 0 to 10; `levelXp` lists the total xp each level 1 to 10 needs. */
+export const SKILL_LEVEL_MAX = 10;
+
 export const ProgressionSchema = z.object({
   energy: z.object({ max: int(1, 999) }),
   starterKit: z.object({
@@ -240,6 +243,10 @@ export const ProgressionSchema = z.object({
     /** Item id to quantity. Granted once per account through the ledger. */
     items: z.record(IdSchema, Qty),
   }),
+  levelXp: z
+    .array(int(1, 1_000_000))
+    .length(SKILL_LEVEL_MAX)
+    .refine((xp) => xp.every((need, i) => i === 0 || need > xp[i - 1]!), { message: 'levelXp must rise' }),
   xp: z.object({ harvest: XpGrantSchema, chop: XpGrantSchema, mine: XpGrantSchema }),
 });
 export type Progression = z.infer<typeof ProgressionSchema>;

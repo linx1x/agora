@@ -95,7 +95,4 @@ export type ActionPlanner = (view: ActionView, req: ActionRequest, env: ActionEn
 
 export type ActionPlanners = Partial<Record<ActionKind, ActionPlanner>>;
 
-/** The rules the server runs. Filled per kind in P17.21 (tools), P17.22 (farm), P17.23 (food, bed). */
-export const ACTION_PLANNERS: ActionPlanners = {};
-
 export const refuse = (reason: WorldRefusal): ActionOutcome => ({ ok: false, reason });
