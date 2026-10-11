@@ -4,6 +4,7 @@ import { INVENTORY_SLOTS, type WorldTime } from '@agora/shared';
 import { Dialog } from '../../ui/common';
 import { HOTBAR_SLOTS, hotbarItems, slotForKey, worldHud, type HudState, type HudStore } from './hudState';
 import { ChestPanel } from './ChestPanel';
+import { ItemGlyph } from './ItemGlyph';
 import { CraftPanel, batchAt } from './CraftPanel';
 import { ShopPanel } from './ShopPanel';
 import type { WorldAsk } from '../inputActs';
@@ -74,13 +75,14 @@ export function WorldHud({ store = worldHud, onAsk = () => undefined }: { store?
                   className="wh-slot"
                   aria-pressed={held}
                   aria-label={label}
+                  title={label}
                   data-item={item ?? undefined}
                   onClick={() => store.pick(item)}
                 >
                   <span className="wh-key" aria-hidden="true">
                     {n}
                   </span>
-                  {item !== null && <span className="wh-name">{t(`worlds.item.${item}`)}</span>}
+                  {item !== null && <ItemGlyph item={item} />}
                   {item !== null && (
                     <span className="wh-count" aria-hidden="true">
                       {state.items[item]}

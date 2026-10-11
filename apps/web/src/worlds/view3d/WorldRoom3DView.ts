@@ -14,7 +14,7 @@ import { worldHud } from '../ui/hudState';
 import { faceCell } from '../inputActs';
 import * as use from '../use';
 import { liveUse } from '../useLive';
-import { speedOfTier } from '../tools/swing';
+import { speedOfTier, swingDurationMs } from '../tools/swing';
 import { farmSprites, type FarmSprites } from '../farmArt';
 import {
   CHUNK_SIZE,
@@ -68,6 +68,7 @@ import {
   type ChunkIndex,
 } from './math3d';
 import { SwingFx } from './swing3d';
+import { liveSwings, targetCells, type OwnSwing } from './targetRule';
 
 /** the e2e hooks of this view (`window.__agora.view3d`), on top of the shared `ViewTestApi` */
 interface WorldTestApi {
@@ -151,6 +152,8 @@ export class WorldRoom3DView {
   private readonly people: PaperFigures;
   /** the tool swings in view: arcs, marks, sparks and the shake (P17.21c) */
   private readonly swingFx: SwingFx;
+  /** my swings still in their hold: their cells never fade (P17.21d, `targetRule.ts`) */
+  private ownSwings: OwnSwing[] = [];
   private readonly overlays: Overlays;
   private readonly fade: HTMLDivElement;
   private fadeStart = 0;
@@ -659,13 +662,23 @@ export class WorldRoom3DView {
     v.mesh.geometry.dispose();
   }
 
-  /** The solid decor fades where it hides me (the office's rule, for the walls and the trees). */
+  /**
+   * The solid decor fades where it hides me (the office's rule, for the walls and the trees). The
+   * decor I work on does not: the cell I swing at (for the swing and a hold) and the cell I face
+   * when it is in reach (P17.21d).
+   */
   private occlude(dtMs: number): void {
     const subjects: Subject[] = [];
     const me = worldSession.you ? screenBox(this.cam, this.people.box(worldSession.you)) : null;
     if (me) subjects.push(me);
+    const now = performance.now();
+    this.ownSwings = liveSwings(this.ownSwings, now);
+    const w = this.walker;
+    const exempt = w
+      ? targetCells({ now, feetX: w.x, feetY: w.y, dir: w.d, swings: this.ownSwings })
+      : undefined;
     for (const v of this.chunks.values())
-      v.occlusion?.update(this.cam, subjects, dtMs, reducedMotion());
+      v.occlusion?.update(this.cam, subjects, dtMs, reducedMotion(), exempt);
   }
 
   // ───────────────────────────────────────────── path
@@ -729,6 +742,11 @@ export class WorldRoom3DView {
     if (!t || !feet) return;
     const target = at ?? faceCell(feet.x, feet.y, dir);
     this.swings++;
+    if (own)
+      this.ownSwings.push({
+        cell: { x: target.x, y: target.y },
+        endAt: performance.now() + swingDurationMs({ tier, speed }),
+      });
     this.swingFx.play(
       {
         feetX: feet.x / TILE,

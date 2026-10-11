@@ -50,11 +50,16 @@
 }
 .wh-slot {
   position: relative;
-  width: 52px;
+  width: 44px;
+  padding: 0;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
+}
+/* P17.21d: the slot shows an icon and the count; the name is in the tooltip and the accessible name */
+.wh-icon {
+  display: block;
+  pointer-events: none;
 }
 .wh-slot[aria-pressed='true'],
 .wh-list button[aria-pressed='true'] {
@@ -72,12 +77,6 @@
   bottom: 1px;
   right: 3px;
   font-weight: 600;
-}
-.wh-name {
-  max-width: 48px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 .wh-slot:focus-visible,
 .wh-open:focus-visible,
@@ -101,8 +100,11 @@
   .wh-hud {
     bottom: 8px;
   }
-  .wh-slot {
-    width: 44px;
+  /* nine slots of 44 px do not fit a 390 px phone in one row: five, then four */
+  .wh-slots {
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 236px;
   }
 }
 

@@ -1,52 +1,44 @@
 /**
- * A tool swing in the 2.5D world view (P17.21c, ADR-053): the swing's frames as a billboard at the
- * person's hand, the tier mark beside it, sparks at the target cell on the impact, a camera shake
- * for my own hit (none under reduced motion) and the tier's sound. The frames, the marks, the timing
- * and the sizes are the flat view's (`tools/swingArt.ts`, `tools/swing.ts`), so both views swing
- * alike. Visual only: the server has already decided the action. Browser only (it draws canvases).
+ * A tool swing in the 2.5D world view (P17.21c, P17.21d, ADR-053): the tool card as a billboard at the
+ * person's hand (its three frames per facing, with the arc it has swept and the tier mark), sparks at
+ * the target cell on the impact, a camera shake for my own hit (none under reduced motion) and the
+ * tier's sound. The frames and the timing are the flat view's (`tools/swingArt.ts`, `tools/swing.ts`),
+ * so both views swing alike; the card is larger here (`CARD_TILES`) so the swing reads at the default
+ * zoom. The tier changes the card's sprite and the numbers, never the animation. Visual only: the server has already decided the action. Browser only.
  */
 import * as THREE from 'three';
 import { TILE, type Dir } from '@agora/shared';
 import { pixelTexture } from '../../game3d/meshes';
 import type { Cam } from '../../game3d/camera';
 import { playSwingSound } from '../tools/sound';
-import { FRAME_PX, swingFrameCanvas, tierMarkCanvas } from '../tools/swingArt';
-import { OVERLAY_GRID } from '../tools/overlay';
+import { swingCardCanvas } from '../tools/swingArt';
 import {
+  AFTER_MS,
+  CARD_TILES,
+  FADE_MS,
   HAND_PX,
   IMPACT_AT,
+  SHAKE_MS,
+  SPARK_MS,
+  SPARK_STILL_MS,
   frameIndexAt,
-  sparkCount,
   swingParams,
   type Facing,
+  type TierFeel,
 } from '../tools/swing';
 import { screenShift } from './math3d';
 
-/** The arc and the mark stay this long after the swing (the flat view's 60 ms). */
-const AFTER_MS = 60;
-/** The sparks fly for this long; under reduced motion they flash in place for `STILL_MS`. */
-const SPARK_MS = 260;
-const STILL_MS = 160;
-/** A shake lasts this long; it is 2 px a tier each way at the start (the flat view's shake). */
-const SHAKE_MS = 180;
-/** The swing stands this far towards the viewer, so the figure's card does not hide it (tiles). */
-const NEAR = 0.15;
 /** The sparks lie this far above the top of the target cell (tiles). */
 const SPARK_LIFT = 0.04;
-const SPARK_COLORS = [0xffe08a, 0xfff4c2] as const;
-/** The spark ring's radius at the start, in pixels, grows with the tier (the flat view's 6 + 2 a tier). */
-const SPARK_REACH_PX = 6;
+/** The card stands this far towards the viewer (tiles). */
+const NEAR = 0.15;
 /** drawn after the people and the walls: a swing and its sparks are never hidden by the person swinging */
 const OVER_FIGURE = 20;
+/** the sparks lie over the card: the card is big, and the impact is at its foot */
+const OVER_CARD = OVER_FIGURE + 1;
 const HAND = HAND_PX / TILE;
-/** the arc is drawn 1.5 times the flat view's frame: the 2.5D camera is further from the figure */
-const ARC = (FRAME_PX * 1.5) / TILE;
-const MARK = OVERLAY_GRID / TILE;
-/**
- * The mark sits this far right of the hand, clear of the head (the flat view has it up and right, at +6, -6 px).
- * The swing is drawn over the figure (no depth test), so it reads when the target is behind the person.
- */
-const MARK_OFFSET_X = 12 / TILE;
+/** The card's width in tiles (the canvas is FRAME_PX square, so the art is drawn at this scale). */
+const CARD = CARD_TILES;
 
 /** One swing to play: where the person stands, what they swing at, and the settings. */
 export interface SwingPlay {
@@ -69,14 +61,15 @@ export interface SwingPlay {
 
 interface Active {
   readonly play: SwingPlay;
-  readonly arc: THREE.Sprite;
-  readonly mark: THREE.Sprite;
+  readonly sprite: THREE.Sprite;
+  /** this swing's own material, so it can fade out without fading the others */
+  readonly mat: THREE.SpriteMaterial;
   readonly facing: Facing;
   readonly start: number;
   readonly duration: number;
-  readonly sparkPx: number;
+  readonly feel: TierFeel;
   readonly shakePx: number;
-  readonly sparkCount: number;
+  readonly trail: boolean;
   frame: number;
   impacted: boolean;
 }
@@ -97,45 +90,45 @@ interface Burst {
 export class SwingFx {
   private readonly active: Active[] = [];
   private readonly bursts: Burst[] = [];
-  private readonly frameMats = new Map<string, THREE.SpriteMaterial>();
-  private readonly markMats = new Map<number, THREE.SpriteMaterial>();
+  private readonly textures = new Map<string, THREE.CanvasTexture>();
   private shaking: { start: number; px: number } | null = null;
 
   constructor(private readonly scene: THREE.Scene) {}
 
-  /** Plays a swing now: the arc and the mark at the hand, the sound. The impact comes in `update`. */
+  /** Plays a swing now, starting at `now`: the card at the hand, the sound. The impact comes in `update`. */
   play(p: SwingPlay, now: number): void {
     const params = swingParams({ tier: p.tier, speed: p.speed }, p.dir, p.reduced);
-    const facing = p.dir;
-    const hand: [number, number, number] = [p.feetX, p.floor + HAND, p.feetZ + NEAR];
-    const arc = new THREE.Sprite(this.frameMat(facing, 0));
-    arc.center.set(0.5, 0.5);
-    arc.scale.set(ARC, ARC, 1);
-    arc.position.set(...hand);
-    arc.renderOrder = OVER_FIGURE;
-    const mark = new THREE.Sprite(this.markMat(p.tier));
-    mark.center.set(0.5, 0.5);
-    mark.scale.set(MARK, MARK, 1);
-    mark.position.set(hand[0] + MARK_OFFSET_X, hand[1], hand[2]);
-    mark.renderOrder = OVER_FIGURE;
-    this.scene.add(arc, mark);
+    const trail = !p.reduced;
+    const mat = new THREE.SpriteMaterial({
+      map: this.texture(p.tier, p.dir, 0, trail),
+      transparent: true,
+      alphaTest: 0.5,
+      depthWrite: false,
+      depthTest: false,
+    });
+    const sprite = new THREE.Sprite(mat);
+    sprite.center.set(0.5, 0.5);
+    sprite.scale.set(CARD, CARD, 1);
+    sprite.position.set(p.feetX, p.floor + HAND, p.feetZ + NEAR);
+    sprite.renderOrder = OVER_FIGURE;
+    this.scene.add(sprite);
     this.active.push({
       play: p,
-      arc,
-      mark,
-      facing,
+      sprite,
+      mat,
+      facing: p.dir,
       start: now,
       duration: params.durationMs,
-      sparkPx: params.sparkPx,
+      feel: params.feel,
       shakePx: params.shakePx,
-      sparkCount: sparkCount(p.tier),
+      trail,
       frame: 0,
       impacted: false,
     });
-    playSwingSound(params.pitch, p.sounds);
+    playSwingSound(params.pitch, p.sounds, params.hit);
   }
 
-  /** Moves the swing on: its frames, its impact (sparks, and the shake for my own), and its end. */
+  /** Moves the swing on: its frames, its impact (sparks, and the shake for my own), its fade and its end. */
   update(now: number): void {
     for (let i = this.active.length - 1; i >= 0; i--) {
       const s = this.active[i]!;
@@ -143,16 +136,24 @@ export class SwingFx {
       const f = frameIndexAt(elapsed, s.duration);
       if (f !== s.frame) {
         s.frame = f;
-        s.arc.material = this.frameMat(s.facing, f);
+        s.mat.map = this.texture(s.play.tier, s.facing, f, s.trail);
       }
       if (!s.impacted && elapsed >= s.duration * IMPACT_AT) {
         s.impacted = true;
         this.spark(s, now);
         if (s.play.own && !s.play.reduced) this.shaking = { start: now, px: s.shakePx };
       }
-      if (elapsed >= s.duration + AFTER_MS) {
-        this.scene.remove(s.arc, s.mark);
-        this.active.splice(i, 1);
+      // the card holds for AFTER_MS, then fades (reduced motion: it is simply gone)
+      const end = s.duration + AFTER_MS;
+      if (elapsed >= end) {
+        const k = s.play.reduced ? 1 : (elapsed - end) / FADE_MS;
+        if (k >= 1) {
+          this.scene.remove(s.sprite);
+          s.mat.dispose();
+          this.active.splice(i, 1);
+          continue;
+        }
+        s.mat.opacity = 1 - k;
       }
     }
     for (let i = this.bursts.length - 1; i >= 0; i--) {
@@ -187,41 +188,46 @@ export class SwingFx {
       this.shaking = null;
       return [0, 0, 0];
     }
-    const amp = 2 * sh.px * (1 - t);
+    const amp = sh.px * (1 - t);
     const [x, y, z] = screenShift(cam, (Math.random() * 2 - 1) * amp, (Math.random() * 2 - 1) * amp);
     return [x, y, z];
   }
 
-  /** The sparks of an impact: a burst at the target cell's top, `sparkCount` squares of the tier's size. */
+  /**
+   * The sparks of an impact: a burst at the target cell's top, the tier's count, size, colours and
+   * blending (diamond sparks glow). Reduced motion: they flash in place.
+   */
   private spark(s: Active, now: number): void {
-    const { target, tier, reduced } = s.play;
-    const n = s.sparkCount;
+    const { target, reduced } = s.play;
+    const feel = s.feel;
+    const n = feel.sparkCount;
     const positions = new Float32Array(n * 3);
     const colors = new Float32Array(n * 3);
     const dirs = new Float32Array(n * 2);
     const origin = { x: target.cx + 0.5, y: target.floor + SPARK_LIFT, z: target.cy + 0.5 };
     for (let i = 0; i < n; i++) {
-      const a = (i / n) * Math.PI * 2 + tier * 0.3;
+      const a = (i / n) * Math.PI * 2 + s.play.tier * 0.3;
       dirs[i * 2] = Math.cos(a);
       dirs[i * 2 + 1] = Math.sin(a);
       positions.set([origin.x, origin.y, origin.z], i * 3);
-      const c = new THREE.Color(SPARK_COLORS[i % SPARK_COLORS.length]!);
+      const c = new THREE.Color(feel.sparks[i % feel.sparks.length]!);
       colors.set([c.r, c.g, c.b], i * 3);
     }
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     const mat = new THREE.PointsMaterial({
-      // twice the flat view's squares: a 3 px dot is lost at the 2.5D zoom
-      size: s.sparkPx * 2,
+      // the screen size of the square: the flat view's (wood 5 px, iron 8 px, diamond 12 px)
+      size: feel.sparkPx,
       sizeAttenuation: false,
       vertexColors: true,
       transparent: true,
       depthWrite: false,
       depthTest: false,
+      blending: feel.bright ? THREE.AdditiveBlending : THREE.NormalBlending,
     });
     const points = new THREE.Points(geo, mat);
-    points.renderOrder = OVER_FIGURE;
+    points.renderOrder = OVER_CARD;
     this.scene.add(points);
     this.bursts.push({
       points,
@@ -229,42 +235,22 @@ export class SwingFx {
       mat,
       dirs,
       origin,
-      reach: (SPARK_REACH_PX + 2 * tier) / TILE,
+      reach: feel.sparkReachPx / TILE,
       start: now,
-      life: reduced ? STILL_MS : SPARK_MS,
+      life: reduced ? SPARK_STILL_MS : SPARK_MS,
       still: reduced,
     });
   }
 
-  private frameMat(facing: Facing, n: number): THREE.SpriteMaterial {
-    const key = `${facing}-${n}`;
-    let m = this.frameMats.get(key);
-    if (!m) {
-      m = new THREE.SpriteMaterial({
-        map: pixelTexture(swingFrameCanvas(facing, n)),
-        transparent: true,
-        alphaTest: 0.5,
-        depthWrite: false,
-        depthTest: false,
-      });
-      this.frameMats.set(key, m);
+  /** The card's texture for a tier, facing and frame (made once; shared by every swing). */
+  private texture(tier: number, facing: Facing, n: number, trail: boolean): THREE.CanvasTexture {
+    const key = `${tier}-${facing}-${n}-${trail ? 1 : 0}`;
+    let t = this.textures.get(key);
+    if (!t) {
+      t = pixelTexture(swingCardCanvas(tier, facing, n, trail));
+      this.textures.set(key, t);
     }
-    return m;
-  }
-
-  private markMat(tier: number): THREE.SpriteMaterial {
-    let m = this.markMats.get(tier);
-    if (!m) {
-      m = new THREE.SpriteMaterial({
-        map: pixelTexture(tierMarkCanvas(tier)),
-        transparent: true,
-        alphaTest: 0.5,
-        depthWrite: false,
-        depthTest: false,
-      });
-      this.markMats.set(tier, m);
-    }
-    return m;
+    return t;
   }
 
   private dropBurst(b: Burst): void {
@@ -273,18 +259,17 @@ export class SwingFx {
     b.mat.dispose();
   }
 
-  /** Removes what is on screen. The frame and mark materials are kept for the next swing. */
+  /** Removes what is on screen and frees the textures (the next swing makes them again). */
   dispose(): void {
-    for (const s of this.active) this.scene.remove(s.arc, s.mark);
+    for (const s of this.active) {
+      this.scene.remove(s.sprite);
+      s.mat.dispose();
+    }
     this.active.length = 0;
     for (const b of this.bursts) this.dropBurst(b);
     this.bursts.length = 0;
     this.shaking = null;
-    for (const m of [...this.frameMats.values(), ...this.markMats.values()]) {
-      m.map?.dispose();
-      m.dispose();
-    }
-    this.frameMats.clear();
-    this.markMats.clear();
+    for (const t of this.textures.values()) t.dispose();
+    this.textures.clear();
   }
 }

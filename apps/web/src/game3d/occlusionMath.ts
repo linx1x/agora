@@ -94,19 +94,23 @@ export function hits(b: Box2, x: number, y: number): boolean {
 
 /**
  * The ids of the objects that hide at least one subject: the screen boxes overlap and the object
- * is nearer the camera than the subject.
+ * is nearer the camera than the subject. An object in `exempt` never hides (P17.21d: the decor I
+ * am working on stays solid, whatever stands in front of it).
  */
 export function hiders(
   subjects: readonly Subject[],
   objects: ReadonlyMap<string, Seen>,
+  exempt?: ReadonlySet<string>,
 ): Set<string> {
   const out = new Set<string>();
-  for (const [id, o] of objects)
+  for (const [id, o] of objects) {
+    if (exempt?.has(id)) continue;
     for (const s of subjects)
       if (o.depth < s.depth && overlaps(o.box, s.box)) {
         out.add(id);
         break;
       }
+  }
   return out;
 }
 

@@ -17,11 +17,11 @@ describe('the hit juice of a tool (P17.21b)', () => {
   it('does not shake under reduced motion, through the swing parameters', () => {
     const tool = { tier: 3, speed: 1.5 };
     expect(swingParams(tool, 'up', true).shakePx).toBe(0);
-    expect(swingParams(tool, 'up', false).shakePx).toBe(3);
+    expect(swingParams(tool, 'up', false).shakePx).toBe(7);
     expect(shakeIntensity(swingParams(tool, 'up', true).shakePx, 1280)).toBe(0);
   });
 
-  it('plays the blip at the tier pitch: the base tone at tier 1, 5 % higher per tier', () => {
+  it('plays the blip at the tier pitch: the base tone at tier 1, higher per tier', () => {
     expect(blipFrequency(1)).toBe(BLIP_HZ);
     expect(blipFrequency(1.1)).toBeCloseTo(BLIP_HZ * 1.1, 10);
   });
