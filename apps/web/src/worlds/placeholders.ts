@@ -56,6 +56,8 @@ export const LOOKS: Readonly<Record<string, Look>> = {
   bed: { top: 'plaster2', side: 'wood1', shape: 'box' },
   shipping_bin: { top: 'wood2', side: 'wood0', shape: 'box' },
   shop_board: { top: 'plaster2', side: 'wood0', shape: 'box' },
+  chest: { top: 'wood1', side: 'wood0', shape: 'box' },
+  fence: { top: 'wood2', side: 'wood0', shape: 'post' },
 };
 
 export interface Tile {

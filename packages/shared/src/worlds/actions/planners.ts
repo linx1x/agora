@@ -3,7 +3,8 @@
  * passes its own.
  */
 import type { ActionPlanners } from './plan';
-import { planFertilize, planHarvest, planPlace, planPlant } from './farm';
+import { baseItemOf, planFertilize, planHarvest, planPlace, planPlant } from './farm';
+import { planLower, planOpen, planPlaceBlock, planRaise, planRemove, planStash, planTake } from './build';
 import { planChop, planMine } from './harvest';
 import { planEat, planSleep } from './rest';
 import { planTill } from './till';
@@ -15,7 +16,17 @@ export const ACTION_PLANNERS: ActionPlanners = {
   plant: planPlant,
   harvest: planHarvest,
   fertilize: planFertilize,
-  place: planPlace,
+  // a block item is placed as a block (build.ts); anything else as a sprinkler (farm.ts)
+  place: (view, req, env) =>
+    req.item !== undefined && env.data.itemsById.get(baseItemOf(req.item))?.block !== undefined
+      ? planPlaceBlock(view, req, env)
+      : planPlace(view, req, env),
+  raise: planRaise,
+  lower: planLower,
+  remove: planRemove,
+  open: planOpen,
+  stash: planStash,
+  take: planTake,
   chop: planChop,
   mine: planMine,
   eat: planEat,

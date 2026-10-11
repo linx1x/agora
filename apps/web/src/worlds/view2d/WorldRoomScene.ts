@@ -33,7 +33,7 @@ import { RETURN_RECT } from '../starter';
 import { TEX, addWorldTextures } from './atlas';
 import { cropFrameName } from './art';
 import { worldActs } from '../actLink';
-import { actionFor, faceCell } from '../inputActs';
+import { NO_FACTS, actionFor, factsOf, faceCell } from '../inputActs';
 import { worldHud } from '../ui/hudState';
 import { playSwing2d, speedOfTier } from './swing2d';
 import {
@@ -139,18 +139,19 @@ export class WorldRoomScene extends Phaser.Scene {
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       if (p.button !== 0) return;
       (document.activeElement as HTMLElement | null)?.blur?.();
-      if (!this.useAt(p.worldX, p.worldY)) this.clickTo(p.worldX, p.worldY);
+      const shift = (p.event as { shiftKey?: boolean } | undefined)?.shiftKey === true;
+      if (!this.useAt(p.worldX, p.worldY, shift)) this.clickTo(p.worldX, p.worldY);
     });
     this.input.on('wheel', (_p: unknown, _o: unknown, _dx: number, dy: number) =>
       this.stepZoom(dy > 0 ? -1 : 1),
     );
 
     this.onKey = (e: KeyboardEvent) => {
-      if (isTyping() || e.metaKey || e.ctrlKey || e.altKey || store.get().dialog) return;
+      if (isTyping() || e.metaKey || e.ctrlKey || e.altKey || store.get().dialog || worldHud.get().chest !== null) return;
       if (e.key === 'x' || e.key === 'X') this.act();
       else if (e.key === ' ') {
         e.preventDefault();
-        if (!e.repeat) this.useFaced();
+        if (!e.repeat) this.useFaced(e.shiftKey);
       }
     };
     window.addEventListener('keydown', this.onKey);
@@ -249,28 +250,29 @@ export class WorldRoomScene extends Phaser.Scene {
 
   // ───────────────────────────────────────────── tools (P17.21b)
   /** Space: the held item acts on the cell in front of me. Nothing to do there says so. */
-  private useFaced(): void {
+  private useFaced(shift: boolean): void {
     const focused = document.activeElement;
     if (focused instanceof HTMLElement && focused.closest('.wh-hud')) focused.blur();
     const w = this.walker;
-    if (!this.useOn(faceCell(w.x, w.y, w.d))) toast('worlds.hud.nothingToDo');
+    if (!this.useOn(faceCell(w.x, w.y, w.d), shift)) toast('worlds.hud.nothingToDo');
   }
 
   /** A click on a cell within reach: the held item acts on it (true). Otherwise the click walks (false). */
-  private useAt(wx: number, wy: number): boolean {
+  private useAt(wx: number, wy: number, shift: boolean): boolean {
     const t = worldSession.terrain;
     if (!t) return false;
     const cell = pickCell(wx, wy, (cx, cy) => t.cellAt(cx, cy).level);
     const at: CellRef = { x: cell.cx, y: cell.cy };
-    return inReach(this.walker.x, this.walker.y, at) && this.useOn(at);
+    return inReach(this.walker.x, this.walker.y, at) && this.useOn(at, shift);
   }
 
   /** Asks the server for the held item's action on a cell (it decides), and swings for a tool. */
-  private useOn(at: CellRef): boolean {
+  private useOn(at: CellRef, shift = false): boolean {
     const world = worldSession.worldId;
     const hand = worldHud.get().inHand;
     const data = loadGameData();
-    const kind = actionFor(hand, data);
+    const cell = worldSession.terrain?.cellAt(at.x, at.y);
+    const kind = actionFor(hand, data, cell ? factsOf(cell, data) : NO_FACTS, shift);
     if (world === null || kind === null) return false;
     worldActs.submit(world, { kind, at, ...(hand !== null ? { item: hand } : {}) });
     const tool = hand === null ? undefined : toolOf(data, baseItemOf(hand));

@@ -19,6 +19,12 @@ export const VISITOR_RULES: Readonly<Record<ActionKind, VisitorRule>> = {
   chop: 'deny',
   mine: 'deny',
   sleep: 'deny',
+  raise: 'deny',
+  lower: 'deny',
+  remove: 'deny',
+  open: 'choice',
+  stash: 'choice',
+  take: 'choice',
 };
 
 export interface WorldAccess {

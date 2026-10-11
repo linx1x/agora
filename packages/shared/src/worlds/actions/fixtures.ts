@@ -21,6 +21,8 @@ export interface ViewOptions {
   readonly plots?: Readonly<Record<string, PlotState>>;
   /** overrides per cell, keyed "x,y"; every other cell is dry meadow ground with nothing on it */
   readonly cells?: Readonly<Record<string, Partial<WorldCell>>>;
+  /** cells where a person stands ("x,y"); nobody by default */
+  readonly occupied?: readonly { readonly x: number; readonly y: number }[];
 }
 
 const GROUND: WorldCell = { level: 0, block: 'meadow_grass', decor: '', solid: false, liquid: false, ramp: false, walkable: true };
@@ -31,6 +33,7 @@ export const DECOR: Partial<WorldCell> = { solid: true, walkable: false };
 export function viewOf(o: ViewOptions = {}): ActionView {
   const day = o.day ?? 3;
   const cells = o.cells ?? {};
+  const people = new Set((o.occupied ?? []).map((c) => cellKey(c.x, c.y)));
   const sim: WorldSimState = { ...emptySim(day), plots: { ...(o.plots ?? {}) } };
   return {
     day,
@@ -41,6 +44,7 @@ export function viewOf(o: ViewOptions = {}): ActionView {
     skills: { ...(o.skills ?? {}) },
     sim,
     cell: (x, y) => ({ ...GROUND, ...(cells[cellKey(x, y)] ?? {}) }),
+    occupied: (x, y) => people.has(cellKey(x, y)),
   };
 }
 

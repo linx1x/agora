@@ -471,6 +471,29 @@
       "placeable": true,
       "light": 0,
       "biomes": []
+    },
+    {
+      "id": "chest",
+      "layer": "decor",
+      "sprite": "worlds/shared/chest",
+      "solid": true,
+      "liquid": false,
+      "height": 1,
+      "placeable": true,
+      "container": true,
+      "light": 0,
+      "biomes": []
+    },
+    {
+      "id": "fence",
+      "layer": "decor",
+      "sprite": "worlds/shared/fence",
+      "solid": true,
+      "liquid": false,
+      "height": 1,
+      "placeable": true,
+      "light": 0,
+      "biomes": []
     }
   ]
 }

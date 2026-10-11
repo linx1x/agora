@@ -334,6 +334,11 @@ export type S2CMsg =
       maxEnergy: number;
     }
   /**
+   * P17.24 (ADR-053): the contents of a chest I opened or changed (stack key to quantity). Only
+   * I get it: a chest is the owner's, and its contents never go in a chunk delta.
+   */
+  | { t: 'world:chest'; at: { x: number; y: number }; items: Record<string, number> }
+  /**
    * P17.21b (ADR-053): someone in my view swung a tool (sent when an action with a tool is
    * accepted, to the others in view, never to the actor). Cosmetic only: no state. `dir` is the
    * way they faced, `tier` the tool's tier (1 to 3).

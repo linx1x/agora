@@ -530,6 +530,7 @@ export class WorldRoom {
         params: this.params,
         stamp: this.stamp,
         actor: { uid: m.uid, x: m.x, y: m.y },
+        people: [...this.members.values()].map((o) => ({ x: o.x, y: o.y })),
         req: { kind: req.kind, at: req.at, item: req.item, target: req.target },
         key: req.key,
         now: this.clock(),
@@ -554,6 +555,7 @@ export class WorldRoom {
       energy: result.energy,
       maxEnergy: result.maxEnergy,
     });
+    if (result.reply?.chest) m.conn?.send({ t: 'world:chest', at: result.reply.chest.at, items: { ...result.reply.chest.items } });
     this.swing(m, req, data);
   }
 

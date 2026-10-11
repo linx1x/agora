@@ -5,6 +5,8 @@ import { expect, test, type Browser, type Page } from '@playwright/test';
  * (a click within reach, or Space on the faced cell) and the server decides. Alice enters her world
  * from her desk, tills bare ground, plants a seed, waters it, chops the oak of the starter drawing,
  * and a pick on bare ground is refused with its message. The bag and the farm change after each.
+ * P17.24 adds the build test: a wall placed and picked up, the shovel raising the ground, and a chest
+ * that holds a stack until it is taken back out of the dialog.
  * Runs in the 2D project only: the 2.5D world view reuses the same hooks (P17.15).
  */
 
@@ -162,9 +164,24 @@ async function clickCell(p: Page, cx: number, cy: number) {
 async function freeCell(p: Page, cells: readonly (readonly [number, number])[]) {
   for (const [x, y] of cells) {
     const info = await cellInfo(p, x, y);
-    if (info && info.block === 'meadow_dirt' && info.decor === '' && info.plot === null) return [x, y] as const;
+    if (info && (info.block === 'meadow_dirt' || info.block === 'meadow_grass') && info.decor === '' && info.plot === null) return [x, y] as const;
   }
   throw new Error('no free meadow cell in reach');
+}
+
+/** The first cell of these that is bare meadow, and whose four neighbours are as high as it or one higher (a raise is never a trap). */
+async function flatCell(p: Page, cells: readonly (readonly [number, number])[]) {
+  for (const [x, y] of cells) {
+    const c = await cellInfo(p, x, y);
+    if (!c || (c.block !== 'meadow_dirt' && c.block !== 'meadow_grass') || c.decor !== '' || c.plot !== null) continue;
+    let flat = true;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+      const n = await cellInfo(p, x + dx, y + dy);
+      if (!n || n.level < c.level || n.level > c.level + 1) flat = false;
+    }
+    if (flat) return [x, y] as const;
+  }
+  throw new Error('no flat meadow cell in reach');
 }
 
 test('farming in my world: till, plant, water, chop, and a refusal with its message', async ({ browser }) => {
@@ -248,4 +265,80 @@ test('farming in my world: till, plant, water, chop, and a refusal with its mess
   // the walker's world is still mine: the same world id, and the farm holds my plot
   expect((await world(a)).id).toBeTruthy();
   expect((await cellInfo(a, sx, sy))?.plot).not.toBeNull();
+});
+
+test('building in my world: a wall placed and picked up, the ground raised, and a chest that holds a stack', async ({ browser }) => {
+  test.setTimeout(400_000);
+  const a = await enter(browser, 0, 20);
+  await claimJungle6(a);
+  await waitPrompt(a, 'world');
+  await a.keyboard.press('x');
+  await waitWorld(a);
+  await expect(a.locator('button.wh-slot[data-item="hoe_1"]')).toBeVisible({ timeout: 30_000 });
+
+  // the cells in reach of the spawn (a feet point in cell 0,0 reaches these, not the diagonals above it)
+  const around: (readonly [number, number])[] = [
+    [0, 1],
+    [1, 1],
+    [-1, 1],
+    [0, -1],
+    [-1, 0],
+    [1, 0],
+  ];
+
+  // a wall from the bag onto bare ground, and the pick takes it back into the bag
+  const [wx, wy] = await freeCell(a, around);
+  const walls = (await inventory(a)).wood_wall ?? 0;
+  await hold(a, 'wood_wall');
+  await clickCell(a, wx, wy);
+  await a.waitForFunction(([x, y]) => (window as any).__agora.view.cellInfo(x, y)?.decor === 'wood_wall', [wx, wy], {
+    timeout: 30_000,
+    polling: 200,
+  });
+  await expect.poll(async () => (await inventory(a)).wood_wall ?? 0, { timeout: 30_000 }).toBe(walls - 1);
+  await hold(a, 'pick_1');
+  await clickCell(a, wx, wy);
+  await a.waitForFunction(([x, y]) => (window as any).__agora.view.cellInfo(x, y)?.decor === '', [wx, wy], {
+    timeout: 30_000,
+    polling: 200,
+  });
+  await expect.poll(async () => (await inventory(a)).wood_wall ?? 0, { timeout: 30_000 }).toBe(walls);
+
+  // the shovel raises a flat cell by one level (Shift would lower it)
+  const [rx, ry] = await flatCell(a, around.filter(([x, y]) => x !== wx || y !== wy));
+  const before = (await cellInfo(a, rx, ry))!.level;
+  await hold(a, 'shovel_1');
+  await clickCell(a, rx, ry);
+  await a.waitForFunction(
+    ([x, y, lv]) => (window as any).__agora.view.cellInfo(x, y)?.level === lv + 1,
+    [rx, ry, before],
+    { timeout: 30_000, polling: 200 },
+  );
+
+  // a chest on bare ground: the bag loses it, and the cell holds it
+  const [cx, cy] = await freeCell(
+    a,
+    around.filter(([x, y]) => (x !== wx || y !== wy) && (x !== rx || y !== ry)),
+  );
+  await hold(a, 'chest');
+  await clickCell(a, cx, cy);
+  await a.waitForFunction(([x, y]) => (window as any).__agora.view.cellInfo(x, y)?.decor === 'chest', [cx, cy], {
+    timeout: 30_000,
+    polling: 200,
+  });
+
+  // the walls go into the chest: the whole stack leaves the bag, and the hand is empty again
+  await hold(a, 'wood_wall');
+  await clickCell(a, cx, cy);
+  await expect.poll(async () => (await inventory(a)).wood_wall ?? 0, { timeout: 30_000 }).toBe(0);
+  await expect(a.locator('.wh-hand')).toHaveText(/Rien en main/, { timeout: 30_000 });
+
+  // an empty hand on the chest opens it: the dialog lists the stack, and Take brings it back
+  await clickCell(a, cx, cy);
+  const panel = a.getByRole('dialog', { name: 'Coffre' });
+  await expect(panel).toBeVisible({ timeout: 30_000 });
+  await panel.getByRole('button', { name: /Prendre Mur de bois/ }).click();
+  await expect.poll(async () => (await inventory(a)).wood_wall ?? 0, { timeout: 30_000 }).toBe(walls);
+  await panel.getByRole('button', { name: 'Fermer le coffre' }).click();
+  await expect(panel).toBeHidden();
 });

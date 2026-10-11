@@ -26,7 +26,7 @@ export const SEASONS = ['spring', 'summer', 'autumn', 'winter'] as const;
 export const HABITATS = ['river', 'lake', 'ocean'] as const;
 export const STATIONS = ['bench', 'kitchen', 'furnace'] as const;
 export const HOUSING = ['coop', 'barn'] as const;
-export const TOOLS = ['hoe', 'can', 'axe', 'pick', 'rod'] as const;
+export const TOOLS = ['hoe', 'can', 'axe', 'pick', 'rod', 'shovel'] as const;
 export const GIFT_NPCS = ['zoe', 'felix', 'theo'] as const;
 
 /** A season has 28 game days; a crop's stages must fit in one season. */
@@ -65,6 +65,8 @@ export const ItemSchema = z
     stack: int(1, 999).default(99),
     /** Food only: energy restore basis (research section 9). */
     edibility: int(1, 100).optional(),
+    /** Buildings only: the block placed on the ground or as decor (P17.24); a block id of blocks.json. */
+    block: IdSchema.optional(),
     /** Buildings (sprinklers) and fertilizer: what the item does on the farm. */
     effect: z.discriminatedUnion('kind', [
       z.strictObject({ kind: z.literal('sprinkler'), radius: int(0, 2) }),
@@ -85,6 +87,9 @@ export const ItemSchema = z
     }
     if (!EDIBLE_KINDS.includes(item.kind) && item.edibility !== undefined) {
       ctx.addIssue({ code: 'custom', path: ['edibility'], message: 'only food, crops and forage have edibility' });
+    }
+    if (item.block !== undefined && item.kind !== 'building') {
+      ctx.addIssue({ code: 'custom', path: ['block'], message: 'only buildings are placed as blocks' });
     }
     if (item.effect?.kind === 'sprinkler' && item.kind !== 'building') {
       ctx.addIssue({ code: 'custom', path: ['effect'], message: 'only buildings have an effect' });

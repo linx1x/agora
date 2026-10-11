@@ -978,7 +978,7 @@
       "slotEmpty": "Emplacement {{n}} : vide",
       "money": "Argent : {{amount}}",
       "nothingInHand": "Rien en main",
-      "keys": "Chiffres 1 à 9 : choisir · Espace ou clic : utiliser · I : inventaire",
+      "keys": "Chiffres 1 à 9 : choisir · Espace ou clic : utiliser · Maj : abaisser le sol · I : inventaire",
       "nothingToDo": "Rien à faire avec cela ici.",
       "inHand": "En main : {{item}}",
       "inventory": "Inventaire (I)",
@@ -1014,7 +1014,9 @@
       "unknown": "Cette porte ne mène nulle part.",
       "outside": "Approchez-vous de la porte pour entrer.",
       "no_permission": "Ce monde n'est pas ouvert pour vous.",
-      "no_world": "Ce monde n'est pas prêt pour l'instant."
+      "no_world": "Ce monde n'est pas prêt pour l'instant.",
+      "occupied": "Quelqu’un se tient là.",
+      "trap": "Cela enfermerait quelqu’un : laisse un passage."
     },
     "tuning": {
       "open": "Réglages du monde",
@@ -1096,7 +1098,9 @@
       "return_pad": "Plateforme de retour",
       "bed": "Lit",
       "shipping_bin": "Caisse d'expédition",
-      "shop_board": "Tableau de la boutique"
+      "shop_board": "Tableau de la boutique",
+      "chest": "Coffre",
+      "fence": "Clôture"
     },
     "biome": {
       "meadow": "Prairie",
@@ -1227,8 +1231,24 @@
       "dune_tuna": "Thon des dunes",
       "salt_snapper": "Vivaneau salé",
       "pearl_anchovy": "Anchois perlé",
-      "deep_ray": "Raie des abysses"
+      "deep_ray": "Raie des abysses",
+      "shovel_1": "Pelle simple",
+      "wood_wall": "Mur de bois",
+      "wood_floor": "Plancher de bois",
+      "torch": "Torche",
+      "stone_stairs": "Escalier de pierre",
+      "bed": "Lit"
     },
-    "noRoute": "Pas de chemin jusque-là."
+    "noRoute": "Pas de chemin jusque-là.",
+    "chest": {
+      "title": "Coffre",
+      "slotsUsed": "{{used}} emplacements sur {{max}}",
+      "empty": "Le coffre est vide.",
+      "takeLabel": "Prendre {{item}}, {{count}}",
+      "take": "Prendre",
+      "stash": "Ranger {{item}} dans le coffre",
+      "stashNone": "Rien en main à ranger",
+      "close": "Fermer le coffre"
+    }
   }
 }

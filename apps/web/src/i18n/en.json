@@ -978,7 +978,7 @@
       "slotEmpty": "Slot {{n}}: empty",
       "money": "Money: {{amount}}",
       "nothingInHand": "Nothing in hand",
-      "keys": "Keys 1 to 9: choose · Space or click: use · I: inventory",
+      "keys": "Keys 1 to 9: pick · Space or click: use · Shift: lower the ground · I: inventory",
       "nothingToDo": "Nothing to do with that here.",
       "inHand": "In hand: {{item}}",
       "inventory": "Inventory (I)",
@@ -1014,7 +1014,9 @@
       "unknown": "This door leads nowhere.",
       "outside": "Stand in the doorway to enter.",
       "no_permission": "This world is not open to you.",
-      "no_world": "This world is not ready yet."
+      "no_world": "This world is not ready yet.",
+      "occupied": "Someone is standing there.",
+      "trap": "This would trap someone: leave a way through."
     },
     "tuning": {
       "open": "World tuning",
@@ -1096,7 +1098,9 @@
       "return_pad": "Return pad",
       "bed": "Bed",
       "shipping_bin": "Shipping bin",
-      "shop_board": "Shop board"
+      "shop_board": "Shop board",
+      "chest": "Chest",
+      "fence": "Fence"
     },
     "biome": {
       "meadow": "Meadow",
@@ -1227,8 +1231,24 @@
       "dune_tuna": "Dune tuna",
       "salt_snapper": "Salt snapper",
       "pearl_anchovy": "Pearl anchovy",
-      "deep_ray": "Deep ray"
+      "deep_ray": "Deep ray",
+      "shovel_1": "Plain shovel",
+      "wood_wall": "Wood wall",
+      "wood_floor": "Wood floor",
+      "torch": "Torch",
+      "stone_stairs": "Stone stairs",
+      "bed": "Bed"
     },
-    "noRoute": "No route there."
+    "noRoute": "No route there.",
+    "chest": {
+      "title": "Chest",
+      "slotsUsed": "{{used}} of {{max}} slots",
+      "empty": "The chest is empty.",
+      "takeLabel": "Take {{item}}, {{count}}",
+      "take": "Take",
+      "stash": "Put {{item}} in the chest",
+      "stashNone": "Nothing in hand to put away",
+      "close": "Close the chest"
+    }
   }
 }

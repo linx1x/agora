@@ -2,15 +2,9 @@ import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import { INVENTORY_SLOTS, type WorldTime } from '@agora/shared';
 import { Dialog } from '../../ui/common';
-import { useStore } from '../../state/store';
 import { HOTBAR_SLOTS, hotbarItems, slotForKey, worldHud, type HudState, type HudStore } from './hudState';
+import { ChestPanel, type ChestAsk } from './ChestPanel';
 import './worldHud.css';
-
-/** The HUD while the person is in a world, and nothing in the office (which has its own controls). */
-export function WorldHudInWorld() {
-  const inWorld = useStore((s) => s.worldId !== null);
-  return inWorld ? <WorldHud /> : null;
-}
 
 /**
  * The world HUD (ADR-053, P17.20, P17.23): the clock (time, day, season), the energy bar, money, a
@@ -19,7 +13,7 @@ export function WorldHudInWorld() {
  * the world screen, only while the person is in a world: `<WorldHud />`, fed by `applyWorldHudMessage`
  * from the world client's message handler.
  */
-export function WorldHud({ store = worldHud }: { store?: HudStore }) {
+export function WorldHud({ store = worldHud, onAsk = () => undefined }: { store?: HudStore; onAsk?: ChestAsk }) {
   const { t } = useTranslation();
   const state = useSyncExternalStore(store.subscribe, store.get, store.get);
   const [inventoryOpen, setInventoryOpen] = useState(false);
@@ -105,6 +99,9 @@ export function WorldHud({ store = worldHud }: { store?: HudStore }) {
         {state.notice === null ? '' : t(`worlds.refused.${state.notice}`)}
       </p>
       {inventoryOpen && <InventoryPanel state={state} onPick={(item) => store.pick(item)} onClose={() => setInventoryOpen(false)} />}
+      {state.chest !== null && (
+        <ChestPanel chest={state.chest} hand={state.inHand} onAsk={onAsk} onClose={() => store.closeChest()} />
+      )}
     </nav>
   );
 }

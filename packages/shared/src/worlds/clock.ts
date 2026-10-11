@@ -186,5 +186,5 @@ export function simulateDays(state: WorldSimState, fromDay: number, toDay: numbe
     animals = animals.map((animal) => stepAnimal(animal, day, animalRows));
     machines = machines.map((machine) => (machine.daysLeft > 0 ? { ...machine, daysLeft: machine.daysLeft - 1 } : machine));
   }
-  return { day: toDay, plots, animals, machines };
+  return { ...state, day: toDay, plots, animals, machines };
 }

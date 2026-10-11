@@ -11,7 +11,7 @@ import type { ActionRequest, WorldRefusal } from './kinds';
 import type { ActionView } from './plan';
 
 /** The tools a rule can use, by the action they perform. */
-export type ToolUse = 'hoe' | 'can' | 'axe' | 'pick';
+export type ToolUse = 'hoe' | 'can' | 'axe' | 'pick' | 'shovel';
 
 /** The skill each tool trains, and so the one whose level discounts its energy. */
 export const SKILL_OF_TOOL: Readonly<Record<ToolUse, Skill>> = {
@@ -19,6 +19,7 @@ export const SKILL_OF_TOOL: Readonly<Record<ToolUse, Skill>> = {
   can: 'farming',
   axe: 'foraging',
   pick: 'mining',
+  shovel: 'farming',
 };
 
 /** Energy taken off a tool's base cost for each level of its skill. */

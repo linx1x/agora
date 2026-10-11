@@ -23,8 +23,9 @@ export function advanceFarm(base: WorldSimState, day: number, data: GameData, se
   return base.day >= day ? base : simulateDays(base, base.day, day, data, seed);
 }
 
-/** Whether a farm has anything on it worth a row. */
-export const farmHasContent = (s: WorldSimState): boolean => Object.keys(s.plots).length > 0 || s.animals.length > 0 || s.machines.length > 0;
+/** Whether a farm has anything on it worth a row: plots, animals, machines, or a chest (empty or not). */
+export const farmHasContent = (s: WorldSimState): boolean =>
+  Object.keys(s.plots).length > 0 || s.animals.length > 0 || s.machines.length > 0 || Object.keys(s.chests ?? {}).length > 0;
 
 /** Reads the farm of a world (locked when `lock`) and advances it to `day`. */
 export async function readFarm(tx: WorldTxn, worldId: string, day: number, data: GameData, seed: number, lock: boolean): Promise<FarmRead> {

@@ -50,6 +50,8 @@ export const BlockSchema = z
     placeable: z.boolean().default(false),
     /** Stairs or a ramp: walking may change level by 2 onto or off it (walk.ts). */
     ramp: z.boolean().default(false),
+    /** A chest: it holds items on the farm layer, owner only by default (P17.24, ADR-053). Decor only. */
+    container: z.boolean().default(false),
     /** A hoe can till this ground block into a plot (P17.21). Ground blocks only. */
     tillable: z.boolean().default(false),
     light: z.number().int().min(0).max(15).default(0),

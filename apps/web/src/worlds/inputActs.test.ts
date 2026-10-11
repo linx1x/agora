@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { loadGameData, type C2SMsg } from '@agora/shared';
-import { ActQueue, actionFor, faceCell } from './inputActs';
+import { ActQueue, NO_FACTS, actionFor, factsOf, faceCell, type CellFacts } from './inputActs';
 
 const data = loadGameData();
 
@@ -120,5 +120,45 @@ describe('ActQueue: one key per intent, kept until answered (P17.21b)', () => {
     q.submit('w1', { kind: 'harvest', at: { x: 3, y: 3 } });
     expect(sent[0]).toEqual({ t: 'world:act', op: 1, kind: 'harvest', at: { x: 3, y: 3 }, key: 'key-1-abcdef' });
     expect('item' in (sent[0] as object)).toBe(false);
+  });
+});
+
+describe('actionFor with the cell facts: shovel, pick, chests (P17.24)', () => {
+  const PLACED: CellFacts = { container: false, removable: true };
+  const CHEST: CellFacts = { container: true, removable: true };
+  it('a shovel raises the ground, and with Shift lowers it', () => {
+    expect(actionFor('shovel_1', data)).toBe('raise');
+    expect(actionFor('shovel_1', data, NO_FACTS, true)).toBe('lower');
+  });
+  it('a pick takes a placed block back into the bag, and mines anything else', () => {
+    expect(actionFor('pick_1', data, PLACED)).toBe('remove');
+    expect(actionFor('pick_1', data, NO_FACTS)).toBe('mine');
+  });
+  it('an empty hand opens a chest and harvests anything else', () => {
+    expect(actionFor(null, data, CHEST)).toBe('open');
+    expect(actionFor(null, data, PLACED)).toBe('harvest');
+  });
+  it('a held item put on a chest is stashed, whatever it is', () => {
+    expect(actionFor(SEED, data, CHEST)).toBe('stash');
+    expect(actionFor('wood_wall', data, CHEST)).toBe('stash');
+    expect(actionFor('hoe_1', data, CHEST)).toBe('stash');
+  });
+  it('a building is placed on a plain cell, and a shovel still raises on a placed block', () => {
+    expect(actionFor('wood_wall', data)).toBe('place');
+    expect(actionFor('shovel_1', data, PLACED)).toBe('raise');
+  });
+});
+
+describe('factsOf: what a terrain cell holds (P17.24)', () => {
+  it('a chest is a container, and a placed wall can be removed', () => {
+    expect(factsOf({ decor: 'chest' }, data)).toEqual({ container: true, removable: true });
+    expect(factsOf({ decor: 'wood_wall' }, data)).toEqual({ container: false, removable: true });
+  });
+  it('a tree, a boulder or bare ground is neither', () => {
+    expect(factsOf({ decor: 'oak_tree' }, data)).toEqual(NO_FACTS);
+    expect(factsOf({ decor: '' }, data)).toEqual(NO_FACTS);
+  });
+  it('the shipping bin is a fitting of the starter: placed by nobody, so not removable', () => {
+    expect(factsOf({ decor: 'shipping_bin' }, data).removable).toBe(false);
   });
 });

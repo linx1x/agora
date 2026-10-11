@@ -79,3 +79,28 @@ describe('world HUD state (P17.20)', () => {
     expect(slotForKey('10')).toBeNull();
   });
 });
+
+describe('the chest the person opened (P17.24)', () => {
+  it('holds the chest the server last sent, and closes on request without touching the account', () => {
+    const store = createHudStore();
+    store.dispatch(inv({ hoe_1: 1 }, 500));
+    expect(store.get().chest).toBeNull();
+    expect(store.dispatch({ t: 'world:chest', at: { x: 3, y: 4 }, items: { dawn_radish_seed: 2 } })).toBe(true);
+    expect(store.get().chest).toEqual({ at: { x: 3, y: 4 }, items: { dawn_radish_seed: 2 } });
+    expect(store.get()).toMatchObject({ items: { hoe_1: 1 }, money: 500 });
+    store.closeChest();
+    expect(store.get().chest).toBeNull();
+    expect(store.get()).toMatchObject({ items: { hoe_1: 1 }, money: 500 });
+  });
+
+  it('a later chest message replaces the contents, and closing a closed chest changes nothing', () => {
+    const store = createHudStore();
+    store.dispatch({ t: 'world:chest', at: { x: 3, y: 4 }, items: { dawn_radish_seed: 2 } });
+    store.dispatch({ t: 'world:chest', at: { x: 3, y: 4 }, items: {} });
+    expect(store.get().chest?.items).toEqual({});
+    store.closeChest();
+    const before = store.get();
+    store.closeChest();
+    expect(store.get()).toBe(before);
+  });
+});

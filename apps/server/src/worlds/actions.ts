@@ -6,6 +6,7 @@
  */
 import {
   ACTION_PLANNERS,
+  WORLD_CELL_PX,
   WORLD_DELTA_CELL_CAP,
   WorldTerrain,
   applyInventoryChanges,
@@ -26,6 +27,7 @@ import {
   type ActionChanges,
   type ActionPlanner,
   type ActionPlanners,
+  type ActionReply,
   type ActionRequest,
   type ActionView,
   type CellEdit,
@@ -57,6 +59,8 @@ export interface ActionInput {
   /** the starter stamp per chunk key: what a world looks like before any stored edit */
   readonly stamp: ReadonlyMap<string, ChunkDelta>;
   readonly actor: { readonly uid: string; readonly x: number; readonly y: number };
+  /** where everyone in the world stands (feet, world pixels): nothing is built under them (P17.24) */
+  readonly people: readonly { readonly x: number; readonly y: number }[];
   readonly req: ActionRequest;
   readonly key: string;
   readonly now: number;
@@ -85,6 +89,8 @@ export type ActionResult =
       readonly chunks: readonly AppliedChunk[];
       /** the farm state this action wrote, or null when the farm did not change */
       readonly sim: { readonly state: WorldSimState; readonly rev: number } | null;
+      /** for the actor alone: a chest's contents after an open, stash or take */
+      readonly reply?: ActionReply;
     }
   | { readonly ok: false; readonly reason: WorldRefusal };
 
@@ -163,6 +169,7 @@ async function transact(tx: WorldTxn, input: ActionInput, planner: ActionPlanner
     skills,
     sim,
     cell: (x, y) => terrain.cellAt(x, y),
+    occupied: (x, y) => input.people.some((p) => Math.floor(p.x / WORLD_CELL_PX) === x && Math.floor(p.y / WORLD_CELL_PX) === y),
   };
 
   const outcome = planner(view, req, {
@@ -228,6 +235,7 @@ async function transact(tx: WorldTxn, input: ActionInput, planner: ActionPlanner
     maxEnergy,
     chunks: applied,
     sim: savedSim,
+    reply: outcome.plan.reply,
   };
 }
 

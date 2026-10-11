@@ -17,6 +17,9 @@
       "money": 500,
       "items": {
         "hoe_1": 1,
+        "shovel_1": 1,
+        "chest": 1,
+        "wood_wall": 4,
         "can_1": 1,
         "axe_1": 1,
         "pick_1": 1,

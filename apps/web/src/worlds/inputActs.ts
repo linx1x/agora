@@ -5,14 +5,18 @@
  * `world:refused`), and sends it again after a reconnect, so a resend cannot repeat an effect.
  */
 import {
+  BLOCKS,
   WORLD_CELL_PX,
   baseItemOf,
+  getBlock,
+  itemOfBlock,
   toolOf,
   type ActionKind,
   type C2SMsg,
   type CellRef,
   type Dir,
   type GameData,
+  type WorldCell,
 } from '@agora/shared';
 
 /** The cell in front of the feet (Space acts on it). `feetX`, `feetY` are world pixels. */
@@ -39,16 +43,39 @@ const TOOL_ACTION: Readonly<Record<string, ActionKind>> = {
   pick: 'mine',
 };
 
+/** What the cell holds, as the client needs it to pick an action (the server checks it again). */
+export interface CellFacts {
+  /** a chest: opened by an empty hand, stashed into with an item */
+  readonly container: boolean;
+  /** a block a person placed (it has an item): a pick takes it back into the bag */
+  readonly removable: boolean;
+}
+
+export const NO_FACTS: CellFacts = { container: false, removable: false };
+
+/** The facts of a terrain cell: its decor block, read from the block registry. */
+export function factsOf(cell: Pick<WorldCell, 'decor'>, data: GameData): CellFacts {
+  const block = cell.decor === '' ? undefined : getBlock(BLOCKS, cell.decor);
+  if (!block) return NO_FACTS;
+  return { container: block.container, removable: block.placeable && itemOfBlock(data, block.id) !== undefined };
+}
+
 /**
- * The action the held item asks for on the cell: empty hand harvests, a tool does its work, a seed
- * is planted, fertilizer spread, a building placed, food eaten. `null` when the item does nothing
- * on a cell (a rod, a material).
+ * The action the held item asks for on the cell: empty hand harvests (and opens a chest), a shovel
+ * raises the ground (Shift lowers it), a pick takes a placed block back, a tool does its work, a
+ * seed is planted, fertilizer spread, a building placed, food eaten, and any item put in a chest
+ * is stashed there. `null` when the item does nothing on a cell (a rod, a material).
  */
-export function actionFor(item: string | null, data: GameData): ActionKind | null {
-  if (item === null) return 'harvest';
+export function actionFor(item: string | null, data: GameData, facts: CellFacts = NO_FACTS, shift = false): ActionKind | null {
+  if (item === null) return facts.container ? 'open' : 'harvest';
+  if (facts.container) return 'stash';
   const id = baseItemOf(item);
   const tool = toolOf(data, id);
-  if (tool) return TOOL_ACTION[tool.tool] ?? null;
+  if (tool) {
+    if (tool.tool === 'shovel') return shift ? 'lower' : 'raise';
+    if (tool.tool === 'pick' && facts.removable) return 'remove';
+    return TOOL_ACTION[tool.tool] ?? null;
+  }
   switch (data.itemsById.get(id)?.kind) {
     case 'seed':
       return 'plant';

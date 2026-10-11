@@ -17,6 +17,12 @@ export const ACTION_KINDS = [
   'mine',
   'eat',
   'sleep',
+  'raise',
+  'lower',
+  'remove',
+  'open',
+  'stash',
+  'take',
 ] as const;
 export type ActionKind = (typeof ACTION_KINDS)[number];
 
@@ -40,6 +46,8 @@ export const WORLD_REFUSALS = [
   'key_taken',
   'conflict',
   'asleep',
+  'occupied',
+  'trap',
 ] as const;
 export type WorldRefusal = (typeof WORLD_REFUSALS)[number];
 

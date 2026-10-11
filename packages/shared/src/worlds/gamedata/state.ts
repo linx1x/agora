@@ -67,6 +67,8 @@ export interface WorldSimState {
   readonly plots: Readonly<Record<string, PlotState>>;
   readonly animals: readonly AnimalState[];
   readonly machines: readonly MachineState[];
+  /** Chests by cell key ("x,y"): stack key to quantity. Owner-only contents, so never in a chunk delta (P17.24). */
+  readonly chests?: Readonly<Record<string, Readonly<Record<string, number>>>>;
 }
 
 /** Our rule: an animal stops producing when this many products wait. */
