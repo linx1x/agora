@@ -17,6 +17,21 @@ describe('WorldHud (P17.20)', () => {
     expect(html).toContain('worlds.hud.inHand');
   });
 
+  it('shows each stack as an icon and its count, with the name only in the tooltip and the label (P17.21d)', () => {
+    const store = createHudStore();
+    store.dispatch({ t: 'world:inv', items: { hoe_3: 1, dawn_radish_seed: 6 }, money: 500, energy: 270, maxEnergy: 270 });
+    const html = renderToStaticMarkup(createElement(WorldHud, { store }));
+    // no name is drawn in a slot, so none can be cut with an ellipsis
+    expect(html).not.toContain('wh-name');
+    expect(html).not.toContain('text-overflow');
+    // the glyph of each stack, and its tooltip (the same text as the accessible name)
+    expect(html.match(/class="wh-icon"/g)).toHaveLength(2);
+    expect(html).toContain('data-glyph="hoe"');
+    expect(html).toContain('data-glyph="sprout"');
+    expect(html.match(/title="worlds\.hud\.slot"/g)).toHaveLength(2);
+    expect(html.match(/title="worlds\.hud\.slotEmpty"/g)).toHaveLength(HOTBAR_SLOTS - 2);
+  });
+
   it('says nothing is in hand, and keeps the inventory closed until asked', () => {
     const html = renderToStaticMarkup(createElement(WorldHud, { store: createHudStore() }));
     expect(html).toContain('worlds.hud.nothingInHand');

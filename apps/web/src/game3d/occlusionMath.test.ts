@@ -51,6 +51,15 @@ describe('hiders (the occlusion rule)', () => {
     expect(hiders([me], wall).size).toBe(0);
   });
 
+  it('an exempt object never hides, even when it overlaps me and stands nearer (P17.21d)', () => {
+    const wall = new Map([
+      ['tree', { box: box(120, 90, 180, 150), depth: 8 }],
+      ['rock', { box: box(120, 90, 180, 150), depth: 7 }],
+    ]);
+    expect([...hiders([me], wall, new Set(['tree']))]).toEqual(['rock']);
+    expect(hiders([me], wall, new Set(['tree', 'rock'])).size).toBe(0);
+  });
+
   it('an equal depth does not hide (only strictly nearer objects)', () => {
     const wall = new Map([['same', { box: box(120, 90, 180, 150), depth: 10 }]]);
     expect(hiders([me], wall).size).toBe(0);

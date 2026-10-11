@@ -61,15 +61,24 @@ export class Occlusion {
     this.live = objects.map((obj) => ({ obj, cur: 1 }));
   }
 
-  /** Test every occluder against the subjects this frame, then step its fade. */
-  update(cam: Cam, subjects: readonly Subject[], dtMs: number, instant: boolean): void {
+  /**
+   * Test every occluder against the subjects this frame, then step its fade. `exempt` keys (the
+   * occluder keys, `cx,cy`) never fade: the decor a person is working on stays solid (P17.21d).
+   */
+  update(
+    cam: Cam,
+    subjects: readonly Subject[],
+    dtMs: number,
+    instant: boolean,
+    exempt?: ReadonlySet<string>,
+  ): void {
     if (!this.live.length) return;
     const seen = new Map<string, Seen>();
     for (const l of this.live) {
       const s = screenBox(cam, l.obj.box);
       if (s) seen.set(l.obj.key, s);
     }
-    const hidden = subjects.length ? hiders(subjects, seen) : new Set<string>();
+    const hidden = subjects.length ? hiders(subjects, seen, exempt) : new Set<string>();
     const arr = this.attr.array as Float32Array;
     let dirty = false;
     for (const l of this.live) {

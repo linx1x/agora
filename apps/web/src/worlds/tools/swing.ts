@@ -1,8 +1,10 @@
 /**
- * Swing timing and tier "juice" for a held tool (ADR-053, P17.21). Pure numbers and frame keys: the
- * world views (P17.21b) play them, so both views swing the same way at the same speed. A higher
- * tier swings faster, throws bigger sparks, shakes the screen harder and rings a little higher.
- * Reduced motion turns the shake off; the swing itself stays, it is the player's own action.
+ * Swing timing and tier "juice" for a held tool (ADR-053, P17.21, P17.21d). Pure numbers and frame
+ * keys: the world views play them, so both views swing the same way at the same speed. The tier
+ * changes only the tool card's sprite (`swingArt.ts`) and these parameters, never the animation. A
+ * higher tier swings faster, throws bigger and brighter sparks, shakes the screen harder and rings
+ * higher with a sharper click. Reduced motion turns the shake and the arc trail off; the swing
+ * itself stays, it is the player's own action.
  */
 import { loadGameData, type Tool } from '@agora/shared';
 
@@ -19,8 +21,10 @@ export const FACING_UNIT: Readonly<Record<Facing, readonly [number, number]>> = 
 
 /** The hand is this far above the feet, in world pixels: the swing is drawn around it. */
 export const HAND_PX = 10;
-/** Reach of the tool head from the hand, in world pixels. */
+/** Reach of the tool head from the hand, in world pixels (the flat view's head). */
 export const HEAD_PX = 12;
+/** The 2.5D tool card's width, in tiles: big enough that the head, the handle and the tier plate read at a glance at the default zoom. */
+export const CARD_TILES = 1.5;
 /** Where the impact is, as a share of the swing's duration (the head meets the cell). */
 export const IMPACT_AT = 0.66;
 /** The tools that swing (a rod casts, a seed and food are used by hand). */
@@ -35,6 +39,20 @@ export const BASE_SWING_MS = 480;
 /** Each tier swings this fraction faster than the tier below (10 % faster per tier). */
 export const TIER_SWING_FACTOR = 0.9;
 
+/** The card stays in view this long after the swing ends, then fades (ms; reduced motion cuts it). */
+export const AFTER_MS = 60;
+export const FADE_MS = 120;
+/** The sparks fly for this long; under reduced motion they flash in place for `SPARK_STILL_MS`. */
+export const SPARK_MS = 260;
+export const SPARK_STILL_MS = 160;
+/** A camera shake lasts this long. */
+export const SHAKE_MS = 180;
+/**
+ * After my swing ends, its target cell's decor stays out of the occlusion fade this long (ms), so the
+ * tree or rock I chop is still drawn when the card has gone.
+ */
+export const TARGET_HOLD_MS = 300;
+
 export interface SwingParams {
   readonly durationMs: number;
   /** Frame keys in play order: `swing-<facing>-<n>`, n from 0 to SWING_FRAMES - 1. */
@@ -45,10 +63,80 @@ export interface SwingParams {
   readonly shakePx: number;
   /** Playback rate of the swing sound (1 is the base pitch). */
   readonly pitch: number;
+  /** The tone of the hit: its rate, how long it rings and its click (see `HitSound`). */
+  readonly hit: HitSound;
+  /** The tier's look and spread for the sparks (see `TierFeel`). */
+  readonly feel: TierFeel;
+}
+
+/** The sound of a hit: a tone at `pitch` ringing `decayMs`, with a click (0 to 1) on top. */
+export interface HitSound {
+  readonly pitch: number;
+  readonly decayMs: number;
+  readonly click: number;
+}
+
+/** What a tier looks and sounds like on a hit. */
+export interface TierFeel {
+  /** side of a spark square, in screen pixels at the default zoom */
+  readonly sparkPx: number;
+  /** sparks one hit throws */
+  readonly sparkCount: number;
+  /** how far the sparks fly from the cell's top, in screen pixels */
+  readonly sparkReachPx: number;
+  /** the camera shake for my own hit, pixels at the start (one way) */
+  readonly shakePx: number;
+  /** playback rate of the hit's tone (1 is the base pitch) */
+  readonly pitch: number;
+  /** how long the tone rings, ms */
+  readonly decayMs: number;
+  /** the click on top of the tone (0 none, 1 full) */
+  readonly click: number;
+  /** spark colours, cycled through the sparks */
+  readonly sparks: readonly string[];
+  /** brighter sparks blend additively, so they glow on the dirt */
+  readonly bright: boolean;
 }
 
 const TIERS = [1, 2, 3] as const;
 export type Tier = (typeof TIERS)[number];
+
+/** The feel of each tier: wood (small, low), iron (medium), diamond (large, bright, high and sharp). */
+const FEEL: Readonly<Record<Tier, TierFeel>> = {
+  1: {
+    sparkPx: 5,
+    sparkCount: 4,
+    sparkReachPx: 8,
+    shakePx: 2,
+    pitch: 1,
+    decayMs: 90,
+    click: 0,
+    sparks: ['#ffd27a', '#fff1c9'],
+    bright: false,
+  },
+  2: {
+    sparkPx: 8,
+    sparkCount: 6,
+    sparkReachPx: 12,
+    shakePx: 4,
+    pitch: 2 ** (2 / 12),
+    decayMs: 70,
+    click: 0.35,
+    sparks: ['#e6ecf2', '#9aa7b4', '#ffffff'],
+    bright: false,
+  },
+  3: {
+    sparkPx: 12,
+    sparkCount: 8,
+    sparkReachPx: 16,
+    shakePx: 7,
+    pitch: 2 ** (4 / 12),
+    decayMs: 55,
+    click: 0.7,
+    sparks: ['#c8fbff', '#6fe3f2', '#ffffff'],
+    bright: true,
+  },
+};
 
 function assertTier(tier: number): asserts tier is Tier {
   if (!(TIERS as readonly number[]).includes(tier)) throw new RangeError(`tool tier must be 1, 2 or 3, got ${tier}`);
@@ -71,39 +159,51 @@ export function frameIndexAt(elapsedMs: number, durationMs: number): number {
   return Math.min(SWING_FRAMES - 1, Math.floor((elapsedMs / durationMs) * SWING_FRAMES));
 }
 
-/** Side of the spark square at a tier: 3 px at tier 1, 5 px at tier 3. */
+/** The look and sound of a tier's hit (throws for a tier outside 1 to 3). */
+export function tierFeel(tier: number): TierFeel {
+  assertTier(tier);
+  return FEEL[tier];
+}
+
+/** Side of the spark square at a tier, in pixels: 5 at wood, 8 at iron, 12 at diamond. */
 export function sparkPx(tier: number): number {
-  assertTier(tier);
-  return 2 + tier;
+  return tierFeel(tier).sparkPx;
 }
 
-/** Screen shake in pixels: one per tier, none under reduced motion. */
+/** Screen shake in pixels: per tier, none under reduced motion. */
 export function shakePx(tier: number, reducedMotion: boolean): number {
-  assertTier(tier);
-  return reducedMotion ? 0 : tier;
+  const px = tierFeel(tier).shakePx;
+  return reducedMotion ? 0 : px;
 }
 
-/** Playback rate of the swing sound: 5 % higher per tier. */
+/** Playback rate of the hit's tone: about 12 % higher per tier (a major third at diamond). */
 export function soundPitch(tier: number): number {
-  assertTier(tier);
-  return 1 + 0.05 * (tier - 1);
+  return tierFeel(tier).pitch;
+}
+
+/** The sound of a hit at a tier. */
+export function hitSound(tier: number): HitSound {
+  const f = tierFeel(tier);
+  return { pitch: f.pitch, decayMs: f.decayMs, click: f.click };
 }
 
 /** Everything a view needs to play one swing of this tool. */
 export function swingParams(tool: Pick<Tool, 'tier' | 'speed'>, facing: Facing, reducedMotion: boolean): SwingParams {
+  const feel = tierFeel(tool.tier);
   return {
     durationMs: swingDurationMs(tool),
     frames: swingFrames(facing),
-    sparkPx: sparkPx(tool.tier),
+    sparkPx: feel.sparkPx,
     shakePx: shakePx(tool.tier, reducedMotion),
-    pitch: soundPitch(tool.tier),
+    pitch: feel.pitch,
+    hit: hitSound(tool.tier),
+    feel,
   };
 }
 
-/** Sparks one hit throws: 4 at tier 1, 6 at tier 2, 8 at tier 3. */
+/** Sparks one hit throws: 4 at wood, 6 at iron, 8 at diamond. */
 export function sparkCount(tier: number): number {
-  assertTier(tier);
-  return 2 + 2 * tier;
+  return tierFeel(tier).sparkCount;
 }
 
 /**
