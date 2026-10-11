@@ -37,6 +37,14 @@ export interface ViewTestApi {
   texts(all?: boolean): string[];
   /** Placed props currently drawn (P9.16). */
   propsCount(): number;
+  /** Page point (CSS px) at the middle of a placed prop's drawn sprite; null when not drawn. */
+  propScreen(id: string): { x: number; y: number } | null;
+  /** The ADR-037 variant key of a furniture cell in this view (null: drawn with its plain tile). */
+  blendKeyAt(cx: number, cy: number): string | null;
+  /** Cells the build preview changes right now (0 when none is shown). */
+  previewCells(): number;
+  /** The view has drawn its region and has nothing pending (the flat view: its blends are composed). */
+  settled(): boolean;
   /** A person's current frame: `<dir>-<walk frame>`, `sit-<dir>` or `crouch-<dir>`; null when not drawn. */
   avatarFrame(id: string): string | null;
   /** Pets (ADR-040) drawn and visible now. */

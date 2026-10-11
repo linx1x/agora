@@ -51,6 +51,8 @@ interface Live {
 /** The fades of one region's occluders, written into its `aFade` attribute. */
 export class Occlusion {
   private readonly live: Live[];
+  /** faces a build preview hides (P16.13) */
+  private hidden = new Set<number>();
 
   constructor(
     private readonly attr: THREE.BufferAttribute,
@@ -76,9 +78,29 @@ export class Occlusion {
       if (next === l.cur) continue;
       l.cur = next;
       dirty = true;
-      for (const f of l.obj.faces) arr.fill(next, f * 4, f * 4 + 4);
+      for (const f of l.obj.faces) arr.fill(this.drawnShare(f, next), f * 4, f * 4 + 4);
     }
     if (dirty) this.attr.needsUpdate = true;
+  }
+
+  /**
+   * Hide these faces (indices into the region's faces) while a build preview replaces them, or show
+   * the faces again (null). Hidden faces are not drawn whatever their occluder does (P16.13).
+   */
+  setHidden(faces: readonly number[] | null): void {
+    const before = this.hidden;
+    this.hidden = new Set(faces ?? []);
+    const arr = this.attr.array as Float32Array;
+    const share = new Map<number, number>();
+    for (const l of this.live) for (const f of l.obj.faces) share.set(f, l.cur);
+    for (const f of new Set([...before, ...this.hidden]))
+      arr.fill(this.drawnShare(f, share.get(f) ?? 1), f * 4, f * 4 + 4);
+    this.attr.needsUpdate = true;
+  }
+
+  /** The share of a face's pixels drawn: none while it is hidden, else its occluder's fade. */
+  private drawnShare(face: number, occluderShare: number): number {
+    return this.hidden.has(face) ? 0 : occluderShare;
   }
 
   /** The keys of the occluders not fully solid right now (test read-out). */

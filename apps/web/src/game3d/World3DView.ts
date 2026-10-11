@@ -6,8 +6,9 @@
  *
  * People and characters are paper cut-outs (P16.8, `paperFigures.ts`) with screen-space names,
  * status, emotes and bubbles (`overlays.ts`). Lights (P16.10) and blended tiles and animated
- * tiles (P16.12) are drawn. Not yet: placed props (P16.14), build mode (P16.13: 2D while it is on),
- * pets (checkpoint J).
+ * tiles (P16.12) are drawn, and placed props stand on their surfaces (P16.14). Build mode (P16.13,
+ * `BuildMode3D.ts`) edits the region under its focus: while it is on, the focus follows the build
+ * cursor and the camera stays in that region. Not yet: pets (checkpoint J).
  */
 import * as THREE from 'three';
 import {
@@ -40,18 +41,20 @@ import {
   fitZoom,
   followStep,
   project,
+  screenRay,
   unprojectFloor,
   type Cam,
   type Pt,
   type Rect,
 } from './camera';
-import { DEFAULT_SCENE, buildScene, regionTiles } from './scene';
+import { DEFAULT_SCENE, buildScene, regionTiles, type Face3D } from './scene';
 import {
   buildRegionMesh,
   disposeTree,
   makeRegionAtlas,
   pixelTexture,
   scanExtents,
+  type Atlas,
   type RegionAnim,
 } from './meshes';
 import { blendSlots, type BlendSlot } from './atlasMath';
@@ -75,6 +78,19 @@ import { rememberView } from './engine';
 import { PaperFigures, type FigureInfo } from './paperFigures';
 import { paperScale } from './paperLayout';
 import { Overlays } from './overlays';
+import { BuildMode3D, type BuildHost } from './BuildMode3D';
+import { BuildOverlay } from './buildOverlay';
+import {
+  floorPoint,
+  pickNearest,
+  prepare,
+  type PickResult,
+  type Prepared,
+  type Ray,
+} from './pick3d';
+import { baseHeightPx, propFaces, propQuad, type PropFace } from './propFaces';
+import { surfaceHeightPx, propTo3D } from './props3d';
+import { propDef, resolveProps, surfaceTop, TILESET_COLUMNS, type WorldMap } from '@agora/shared';
 
 /** Pan to a point, then follow again after this long (the 2D view's 500 ms pan and 2200 ms hold). */
 const PAN_MS = 500;
@@ -94,6 +110,17 @@ const PINCH_HIGH = 1.4;
 const BG = 0x1b2733;
 const FADE_BG = 'rgb(10, 20, 30)';
 const PORTRAIT_QUERY = '(orientation: portrait)';
+/** the region of a cell, or null when no region holds it (the whole map is then drawn) */
+function regionIdAt(map: WorldMap, cx: number, cy: number): string | null {
+  const x = cx * TILE;
+  const y = cy * TILE;
+  return (
+    map.regions.find((q) => x >= q.x && y >= q.y && x < q.x + q.w && y < q.y + q.h)?.id ?? null
+  );
+}
+const cellKey = (c: { cx: number; cy: number }) => `${c.cx},${c.cy}`;
+/** a face lying flat (every corner at one height): its height in tiles */
+const flatHeight = (f: Face3D): number => (f.p.every((q) => q[1] === f.p[0][1]) ? f.p[0][1] : 0);
 
 const reducedMotion = () =>
   window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
@@ -178,6 +205,32 @@ export class World3DView implements WorldView {
   private overlays: Overlays;
   private npcAt = new Map<string, { x: number; y: number }>();
 
+  // ── build mode (P16.13) and props (P16.14)
+  private build: BuildMode3D;
+  private buildOverlay: BuildOverlay;
+  /** build mode is on; its focus is the region the build cursor is in (null: no region) */
+  private building = false;
+  private focus: string | null = null;
+  /** the region's atlas (kept for ghost art) and its faces, in mesh order */
+  private atlas: Atlas | null = null;
+  private regionFaces: Face3D[] = [];
+  /** picking lists: the region's faces and the props' cards (nearest opaque hit wins) */
+  private regionPrep: Prepared<Face3D>[] = [];
+  private propPrep: Prepared<PropFace>[] = [];
+  private propMesh: THREE.Object3D | null = null;
+  private propCount = 0;
+  /** props that step aside while a build preview shows them (their key, for the rebuild check) */
+  private hiddenProps: ReadonlySet<string> | null = null;
+  private hiddenKey = '';
+  /** the tileset's pixels: a picked texel counts only when it is drawn (alpha ≥ 128) */
+  private texels: Uint8ClampedArray;
+  private texelsW: number;
+  private texelsH: number;
+  /** the store's map revision and generation the region was built at */
+  private buildTag = '';
+  /** the pointer that a build press started (its moves and release are the build's) */
+  private buildPointer: number | null = null;
+
   private pathPoints: THREE.Points | null = null;
   private goalPoint: THREE.Points | null = null;
   private pointMat = new THREE.PointsMaterial({
@@ -220,6 +273,11 @@ export class World3DView implements WorldView {
     this.tileset = tileset;
     this.animTiles = animatedTiles();
     this.extents = scanExtents(tileset);
+    this.texelsW = tileset.width;
+    this.texelsH = tileset.height;
+    this.texels = tileset
+      .getContext('2d', { willReadFrequently: true })!
+      .getImageData(0, 0, tileset.width, tileset.height).data;
 
     this.renderer = new THREE.WebGLRenderer({ antialias: false });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -254,12 +312,15 @@ export class World3DView implements WorldView {
     this.npcs = new PaperFigures(this.scene, scale);
     // after the canvas and the fade: the overlay goes between them
     this.overlays = new Overlays(parent);
+    this.buildOverlay = new BuildOverlay(parent);
+    this.build = new BuildMode3D(this.buildHost());
 
     this.ctl = new WorldController(this);
     this.unsubs.push(world.on((m) => this.onMessage(m)));
 
     this.bindInput();
     this.bindLayout();
+    this.bindBuild();
     this.layout();
     exposeTestApi(this.testApi());
     const w = window as unknown as { __agora?: Record<string, unknown> };
@@ -309,6 +370,8 @@ export class World3DView implements WorldView {
     this.people.dispose();
     this.npcs.dispose();
     this.overlays.destroy();
+    this.build.destroy();
+    this.buildOverlay.destroy();
     this.clearPath();
     this.pointMat.dispose();
     this.goalMat.dispose();
@@ -363,6 +426,14 @@ export class World3DView implements WorldView {
     );
     const h = Math.max(1, parentH - dock);
     this.renderer.setSize(w, h, true);
+    this.buildOverlay.place(
+      this.canvas.offsetLeft,
+      this.canvas.offsetTop,
+      w,
+      h,
+      this.pr,
+      this.building,
+    );
     this.post?.setSize(w, h, this.pr);
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
@@ -375,7 +446,8 @@ export class World3DView implements WorldView {
   /** The region I am in (tiles), or the whole map when I am in none. */
   private currentRegion(s = store.get()): { id: string | null; tiles: Rect } {
     const map = s.map!;
-    const r = s.myRegion ? map.regions.find((q) => q.id === s.myRegion) : undefined;
+    const id = this.building ? this.focus : s.myRegion;
+    const r = id ? map.regions.find((q) => q.id === id) : undefined;
     const t = regionTiles(map, r);
     return { id: r?.id ?? null, tiles: { x: t.x, z: t.y, w: t.w, h: t.h } };
   }
@@ -384,23 +456,25 @@ export class World3DView implements WorldView {
     return this.currentRegion(s).tiles;
   }
 
-  /** Build the region I am in; swap it when I walk or teleport into another. */
+  /** Build the region I am in (the build focus while building); swap it when I walk or teleport. */
   private syncRegion(s: ReturnType<typeof store.get>) {
     // until my position is known, the region is not known either: do not build the whole map first
     if (!s.me || !rendered.has(s.me)) return;
-    const key = s.myRegion ?? '';
+    const { id } = this.currentRegion(s);
+    const key = `${id ?? ''}|${s.mapGen}|${s.mapRev}`;
     if (key === this.builtKey) return;
     this.builtKey = key;
     this.clearRegion();
-    const { id } = this.currentRegion(s);
     const map = s.map!;
     const r = id ? map.regions.find((q) => q.id === id) : undefined;
-    const scene = buildScene(map, regionTiles(map, r), this.extents, DEFAULT_SCENE);
+    const tiles = regionTiles(map, r);
+    const scene = buildScene(map, tiles, this.extents, DEFAULT_SCENE);
     const { slots } = blendSlots(scene.faces);
     const reader = mapReader(map);
     const atlas = makeRegionAtlas(this.tileset, this.animTiles, slots, (slot) =>
       this.blendPixels(reader, slot),
     );
+    this.atlas = atlas;
     this.atlasTex = pixelTexture(atlas.canvas);
     const group = new THREE.Group();
     const built = buildRegionMesh(scene, atlas, this.atlasTex);
@@ -412,6 +486,8 @@ export class World3DView implements WorldView {
     this.scene.add(group);
     this.region = group;
     this.builtId = id ?? '';
+    this.regionFaces = scene.faces;
+    this.regionPrep = prepare(scene.faces);
     // face i of the scene is vertices 4i…4i+3 of the mesh, so the occluders index it directly
     const objs = occluderObjects(scene.faces);
     this.occlusion = new Occlusion(
@@ -420,10 +496,59 @@ export class World3DView implements WorldView {
     );
     this.rig.setBlobs(blobShadows(objs));
     this.deskLamps = this.deskSources(s, map, id);
+    const propLamps = this.rebuildProps(s, { x: tiles.x, z: tiles.y, w: tiles.w, h: tiles.h });
     this.rig.setLamps([
       ...scene.lights.map((l) => ({ x: l.x, y: l.y, z: l.z, kind: l.kind, biome: l.biome })),
       ...this.deskLamps.map((d) => d.src),
+      ...propLamps,
     ]);
+    this.buildTag = key;
+    if (this.building) this.build.afterRebuild();
+  }
+
+  /**
+   * The placed props of the region as cards (P16.14), replacing the last props mesh. Props of
+   * other regions, and props a build preview shows elsewhere, are left out. Returns the lamps.
+   */
+  private rebuildProps(s: ReturnType<typeof store.get>, tiles: Rect): LampSource[] {
+    if (this.propMesh) {
+      this.region?.remove(this.propMesh);
+      disposeTree(this.propMesh);
+      this.propMesh = null;
+    }
+    const map = s.map!;
+    const r = mapReader(map);
+    const rest = resolveProps(r, map.props);
+    const skip = new Set<string>(this.hiddenProps ?? []);
+    const inside = (cx: number, cy: number) =>
+      cx >= tiles.x && cy >= tiles.z && cx < tiles.x + tiles.w && cy < tiles.z + tiles.h;
+    for (const p of map.props) {
+      const c = { cx: Math.floor(p.x / TILE), cy: Math.floor(p.y / TILE) };
+      if (!inside(c.cx, c.cy)) skip.add(p.id);
+    }
+    const faces = propFaces(map, map.props, rest, this.extents, skip);
+    this.propPrep = prepare(faces);
+    this.propCount = faces.length;
+    const lamps: LampSource[] = [];
+    map.props.forEach((p, i) => {
+      if (skip.has(p.id)) return;
+      const def = propDef(p.t);
+      if (def?.light !== 'lamp') return;
+      const [x, y, z] = propTo3D(p, rest[i]!, baseHeightPx(r, p, rest[i]!, this.extents));
+      lamps.push({ x, y: y + 0.3, z, kind: 'lamp', biome: def.biome ?? 'hub' });
+    });
+    if (faces.length && this.atlas && this.atlasTex && this.region) {
+      const built = buildRegionMesh(
+        { faces, lights: [], x0: 0, z0: 0, w: 0, d: 0 },
+        this.atlas,
+        this.atlasTex,
+      );
+      built.mesh.castShadow = true;
+      built.mesh.receiveShadow = true;
+      this.region.add(built.mesh);
+      this.propMesh = built.mesh;
+    }
+    return lamps;
   }
 
   /** The composed pixels of a blend slot, from the map (cached: a key always composes the same). */
@@ -475,6 +600,12 @@ export class World3DView implements WorldView {
     this.anim = null;
     this.atlasTex?.dispose();
     this.atlasTex = null;
+    this.atlas = null;
+    this.regionFaces = [];
+    this.regionPrep = [];
+    this.propPrep = [];
+    this.propMesh = null;
+    this.propCount = 0;
     if (!this.region) return;
     this.scene.remove(this.region);
     disposeTree(this.region);
@@ -574,6 +705,8 @@ export class World3DView implements WorldView {
       }
     }
     if (!this.target) this.target = { x: rect.x + rect.w / 2, z: rect.z + rect.h / 2 };
+    // build mode does not follow me: the camera stays in the region the build cursor is in
+    if (this.building) this.target = clampTarget(this.target, rect, this.cam);
     this.cam.tx = this.target.x;
     this.cam.tz = this.target.z;
     const [x, y, z] = camPos(this.cam);
@@ -642,6 +775,7 @@ export class World3DView implements WorldView {
     }
     this.overlays.keep(shown);
     this.occlude(s, drawn, dtMs);
+    if (this.building) this.build.update();
     this.anim?.tick(now, reducedMotion());
     this.rig.frame(now, reducedMotion());
     this.watchFps(s, now);
@@ -685,7 +819,14 @@ export class World3DView implements WorldView {
     this.tier = t;
     this.rig.setTier(t);
     if (postFx(t) && !this.post)
-      this.post = new PostFx(this.renderer, this.scene, this.camera, this.cam.w, this.cam.h, this.pr);
+      this.post = new PostFx(
+        this.renderer,
+        this.scene,
+        this.camera,
+        this.cam.w,
+        this.cam.h,
+        this.pr,
+      );
     else if (!postFx(t) && this.post) {
       this.post.dispose();
       this.post = null;
@@ -799,15 +940,30 @@ export class World3DView implements WorldView {
     const onLeave = () => {
       this.pointer = null;
     };
+    const local = (e: PointerEvent) => {
+      const r = c.getBoundingClientRect();
+      return { x: e.clientX - r.left, y: e.clientY - r.top };
+    };
     const onDown = (e: PointerEvent) => {
       const touch = e.pointerType === 'touch';
       this.pts.set(e.pointerId, { x: e.clientX, y: e.clientY, touch });
+      if (touch && this.touches().length >= 2) {
+        this.tap = null;
+        this.pinch = { d: spread(this.touches()[0]!, this.touches()[1]!) };
+        if (this.buildPointer !== null) this.endBuildPress();
+        return;
+      }
+      if (this.building) {
+        // build mode acts at the press (a stroke or a drag follows), not at the release
+        this.tap = null;
+        this.buildPointer = e.pointerId;
+        (document.activeElement as HTMLElement | null)?.blur?.();
+        const at = local(e);
+        this.build.pointerDown(at.x, at.y, e.button, e.altKey);
+        return;
+      }
       if (touch) {
-        const t = this.touches();
-        if (t.length >= 2) {
-          this.tap = null;
-          this.pinch = { d: spread(t[0]!, t[1]!) };
-        } else this.tap = { id: e.pointerId, x: e.clientX, y: e.clientY, touch, moved: false };
+        this.tap = { id: e.pointerId, x: e.clientX, y: e.clientY, touch, moved: false };
         return;
       }
       if (e.button !== 0) return;
@@ -816,9 +972,17 @@ export class World3DView implements WorldView {
     };
     const onMove = (e: PointerEvent) => {
       const p = this.pts.get(e.pointerId);
+      if (p) {
+        p.x = e.clientX;
+        p.y = e.clientY;
+      }
+      // build mode: the cursor follows every move (a hover too), and a press drags
+      if (this.building && !this.pinch && (!p || !p.touch || this.touches().length < 2)) {
+        const at = local(e);
+        this.build.pointerMove(at.x, at.y, e.altKey);
+        return;
+      }
       if (!p) return;
-      p.x = e.clientX;
-      p.y = e.clientY;
       if (this.pinch) {
         const t = this.touches();
         if (t.length < 2) return;
@@ -834,6 +998,7 @@ export class World3DView implements WorldView {
       }
     };
     const onUp = (e: PointerEvent) => {
+      if (this.buildPointer === e.pointerId) this.endBuildPress();
       const tap = this.tap;
       if (tap && tap.id === e.pointerId && !tap.moved && !this.pinch) {
         if (tap.touch) (document.activeElement as HTMLElement | null)?.blur?.();
@@ -847,6 +1012,7 @@ export class World3DView implements WorldView {
       e.preventDefault();
       zoomStep(e.deltaY > 0 ? -1 : 1);
     };
+    const onMenu = (e: Event) => e.preventDefault();
     c.addEventListener('pointerdown', onDown);
     c.addEventListener('pointermove', onMove);
     c.addEventListener('pointerup', onUp);
@@ -854,7 +1020,9 @@ export class World3DView implements WorldView {
     c.addEventListener('wheel', onWheel, { passive: false });
     c.addEventListener('pointermove', onHover);
     c.addEventListener('pointerleave', onLeave);
+    c.addEventListener('contextmenu', onMenu);
     this.unsubs.push(() => {
+      c.removeEventListener('contextmenu', onMenu);
       c.removeEventListener('pointerdown', onDown);
       c.removeEventListener('pointermove', onMove);
       c.removeEventListener('pointerup', onUp);
@@ -863,6 +1031,12 @@ export class World3DView implements WorldView {
       c.removeEventListener('pointermove', onHover);
       c.removeEventListener('pointerleave', onLeave);
     });
+  }
+
+  /** A build press or release ended (its stroke, drag or stretch is finished). */
+  private endBuildPress() {
+    this.buildPointer = null;
+    this.build.pointerUp();
   }
 
   /** A click on the floor (client px) → a world point → the controller's click-to-move. */
@@ -875,9 +1049,201 @@ export class World3DView implements WorldView {
     this.ctl.clickTo(p.x * TILE, p.z * TILE);
   }
 
+  // ───────────────────────────────────────────── build mode (P16.13, P16.14)
+  /** Build mode follows the store: on (enter, or the options changed) and off (exit). */
+  private bindBuild() {
+    let lastBuild = store.get().build;
+    this.unsubs.push(
+      store.subscribe(() => {
+        const st = store.get();
+        if (st.build === lastBuild) return;
+        const was = !!lastBuild;
+        lastBuild = st.build;
+        this.onBuildChange(was, !!st.build);
+      }),
+    );
+    if (store.get().build) this.onBuildChange(false, true);
+  }
+
+  private onBuildChange(was: boolean, on: boolean) {
+    if (on && !was) {
+      const s = store.get();
+      this.building = true;
+      this.focus = s.myRegion ?? null;
+      this.following = false;
+      this.ctl.enterBuild();
+      this.buildOverlay.place(
+        this.canvas.offsetLeft,
+        this.canvas.offsetTop,
+        this.cam.w,
+        this.cam.h,
+        this.pr,
+        true,
+      );
+      this.build.enter();
+    } else if (!on && was) {
+      this.build.exit();
+      this.building = false;
+      this.focus = null;
+      this.followMe();
+      this.buildOverlay.place(
+        this.canvas.offsetLeft,
+        this.canvas.offsetTop,
+        this.cam.w,
+        this.cam.h,
+        this.pr,
+        false,
+      );
+    } else if (on) this.build.refresh();
+  }
+
+  /** The build cursor's region becomes the focus, so the camera and the faces follow it. */
+  private focusCell(c: { cx: number; cy: number }) {
+    const map = store.get().map;
+    if (!map) return;
+    const id = regionIdAt(map, c.cx, c.cy);
+    if (id !== this.focus) this.focus = id;
+  }
+
+  /** What build mode needs of this view: the picks, the camera, the faces and the art. */
+  private buildHost(): BuildHost {
+    return {
+      scene: this.scene,
+      // the camera object is updated in place (tx, tz, w, h), so the host keeps this reference
+      cam: this.cam,
+      ext: this.extents,
+      art: () => (this.atlas && this.atlasTex ? { atlas: this.atlas, tex: this.atlasTex } : null),
+      pick: (sx, sy, skip) => this.pickAt(sx, sy, skip),
+      floorAt: (sx, sy) => unprojectFloor(this.cam, sx, sy),
+      focus: (c, center) => {
+        this.focusCell(c);
+        if (center)
+          this.target = clampTarget({ x: c.cx + 0.5, z: c.cy + 0.5 }, this.regionRect(), this.cam);
+      },
+      moveTarget: (x, z) => {
+        this.following = false;
+        this.pan = null;
+        this.focusCell({ cx: Math.floor(x), cy: Math.floor(z) });
+        this.target = clampTarget({ x, z }, this.regionRect(), this.cam);
+      },
+      target: () => this.target ?? { x: this.cam.tx, z: this.cam.tz },
+      hideCells: (cells) => this.hideCells(cells),
+      hideProps: (ids) => this.setHiddenProps(ids),
+      region: () => this.regionRect(),
+      regions: () =>
+        (store.get().map?.regions ?? []).map((r) => ({
+          x: r.x / TILE,
+          z: r.y / TILE,
+          w: r.w / TILE,
+          h: r.h / TILE,
+        })),
+      screen: (p) => {
+        const q = project(this.cam, p);
+        return q ? { x: q.x, y: q.y } : null;
+      },
+      overlay: this.buildOverlay,
+    };
+  }
+
+  /**
+   * What is drawn under a screen point (canvas CSS px): the nearest opaque face of the region or a
+   * prop card, else the floor (BuildMode3D's pick). The point is `aim`-ed by the caller.
+   */
+  private pickAt(sx: number, sy: number, skip?: ReadonlySet<string>): PickResult | null {
+    const ray: Ray = screenRay(this.cam, sx, sy);
+    const op = (tile: number, u: number, v: number) => this.drawnTexel(tile, u, v);
+    const a = pickNearest(this.regionPrep, ray, op);
+    // a prop is hit anywhere in its card (the box of its art), as the flat view hits it (propsView.hit)
+    const b = pickNearest(
+      this.propPrep,
+      ray,
+      () => true,
+      (f) => !skip?.has(f.prop),
+    );
+    const hit = !b || (a && a.t <= b.t) ? a : b;
+    if (hit) {
+      const f = hit.item;
+      const prop = (f as Partial<PropFace>).prop ?? null;
+      return {
+        cell: { cx: f.cx, cy: f.cy },
+        p: hit.p,
+        top: flatHeight(f),
+        prop,
+      };
+    }
+    const fl = floorPoint(ray);
+    if (!fl) return null;
+    return {
+      cell: { cx: Math.floor(fl.x), cy: Math.floor(fl.z) },
+      p: [fl.x, 0, fl.z],
+      top: 0,
+      prop: null,
+    };
+  }
+
+  /** Is this texel of the tileset drawn (alpha ≥ 128)? Outside the sheet it is not. */
+  private drawnTexel(tile: number, u: number, v: number): boolean {
+    const x = (tile % TILESET_COLUMNS) * 32 + u;
+    const y = Math.floor(tile / TILESET_COLUMNS) * 32 + v;
+    if (x < 0 || y < 0 || x >= this.texelsW || y >= this.texelsH) return false;
+    return this.texels[(y * this.texelsW + x) * 4 + 3]! >= 128;
+  }
+
+  /** Live faces of these cells step aside while a preview replaces them (null: they return). */
+  private hideCells(cells: readonly { cx: number; cy: number }[] | null) {
+    if (!this.occlusion) return;
+    if (!cells) return this.occlusion.setHidden(null);
+    const keys = new Set(cells.map(cellKey));
+    const idx: number[] = [];
+    this.regionFaces.forEach((f, i) => {
+      if (keys.has(`${f.cx},${f.cy}`)) idx.push(i);
+    });
+    this.occlusion.setHidden(idx);
+  }
+
+  /** Props that step aside (a move's preview); the props mesh is rebuilt only when they change. */
+  private setHiddenProps(ids: ReadonlySet<string> | null) {
+    const key = ids ? [...ids].sort().join(',') : '';
+    if (key === this.hiddenKey) return;
+    this.hiddenKey = key;
+    this.hiddenProps = ids && ids.size ? new Set(ids) : null;
+    if (this.region) this.rebuildProps(store.get(), this.regionRect());
+  }
+
+  /** Surface height (px) under a 2D point: its top when it lies on a desk, else the floor. */
+  private surfaceAt(x: number, y: number): number {
+    const map = store.get().map;
+    if (!map) return 0;
+    const r = mapReader(map);
+    if (!surfaceTop(r, x, y)) return 0;
+    return surfaceHeightPx(r, Math.floor(x / TILE), Math.floor(y / TILE), this.extents);
+  }
+
+  /** Page point at the middle of a prop card's drawn sprite (test read-out). */
+  private propScreen(id: string): { x: number; y: number } | null {
+    const map = store.get().map;
+    if (!map) return null;
+    const i = map.props.findIndex((p) => p.id === id);
+    if (i < 0) return null;
+    const rest = resolveProps(mapReader(map), map.props);
+    const quad = propQuad(map, map.props[i]!, rest[i]!, this.extents);
+    if (!quad) return null;
+    const pts = quad.map((q) => this.screen(q));
+    if (pts.some((q) => !q)) return null;
+    const r = this.canvas.getBoundingClientRect();
+    const sx = pts.reduce((s, q) => s + q!.x, 0) / 4;
+    const sy = pts.reduce((s, q) => s + q!.y, 0) / 4;
+    return { x: r.left + sx, y: r.top + sy };
+  }
+
+  private screen(p: [number, number, number]): { x: number; y: number } | null {
+    const q = project(this.cam, p);
+    return q ? { x: q.x, y: q.y } : null;
+  }
+
   // ───────────────────────────────────────────── WorldView (P16.3 seam)
   get buildActive(): boolean {
-    return false;
+    return this.building && this.build.active;
   }
 
   followMe() {
@@ -918,20 +1284,30 @@ export class World3DView implements WorldView {
   private testApi(): ViewTestApi {
     return {
       engine: '2.5d',
+      // where a 2D point is drawn: on its desk's top when it lies on one, else on the floor
       toClient: (x, y) => {
         const r = this.canvas.getBoundingClientRect();
-        const p = project(this.cam, [x / TILE, 0, y / TILE]);
+        const h = this.surfaceAt(x, y);
+        const p = project(this.cam, [x / TILE, h / TILE, (y + h) / TILE]);
         return p ? { x: r.left + p.x, y: r.top + p.y } : { x: Number.NaN, y: Number.NaN };
       },
       centerOn: (x, y) => {
+        const c = { cx: Math.floor(x / TILE), cy: Math.floor(y / TILE) };
+        if (this.building) this.focusCell(c);
         this.target = clampTarget({ x: x / TILE, z: y / TILE }, this.regionRect(), this.cam);
       },
       zoom: () => this.zoomNow,
       setZoom: (z) => store.set({ zoom: z }),
       texts: (all = false) => this.overlays.texts(all),
-      // props come with P16.14, pets at checkpoint J
-      propsCount: () => 0,
+      propsCount: () => this.propCount,
+      propScreen: (id) => this.propScreen(id),
+      blendKeyAt: (cx, cy) =>
+        this.regionFaces.find((f) => f.cx === cx && f.cy === cy && f.blend?.startsWith('f|'))
+          ?.blend ?? null,
+      previewCells: () => this.build.previewCells(),
+      settled: () => this.builtKey !== null,
       avatarFrame: (id) => this.people.info(id)?.frame ?? null,
+      // pets at checkpoint J
       petsDrawn: () => 0,
     };
   }

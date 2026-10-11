@@ -8,12 +8,11 @@ import { store, toast, useStore } from '../state/store';
 
 export function GameView() {
   const ref = useRef<HTMLDivElement>(null);
-  const build = useStore((s) => !!s.build);
   const world25d = useStore((s) => s.config?.flags.world25d === true);
   const choice = useStore((s) => s.viewChoice);
-  // 2.5D (P16.6) when the flag and this device ask for it; build mode is 2D until P16.13.
+  // 2.5D (P16.6) when the flag and this device ask for it, build mode included (P16.13).
   // A choice made in this session (Settings, or the automatic switch to 2D) wins.
-  const engine = chooseEngine({ world25d }, location.search, readStoredView(), build, choice);
+  const engine = chooseEngine({ world25d }, location.search, readStoredView(), choice);
 
   useEffect(() => {
     installInput();

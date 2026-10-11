@@ -1,15 +1,25 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
+import { runView } from './views';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const T = 32;
 
+/**
+ * Runs in both world views (P16.13): the `2.5d` project sets the view on the device; every check
+ * below goes through `window.__agora.view`, which both views implement.
+ */
 async function enter(browser: Browser, devUser: number): Promise<Page> {
+  const view = runView();
   const ctx = await browser.newContext();
-  await ctx.addInitScript(() =>
-    localStorage.setItem(
-      'agora.settings',
-      JSON.stringify({ lighting: false, sounds: false, autoSit: true, precheck: false }),
-    ),
+  await ctx.addInitScript(
+    ([v]) => {
+      localStorage.setItem(
+        'agora.settings',
+        JSON.stringify({ lighting: false, sounds: false, autoSit: true, precheck: false }),
+      );
+      if (v === '2.5d') localStorage.setItem('agora.worldView', v);
+    },
+    [view] as const,
   );
   const page = await ctx.newPage();
   page.on('pageerror', (e) => console.log(`[pageerror ${devUser}]`, e.message));
@@ -26,6 +36,9 @@ async function enter(browser: Browser, devUser: number): Promise<Page> {
     const s = w.__agora.store.get();
     return s.conn === 'online' && !!s.me && w.__agora.rendered.has(s.me);
   });
+  expect(await page.evaluate(() => (window as any).__agora.view.engine)).toBe(
+    view === '2.5d' ? '2.5d' : '2d',
+  );
   return page;
 }
 
@@ -152,14 +165,7 @@ test('build mode: a builder places and erases decor live, others see it, undo wo
 
 /** Blend cache key of a furniture cell on this client (null: plain tile). */
 const blendKey = (p: Page, cx: number, cy: number) =>
-  p.evaluate(
-    ([x, y]) => {
-      const sc = (window as any).__agoraGame.scene.getScene('world');
-      const m = (window as any).__agora.store.get().map;
-      return sc.blend?.keyAt('f', y * m.width + x) ?? null;
-    },
-    [cx, cy] as const,
-  );
+  p.evaluate(([x, y]) => (window as any).__agora.view.blendKeyAt(x, y), [cx, cy] as const);
 
 /** Placed props (P9.16) as this client sees them. */
 const propsOf = (p: Page) =>
@@ -174,14 +180,11 @@ const propsOf = (p: Page) =>
         f: boolean;
       }[],
   );
-/** Screen point in the middle of a prop's drawn sprite. */
+/** Screen point in the middle of a prop's drawn sprite (null-checked: the prop must be drawn). */
 async function propPoint(p: Page, id: string) {
-  return p.evaluate((pid) => {
-    // prop boxes are a flat-view (build mode) detail until P16.13
-    const sc = (window as any).__agoraGame.scene.getScene('world');
-    const b = sc.propsView.boxes.find((q: any) => q.id === pid);
-    return (window as any).__agora.view.toClient((b.x0 + b.x1) / 2, (b.y0 + b.baseY) / 2);
-  }, id);
+  const pt = await p.evaluate((pid) => (window as any).__agora.view.propScreen(pid), id);
+  if (!pt) throw new Error(`prop ${id} is not drawn`);
+  return pt as { x: number; y: number };
 }
 /** Screen point of a world pixel. */
 async function screenPx(p: Page, x: number, y: number) {
@@ -199,8 +202,8 @@ test('blended tiles (P9.10–P9.12): joining previews, merges for everyone; prop
   const ben = await enter(browser, 1);
   for (const p of [alice, ben])
     await p.waitForFunction(() => {
-      const sc = (window as any).__agoraGame.scene.getScene('world');
-      return !!sc.blend && !sc.blend.busy;
+      const v = (window as any).__agora.view;
+      return !!v && v.settled();
     });
 
   await alice.getByRole('button', { name: /Mode construction|Build mode/ }).click();
@@ -217,11 +220,7 @@ test('blended tiles (P9.10–P9.12): joining previews, merges for everyone; prop
   await alice.mouse.move(pt.x, pt.y);
   // the preview shows the joined row before anything is sent
   await expect
-    .poll(() =>
-      alice.evaluate(
-        () => (window as any).__agoraGame.scene.getScene('world').build.preview.changed.length,
-      ),
-    )
+    .poll(() => alice.evaluate(() => (window as any).__agora.view.previewCells()))
     .toBeGreaterThan(1);
   expect(await furnAt(ben, bx, by)).toBe(0);
   await alice.mouse.click(pt.x, pt.y);
@@ -360,15 +359,19 @@ test('placement (P9.16–P9.20): several items on a desk, Alt, nudge, stack, str
   await expect.poll(async () => (await propsOf(ben)).length).toBe(5);
   const lamp = (await propsOf(ben))[4]!;
   expect(lamp.y).toBeLessThanOrEqual(books.y);
-  // drawn raised by the books' height on Ben's screen
-  const lampBox = await ben.evaluate(
-    (id) =>
-      (window as any).__agoraGame.scene
-        .getScene('world')
-        .propsView.boxes.find((b: any) => b.id === id),
-    lamp.id,
-  );
-  expect(lampBox.baseY).toBe(lamp.y - 12);
+  // drawn raised by the books' height on Ben's screen: the lamp sits above the books
+  expect((await propPoint(ben, lamp.id)).y).toBeLessThan((await propPoint(ben, books.id)).y);
+  if (runView() === '2d') {
+    // flat view only: the exact base offset of a prop resting on a 12 px surface
+    const baseY = await ben.evaluate(
+      (id) =>
+        (window as any).__agoraGame.scene
+          .getScene('world')
+          .propsView.boxes.find((b: any) => b.id === id)?.baseY,
+      lamp.id,
+    );
+    expect(baseY).toBe(lamp.y - 12);
+  }
 
   // stretch: select the first desk's run and lengthen it west with Shift+←
   await alice.keyboard.press('c');

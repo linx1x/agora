@@ -15,65 +15,59 @@ const STORED = [null, '', '2.5d', '2d', 'nope'];
 describe('chooseEngine (ADR-052)', () => {
   it('is 2D whenever the server flag is off, whatever the device asks for', () => {
     for (const s of SEARCHES)
-      for (const st of STORED)
-        for (const b of [false, true]) expect(chooseEngine(OFF, s, st, b)).toBe<WorldEngine>('2d');
-    expect(chooseEngine(undefined, '?view=2.5d', '2.5d', false)).toBe('2d');
-  });
-
-  it('is 2D while build mode is on, even when 2.5D is asked for', () => {
-    for (const s of SEARCHES)
-      for (const st of STORED) expect(chooseEngine(ON, s, st, true)).toBe<WorldEngine>('2d');
+      for (const st of STORED) expect(chooseEngine(OFF, s, st)).toBe<WorldEngine>('2d');
+    expect(chooseEngine(undefined, '?view=2.5d', '2.5d')).toBe('2d');
   });
 
   it('uses ?view= first, then the stored choice, then 2D', () => {
-    expect(chooseEngine(ON, '?view=2.5d', null, false)).toBe('2.5d');
-    expect(chooseEngine(ON, '?view=2.5d', '2d', false)).toBe('2.5d');
-    expect(chooseEngine(ON, '?view=2d', '2.5d', false)).toBe('2d');
-    expect(chooseEngine(ON, '', '2.5d', false)).toBe('2.5d');
-    expect(chooseEngine(ON, '', '2d', false)).toBe('2d');
-    expect(chooseEngine(ON, '', null, false)).toBe('2d');
-    expect(chooseEngine(ON, '', '', false)).toBe('2d');
+    expect(chooseEngine(ON, '?view=2.5d', null)).toBe('2.5d');
+    expect(chooseEngine(ON, '?view=2.5d', '2d')).toBe('2.5d');
+    expect(chooseEngine(ON, '?view=2d', '2.5d')).toBe('2d');
+    expect(chooseEngine(ON, '', '2.5d')).toBe('2.5d');
+    expect(chooseEngine(ON, '', '2d')).toBe('2d');
+    expect(chooseEngine(ON, '', null)).toBe('2d');
+    expect(chooseEngine(ON, '', '')).toBe('2d');
+  });
+
+  it('keeps 2.5D while build mode is on (P16.13): building is not a reason to leave the view', () => {
+    // the build mode is no longer an input: the same device gets the same view with it on or off
+    expect(chooseEngine(ON, '?view=2.5d', null)).toBe('2.5d');
+    expect(chooseEngine(ON, '', '2.5d')).toBe('2.5d');
   });
 
   it('a choice made in this session wins over the URL and the stored view', () => {
-    expect(chooseEngine(ON, '?view=2.5d', '2.5d', false, '2d')).toBe('2d');
-    expect(chooseEngine(ON, '', '2d', false, '2.5d')).toBe('2.5d');
-    expect(chooseEngine(ON, '?view=2d', '2d', false, '2.5d')).toBe('2.5d');
+    expect(chooseEngine(ON, '?view=2.5d', '2.5d', '2d')).toBe('2d');
+    expect(chooseEngine(ON, '', '2d', '2.5d')).toBe('2.5d');
+    expect(chooseEngine(ON, '?view=2d', '2d', '2.5d')).toBe('2.5d');
     // an unknown choice is no choice
-    expect(chooseEngine(ON, '?view=2.5d', null, false, 'nope')).toBe('2.5d');
-    // the flag and build mode still decide first
-    expect(chooseEngine(OFF, '', null, false, '2.5d')).toBe('2d');
-    expect(chooseEngine(ON, '', null, true, '2.5d')).toBe('2d');
+    expect(chooseEngine(ON, '?view=2.5d', null, 'nope')).toBe('2.5d');
+    // the flag still decides first
+    expect(chooseEngine(OFF, '', null, '2.5d')).toBe('2d');
   });
 
   it('ignores an unknown ?view= and falls back to the stored choice', () => {
-    expect(chooseEngine(ON, '?view=bogus', '2.5d', false)).toBe('2.5d');
-    expect(chooseEngine(ON, '?view=bogus', null, false)).toBe('2d');
+    expect(chooseEngine(ON, '?view=bogus', '2.5d')).toBe('2.5d');
+    expect(chooseEngine(ON, '?view=bogus', null)).toBe('2d');
   });
 
-  it('covers every combination of flag, URL, stored choice and building', () => {
+  it('covers every combination of flag, URL, stored choice and session choice', () => {
     // the rule, written out independently of the code under test
-    const oracle = (
-      flag: boolean,
-      s: string,
-      st: string | null,
-      building: boolean,
-    ): WorldEngine => {
-      if (!flag || building) return '2d';
+    const oracle = (flag: boolean, s: string, st: string | null, choice: string | null) => {
+      if (!flag) return '2d';
       const u = new URLSearchParams(s).get('view');
       const valid = (v: string | null | undefined) => v === '2.5d' || v === '2d';
-      const asked = valid(u) ? u : valid(st) ? st : null;
+      const asked = valid(choice) ? choice : valid(u) ? u : valid(st) ? st : null;
       return asked === '2.5d' ? '2.5d' : '2d';
     };
     let n = 0;
     for (const f of [false, true])
       for (const s of SEARCHES)
         for (const st of STORED)
-          for (const b of [false, true]) {
-            expect(chooseEngine({ world25d: f }, s, st, b)).toBe(oracle(f, s, st, b));
+          for (const c of [null, ...STORED]) {
+            expect(chooseEngine({ world25d: f }, s, st, c)).toBe(oracle(f, s, st, c));
             n++;
           }
-    expect(n).toBe(2 * SEARCHES.length * STORED.length * 2);
+    expect(n).toBe(2 * SEARCHES.length * STORED.length * (STORED.length + 1));
   });
 });
 

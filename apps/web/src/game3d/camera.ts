@@ -91,6 +91,20 @@ export function unprojectFloor(c: Cam, sx: number, sy: number): Pt | null {
 }
 
 /**
+ * The ray through a screen point (CSS px in the canvas): from the eye, along an unnormalised
+ * direction. P16.13: build mode picks what is drawn under the pointer with it (pick3d.ts).
+ */
+export function screenRay(c: Cam, sx: number, sy: number): { o: V3; d: V3 } {
+  const t = (c.tilt * Math.PI) / 180;
+  const st = Math.sin(t);
+  const ct = Math.cos(t);
+  const f = focal(c.h, c.fov);
+  const rx = (sx - c.w / 2) / f;
+  const ry = -(sy - c.h / 2) / f;
+  return { o: camPos(c), d: [rx, ry * ct - st, -ry * st - ct] };
+}
+
+/**
  * Distance (tiles) at which a floor tile at the target is `32 * zoom` px across, for a viewport
  * `viewH` px tall: `focal / dist = 32 * zoom`.
  */

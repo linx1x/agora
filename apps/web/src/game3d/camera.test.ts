@@ -9,6 +9,7 @@ import {
   fitZoom,
   followStep,
   project,
+  screenRay,
   unprojectFloor,
   type Cam,
 } from './camera';
@@ -199,6 +200,50 @@ describe('2.5D camera maths (ADR-052)', () => {
       expect(fitZoom(22 * 32, 14 * 32)).toBe(1);
       expect(fitZoom(44 * 32, 28 * 32)).toBe(2);
       expect(fitZoom(9999, 9999)).toBe(3);
+    });
+  });
+
+  describe('screenRay (P16.13 picking)', () => {
+    it('goes through the target floor point at the middle of the viewport', () => {
+      for (const [w, h] of VIEWPORTS) {
+        const c = base(w, h, 2);
+        const r = screenRay(c, w / 2, h / 2);
+        const t = -r.o[1] / r.d[1];
+        expect(r.o[0] + r.d[0] * t).toBeCloseTo(c.tx, 6);
+        expect(r.o[2] + r.d[2] * t).toBeCloseTo(c.tz, 6);
+      }
+    });
+
+    it('meets the floor where unprojectFloor puts the same screen point', () => {
+      const c = base(1280, 800, 3);
+      for (let sx = 40; sx < 1280; sx += 180)
+        for (let sy = 500; sy < 800; sy += 60) {
+          const floor = unprojectFloor(c, sx, sy);
+          const r = screenRay(c, sx, sy);
+          if (!floor) continue;
+          const t = -r.o[1] / r.d[1];
+          expect(r.o[0] + r.d[0] * t).toBeCloseTo(floor.x, 6);
+          expect(r.o[2] + r.d[2] * t).toBeCloseTo(floor.z, 6);
+        }
+    });
+
+    it('is the ray that projects back to its own screen point, at any distance along it', () => {
+      for (const [w, h] of VIEWPORTS) {
+        const c = base(w, h, 1.5);
+        for (const [sx, sy] of [
+          [w / 2, h / 2],
+          [w * 0.1, h * 0.9],
+          [w * 0.8, h * 0.3],
+        ] as const) {
+          const r = screenRay(c, sx, sy);
+          for (const k of [1, 2.5]) {
+            const q = project(c, [r.o[0] + r.d[0] * k, r.o[1] + r.d[1] * k, r.o[2] + r.d[2] * k]);
+            expect(q).not.toBeNull();
+            expect(q!.x).toBeCloseTo(sx, 6);
+            expect(q!.y).toBeCloseTo(sy, 6);
+          }
+        }
+      }
     });
   });
 });

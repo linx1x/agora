@@ -18,7 +18,6 @@ import {
   biomeAt,
   cellChanges,
   dropPoint,
-  joinMask,
   lockedCells,
   mapReader,
   newPropId,
@@ -39,10 +38,19 @@ import {
   type MapChange,
   type PaintLayer,
   type PropChange,
-  type TileReader,
   type WorldMap,
 } from '@agora/shared';
 import { store, toast, type BuildGroup, type BuildSel, type BuildState } from '../state/store';
+import {
+  ARROW_DIR,
+  DIRV,
+  clampZ as clampLift,
+  growTile,
+  groupLayer,
+  runAt,
+  type Dir,
+  type Run,
+} from './buildMath';
 import { onSelCmd, patchBuild, sendEdit, type SelCmd } from './build';
 import { isTyping, panVector } from './input';
 import type { BlendLayers } from './blend/BlendLayers';
@@ -61,71 +69,14 @@ const HANDLE = 7;
 
 type Layers = Record<EditLayer, Phaser.Tilemaps.TilemapLayer | null>;
 type Drag = 'paint' | 'erase' | 'pan' | 'move' | 'stretch' | null;
-type Dir = 'n' | 'e' | 's' | 'w';
-const DIRV: Record<Dir, [number, number]> = { n: [0, -1], e: [1, 0], s: [0, 1], w: [-1, 0] };
-const ARROW_DIR: Record<string, Dir> = {
-  ArrowUp: 'n',
-  ArrowRight: 'e',
-  ArrowDown: 's',
-  ArrowLeft: 'w',
-};
-
 /** What the Select tool holds. A run is found again from its anchor cell after every edit. */
 type Sel =
   | { kind: 'prop'; id: string }
   | { kind: 'run'; ax: number; ay: number }
   | { kind: 'cell'; cx: number; cy: number };
 
-const groupLayer = (g: BuildGroup): PaintLayer => PALETTE.find((p) => p.group === g)!.layer;
 const frameOf = (name: string) => String(TILE_DEFS.findIndex((d) => d.name === name));
-const clampZ = (z: number) => Math.max(0, Math.min(MAX_LIFT, z));
-
-/** A straight run of joined furniture through a cell, and where it can grow (P9.18). */
-export interface Run {
-  cells: Cell[];
-  axes: ('h' | 'v')[];
-  /** end cell per direction it can grow or shrink towards */
-  ends: Partial<Record<Dir, Cell>>;
-}
-export function runAt(r: TileReader, x: number, y: number): Run | null {
-  const d = r.def('furniture', x, y);
-  if (!d?.join) return null;
-  const m = joinMask(r, x, y);
-  const walk = (dx: number, dy: number, bit: number) => {
-    const out: Cell[] = [];
-    let cx = x;
-    let cy = y;
-    while (joinMask(r, cx, cy) & bit) {
-      cx += dx;
-      cy += dy;
-      out.push({ cx, cy });
-      if (out.length > 200) break;
-    }
-    return out;
-  };
-  if (m & 10 || (!(m & 5) && d.join.eastWestOnly)) {
-    const w = walk(-1, 0, 8).reverse();
-    const e = walk(1, 0, 2);
-    const cells = [...w, { cx: x, cy: y }, ...e];
-    return { cells, axes: ['h'], ends: { w: cells[0]!, e: cells.at(-1)! } };
-  }
-  if (m & 5) {
-    const n = walk(0, -1, 1).reverse();
-    const s = walk(0, 1, 4);
-    const cells = [...n, { cx: x, cy: y }, ...s];
-    return { cells, axes: ['v'], ends: { n: cells[0]!, s: cells.at(-1)! } };
-  }
-  // a lone joinable tile can start a run either way
-  const c = { cx: x, cy: y };
-  return { cells: [c], axes: ['h', 'v'], ends: { n: c, e: c, s: c, w: c } };
-}
-
-/** Tile a run grows with: its end's tile, but a desk with a monitor grows as a plain desk. */
-export function growTile(name: string): string {
-  const def = TILE_DEFS.find((d) => d.name === name);
-  if (def?.join?.prop && def.biome) return `${def.biome}.deskH`;
-  return name;
-}
+const clampZ = (z: number) => clampLift(z, MAX_LIFT);
 
 export class BuildMode {
   active = false;
@@ -151,7 +102,8 @@ export class BuildMode {
   private locked: ReturnType<typeof lockedCells> | null = null;
   private lockedRev = -1;
   private unsub: (() => void)[] = [];
-  private preview: BlendPreview;
+  /** the blended preview (read by the e2e tests) */
+  readonly preview: BlendPreview;
   private sel: Sel | null = null;
   /** id the next placed prop gets (stable while its ghost shows) */
   private nextId = newPropId();

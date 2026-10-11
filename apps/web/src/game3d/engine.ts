@@ -1,9 +1,9 @@
 /**
- * Which world view this device draws (P16.6, P16.11, ADR-052). 2.5D needs the server's `world25d`
- * flag and a choice, in this order: the choice made in this session (Settings, or the automatic
- * switch to 2D on a slow device), then `?view=2.5d` (or `?view=2d`), then the saved choice in
- * `localStorage['agora.worldView']`. Build mode is still 2D (its 3D editing is P16.13), so it
- * takes the 2D view while it is on. Pure, so every combination is unit-tested.
+ * Which world view this device draws (P16.6, P16.11, P16.13, ADR-052). 2.5D needs the server's
+ * `world25d` flag and a choice, in this order: the choice made in this session (Settings, or the
+ * automatic switch to 2D on a slow device), then `?view=2.5d` (or `?view=2d`), then the saved choice
+ * in `localStorage['agora.worldView']`. Build mode does not change the view: it works in both
+ * (P16.13). Pure, so every combination is unit-tested.
  */
 export type WorldEngine = '2d' | '2.5d';
 
@@ -18,14 +18,11 @@ export function chooseEngine(
   flags: { world25d?: boolean } | undefined,
   search: string,
   stored: string | null,
-  building: boolean,
   choice: string | null = null,
 ): WorldEngine {
-  if (flags?.world25d !== true || building) return '2d';
+  if (flags?.world25d !== true) return '2d';
   const asked =
-    asEngine(choice) ??
-    asEngine(new URLSearchParams(search).get(VIEW_PARAM)) ??
-    asEngine(stored);
+    asEngine(choice) ?? asEngine(new URLSearchParams(search).get(VIEW_PARAM)) ?? asEngine(stored);
   return asked === '2.5d' ? '2.5d' : '2d';
 }
 

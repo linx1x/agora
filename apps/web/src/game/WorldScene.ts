@@ -784,16 +784,17 @@ export class WorldScene extends Phaser.Scene implements WorldView {
         if ((q as unknown as { visible?: boolean }).visible === false) return false;
       return true;
     };
+    const toClient = (x: number, y: number) => {
+      const c = cam();
+      const r = rect();
+      return {
+        x: r.left + c.x + (x - c.worldView.x) * c.zoom,
+        y: r.top + c.y + (y - c.worldView.y) * c.zoom,
+      };
+    };
     return {
       engine: '2d',
-      toClient: (x, y) => {
-        const c = cam();
-        const r = rect();
-        return {
-          x: r.left + c.x + (x - c.worldView.x) * c.zoom,
-          y: r.top + c.y + (y - c.worldView.y) * c.zoom,
-        };
-      },
+      toClient,
       centerOn: (x, y) => cam().centerOn(x, y),
       zoom: () => cam().zoom,
       setZoom: (z) => cam().setZoom(z),
@@ -803,6 +804,18 @@ export class WorldScene extends Phaser.Scene implements WorldView {
           .filter((t) => all || shown(t))
           .map((t) => t.text),
       propsCount: () => this.propsView.count,
+      propScreen: (id) => {
+        const b = this.propsView.boxes.find((q) => q.id === id);
+        if (!b) return null;
+        // the middle of the prop's sprite, as the 2.5D view reports it
+        return toClient((b.x0 + b.x1) / 2, (b.y0 + b.baseY) / 2);
+      },
+      blendKeyAt: (cx, cy) => {
+        const m = store.get().map!;
+        return this.blend?.keyAt('f', cy * m.width + cx) ?? null;
+      },
+      previewCells: () => this.build.preview.changed.length,
+      settled: () => !this.blend?.busy,
       avatarFrame: (id) => this.views.get(id)?.sprite.frame.name ?? null,
       petsDrawn: () =>
         walk(this.children.list, []).filter(

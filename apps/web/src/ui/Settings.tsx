@@ -34,7 +34,6 @@ export function Settings({
   const npcVoiceOn = useStore((s) => s.config?.flags.npcVoice === true);
   const world25dOn = useStore((s) => s.config?.flags.world25d === true);
   const viewChoice = useStore((s) => s.viewChoice);
-  const buildOn = useStore((s) => !!s.build);
   const canUnlock = useStore(
     (s) => (s.builderCodeAvailable && !s.builder) || (s.adminCodeAvailable && !s.admin),
   );
@@ -154,7 +153,6 @@ export function Settings({
                 { world25d: true },
                 location.search,
                 readStoredView(),
-                buildOn,
                 viewChoice,
               )}
               onChange={(e) => {
