@@ -25,6 +25,11 @@ export const VISITOR_RULES: Readonly<Record<ActionKind, VisitorRule>> = {
   open: 'choice',
   stash: 'choice',
   take: 'choice',
+  // the farm, the shop and the bench are the owner's (P17.25)
+  buy: 'deny',
+  feed: 'deny',
+  collect: 'deny',
+  craft: 'deny',
 };
 
 export interface WorldAccess {

@@ -1016,7 +1016,10 @@
       "no_permission": "Ce monde n'est pas ouvert pour vous.",
       "no_world": "Ce monde n'est pas prêt pour l'instant.",
       "occupied": "Quelqu’un se tient là.",
-      "trap": "Cela enfermerait quelqu’un : laisse un passage."
+      "trap": "Cela enfermerait quelqu’un : laisse un passage.",
+      "money": "Il te manque de l'argent.",
+      "busy": "Ça tourne encore : reviens plus tard.",
+      "capacity": "Il n'y a plus de place ici."
     },
     "tuning": {
       "open": "Réglages du monde",
@@ -1100,7 +1103,12 @@
       "shipping_bin": "Caisse d'expédition",
       "shop_board": "Tableau de la boutique",
       "chest": "Coffre",
-      "fence": "Clôture"
+      "fence": "Clôture",
+      "coop": "Poulailler",
+      "barn": "Grange",
+      "workbench": "Établi",
+      "stove": "Cuisinière",
+      "furnace": "Fourneau"
     },
     "biome": {
       "meadow": "Prairie",
@@ -1237,7 +1245,10 @@
       "wood_floor": "Plancher de bois",
       "torch": "Torche",
       "stone_stairs": "Escalier de pierre",
-      "bed": "Lit"
+      "bed": "Lit",
+      "coop": "Poulailler",
+      "barn": "Grange",
+      "stove": "Cuisinière"
     },
     "noRoute": "Pas de chemin jusque-là.",
     "chest": {
@@ -1249,6 +1260,23 @@
       "stash": "Ranger {{item}} dans le coffre",
       "stashNone": "Rien en main à ranger",
       "close": "Fermer le coffre"
+    },
+    "shop": {
+      "title": "Tableau de la boutique",
+      "price": "Prix : {{price}}",
+      "buy": "Acheter",
+      "buyLabel": "Acheter {{item}}, {{price}}",
+      "empty": "Rien à vendre ici pour l'instant."
+    },
+    "craft": {
+            "inputs": "Ingrédients",
+      "output": "Résultat",
+      "craft": "Fabriquer",
+      "collect": "Récolter",
+      "inProgress_one": "En cours : {{item}}, encore {{count}} jour",
+      "inProgress_other": "En cours : {{item}}, encore {{count}} jours",
+      "ready": "Prêt : {{item}}, {{count}}",
+      "nothing": "Rien à fabriquer ici."
     }
   }
 }

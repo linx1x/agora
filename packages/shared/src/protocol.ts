@@ -21,7 +21,7 @@ import { PORTAL_ID, type PortalRefusal } from './portals';
 import type { WorldGenParams } from './worlds/gen';
 import type { ChunkDelta } from './worlds/delta';
 import type { WorldTime } from './worlds/clock';
-import type { PlotState } from './worlds/gamedata/state';
+import type { AnimalState, MachineState, PlotState } from './worlds/gamedata/state';
 import { ACTION_KINDS, type ActionChanges, type WorldRefusal } from './worlds/actions/kinds';
 import { WORLD_COORD_LIMIT } from './worlds/constants';
 
@@ -318,7 +318,14 @@ export type S2CMsg =
    * layer is the authority for tilled / watered / crop / sprinkler; chunk deltas keep terrain, blocks
    * and decor only.
    */
-  | { t: 'world:farm'; day: number; plots: Record<string, PlotState | null> }
+  | {
+      t: 'world:farm';
+      day: number;
+      plots: Record<string, PlotState | null>;
+      /** P17.25: the animals and the machine batches of the world, whole lists, when they changed (everyone in the world). */
+      animals?: readonly AnimalState[];
+      machines?: readonly MachineState[];
+    }
   /** P17.19/P17.23: the world clock, sent on welcome and every 10 game minutes */
   | { t: 'world:time'; time: WorldTime }
   /** P17.20: an approved action (or a resend of one) and what it changed for you. Only you get it. */

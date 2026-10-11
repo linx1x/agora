@@ -49,25 +49,54 @@ export interface CellFacts {
   readonly container: boolean;
   /** a block a person placed (it has an item): a pick takes it back into the bag */
   readonly removable: boolean;
+  /** a housing (coop, barn): an empty hand collects its products, an animal or feed goes in */
+  readonly housing: boolean;
+  /** a machine (furnace): an empty hand collects its finished batch */
+  readonly machine: boolean;
+  /** a crafting station (bench, stove, furnace): an empty hand opens its recipes (a panel, not a server action) */
+  readonly station: boolean;
+  /** the shop board: an empty hand opens the stock (a panel, not a server action) */
+  readonly shop: boolean;
 }
 
-export const NO_FACTS: CellFacts = { container: false, removable: false };
+export const NO_FACTS: CellFacts = {
+  container: false,
+  removable: false,
+  housing: false,
+  machine: false,
+  station: false,
+  shop: false,
+};
 
 /** The facts of a terrain cell: its decor block, read from the block registry. */
 export function factsOf(cell: Pick<WorldCell, 'decor'>, data: GameData): CellFacts {
   const block = cell.decor === '' ? undefined : getBlock(BLOCKS, cell.decor);
   if (!block) return NO_FACTS;
-  return { container: block.container, removable: block.placeable && itemOfBlock(data, block.id) !== undefined };
+  return {
+    container: block.container,
+    removable: block.placeable && itemOfBlock(data, block.id) !== undefined,
+    housing: block.housing !== undefined,
+    machine: block.machine === true,
+    station: block.station !== undefined,
+    shop: block.shop === true,
+  };
 }
 
 /**
- * The action the held item asks for on the cell: empty hand harvests (and opens a chest), a shovel
- * raises the ground (Shift lowers it), a pick takes a placed block back, a tool does its work, a
- * seed is planted, fertilizer spread, a building placed, food eaten, and any item put in a chest
- * is stashed there. `null` when the item does nothing on a cell (a rod, a material).
+ * The action the held item asks for on the cell: empty hand harvests, opens a chest, or collects a
+ * housing's or a machine's output; a shovel raises the ground (Shift lowers it), a pick takes a
+ * placed block back, a tool does its work, a seed is planted, fertilizer spread, a building, a
+ * machine or an animal placed, feed given to a housing, food eaten, and any item put in a chest is
+ * stashed there. `null` when the item does nothing on the cell (a rod, a material, feed on the
+ * ground), and for an empty hand on a station or a shop board (the scene opens the panel instead).
  */
 export function actionFor(item: string | null, data: GameData, facts: CellFacts = NO_FACTS, shift = false): ActionKind | null {
-  if (item === null) return facts.container ? 'open' : 'harvest';
+  if (item === null) {
+    if (facts.container) return 'open';
+    if (facts.housing || facts.machine) return 'collect';
+    if (facts.station || facts.shop) return null;
+    return 'harvest';
+  }
   if (facts.container) return 'stash';
   const id = baseItemOf(item);
   const tool = toolOf(data, id);
@@ -82,7 +111,11 @@ export function actionFor(item: string | null, data: GameData, facts: CellFacts 
     case 'fertilizer':
       return 'fertilize';
     case 'building':
+    case 'machine':
+    case 'animal':
       return 'place';
+    case 'feed':
+      return facts.housing ? 'feed' : null;
     case 'food':
       return 'eat';
     default:
@@ -94,9 +127,17 @@ export function actionFor(item: string | null, data: GameData, facts: CellFacts 
 export interface ActItem {
   readonly kind: ActionKind;
   readonly at: CellRef;
-  /** the held stack key, when the action needs an item (a tool, a seed, a building) */
+  /** the held stack key, when the action needs an item (a tool, a seed, a building, an animal, feed) */
   readonly item?: string;
+  /** the recipe of a craft, or the object an action names (the server checks it) */
+  readonly target?: string;
 }
+
+/**
+ * Asks the server for an action on a cell (the parent sends it through the action queue). The panels
+ * (chest, shop, crafting) use it, and so does the scene for the held item.
+ */
+export type WorldAsk = (kind: ActionKind, at: CellRef, item?: string, target?: string) => void;
 
 interface Pending {
   readonly key: string;
@@ -166,6 +207,7 @@ export class ActQueue {
       kind: act.kind,
       at: { x: act.at.x, y: act.at.y },
       ...(act.item !== undefined ? { item: act.item } : {}),
+      ...(act.target !== undefined ? { target: act.target } : {}),
       key: entry.key,
     });
   }

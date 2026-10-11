@@ -137,6 +137,11 @@ Personal-world blocks are drawn as 32 px placeholder tiles in `apps/web/src/worl
 | `shop_board` | decor | `worlds/shared/shop_board` | yes | zen |
 | `chest` | decor | `worlds/shared/chest` | yes | zen |
 | `fence` | decor | `worlds/shared/fence` | yes | zen |
+| `coop` | decor | `worlds/shared/coop` | yes | zen |
+| `barn` | decor | `worlds/shared/barn` | yes | zen |
+| `workbench` | decor | `worlds/shared/workbench` | yes | zen |
+| `stove` | decor | `worlds/shared/stove` | yes | zen |
+| `furnace` | decor | `worlds/shared/furnace` | yes | zen |
 
 Items for the farm (P17.22). Shown in the hotbar and the inventory as 32 px icons; the item's name is `worlds.item.<id>`.
 
@@ -147,4 +152,4 @@ Items for the farm (P17.22). Shown in the hotbar and the inventory as 32 px icon
 | `fertilizer_3` | fertilizer | the same sack with a gold band | speed 33 %, retention 100 % |
 | `shovel_1` | tool | a flat iron blade on a short handle, tier 1 | raises or lowers ground one level, energy 3 |
 
-The building items (`wood_wall`, `wood_floor`, `torch`, `stone_stairs`, `bed`, `chest`, `fence`) show the sprite of their block above. Stored chest contents are never drawn in the world.
+The building items (`wood_wall`, `wood_floor`, `torch`, `stone_stairs`, `bed`, `chest`, `fence`, `coop`, `barn`, `workbench`, `stove`) and the machine `furnace` show the sprite of their block above. Stored chest contents are never drawn in the world.

@@ -1,10 +1,8 @@
 import { useTranslation } from 'react-i18next';
-import { CHEST_SLOTS, type CellRef } from '@agora/shared';
+import { CHEST_SLOTS } from '@agora/shared';
 import { Dialog } from '../../ui/common';
+import type { WorldAsk } from '../inputActs';
 import type { ChestView } from './hudState';
-
-/** Asks the server for a take or a stash at a chest (the parent sends it through the action queue). */
-export type ChestAsk = (kind: 'take' | 'stash', at: CellRef, item: string) => void;
 
 /**
  * The chest panel (ADR-053, P17.24): the stacks a chest holds, each taken with its own button, and
@@ -19,7 +17,7 @@ export function ChestPanel({
 }: {
   chest: ChestView;
   hand: string | null;
-  onAsk: ChestAsk;
+  onAsk: WorldAsk;
   onClose: () => void;
 }) {
   const { t } = useTranslation();

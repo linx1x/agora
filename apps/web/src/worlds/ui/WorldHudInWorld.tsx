@@ -9,9 +9,9 @@ export function WorldHudInWorld() {
   if (!inWorld) return null;
   return (
     <WorldHud
-      onAsk={(kind, at, item) => {
+      onAsk={(kind, at, item, target) => {
         const world = worldSession.worldId;
-        if (world !== null) worldActs.submit(world, { kind, at, item });
+        if (world !== null) worldActs.submit(world, { kind, at, ...(item !== undefined ? { item } : {}), ...(target !== undefined ? { target } : {}) });
       }}
     />
   );

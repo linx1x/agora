@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { chunkOfCell, loadGameData, localIndexOf, randomAvatar, type CellPatch, type ChunkDelta, type S2CMsg } from '@agora/shared';
+import { chunkOfCell, loadGameData, localIndexOf, randomAvatar, type S2CMsg } from '@agora/shared';
 import { PG_URL, memory, postgres } from './testStores';
 import { WorldHub, type WorldActRequest, type WorldMember, type WorldRoom } from './worldRoom';
 import type { WorldStore } from './worldStore';
-import { FakeConn, GUEST, OWNER, feetCell, grant, openWorld, waitFor } from './testWorld';
+import { FakeConn, GUEST, OWNER, feetCell, flatYard, grant, openWorld, paintCells, waitFor } from './testWorld';
 
 /**
  * P17.24 (ADR-053, skill agora-world-action): placing and removing blocks, raising and lowering the
@@ -51,37 +51,6 @@ async function reply(c: FakeConn, op: number): Promise<S2CMsg> {
   return c.msgs.find(answer)!;
 }
 
-/** Paints cells (keyed "x,y") before the room opens: level, block and decor, one transaction per chunk. */
-async function paint(store: WorldStore, cells: Record<string, CellPatch>): Promise<void> {
-  const byChunk = new Map<string, { cx: number; cy: number; list: [number, number, CellPatch][] }>();
-  for (const [key, patch] of Object.entries(cells)) {
-    const [x, y] = key.split(',').map(Number) as [number, number];
-    const { cx, cy } = chunkOfCell(x, y);
-    const entry = byChunk.get(`${cx},${cy}`) ?? { cx, cy, list: [] };
-    entry.list.push([x, y, patch]);
-    byChunk.set(`${cx},${cy}`, entry);
-  }
-  for (const { cx, cy, list } of byChunk.values()) {
-    await store.withTxn(async (tx) => {
-      const [cur] = await tx.chunksOf('w1', [{ cx, cy }]);
-      const delta: ChunkDelta = { ...(cur?.delta ?? {}) };
-      for (const [x, y, patch] of list) {
-        const index = localIndexOf(x, y);
-        delta[index] = { ...(delta[index] ?? {}), ...patch };
-      }
-      const saved = await tx.saveChunk('w1', cx, cy, delta, cur?.rev ?? 0, 40_000);
-      expect(saved.ok).toBe(true);
-    });
-  }
-}
-
-/** A flat, clear yard of 7 by 7 cells around the spawn. */
-async function yard(store: WorldStore): Promise<void> {
-  const cells: Record<string, CellPatch> = {};
-  for (let x = -3; x <= 3; x++) for (let y = -3; y <= 3; y++) cells[`${x},${y}`] = { level: 0, block: 'meadow_grass', decor: '' };
-  await paint(store, cells);
-}
-
 async function account(store: WorldStore, uid: string) {
   return store.withTxn((tx) => tx.accountOf(uid, false));
 }
@@ -104,7 +73,7 @@ for (const backend of [memory, postgres]) {
   suite(`build actions on ${backend.name} (P17.24, ADR-053)`, () => {
     it('a wall comes out of the bag onto the ground, and goes back into it when removed', async () => {
       const store = await openWorld(backend, { grants: [] });
-      await yard(store);
+      await flatYard(store);
       const room = (await hub(store).enter('w1'))!;
       const owner = await join(room, 'owner', OWNER);
       expect(feetCell(owner.m)).toEqual(SPAWN);
@@ -127,7 +96,7 @@ for (const backend of [memory, postgres]) {
 
     it('the same key twice has one effect and the same reply', async () => {
       const store = await openWorld(backend, { grants: [] });
-      await yard(store);
+      await flatYard(store);
       const room = (await hub(store).enter('w1'))!;
       const owner = await join(room, 'owner', OWNER);
 
@@ -143,7 +112,7 @@ for (const backend of [memory, postgres]) {
 
     it('a resend after a lost reply, on a new connection, has one effect', async () => {
       const store = await openWorld(backend, { grants: [] });
-      await yard(store);
+      await flatYard(store);
       const started = deferred();
       const release = deferred();
       let armed = false;
@@ -183,7 +152,7 @@ for (const backend of [memory, postgres]) {
 
     it('two people taking the same stack in the same tick: one wins, the other is told gone', async () => {
       const store = await openWorld(backend, { grants: ['take'] });
-      await yard(store);
+      await flatYard(store);
       await grant(store, OWNER, { [KALE]: 4 });
       const room = (await hub(store).enter('w1'))!;
       const owner = await join(room, 'owner', OWNER);
@@ -211,7 +180,7 @@ for (const backend of [memory, postgres]) {
 
     it('stashing and taking back conserves every item: the bag and the chest hold the same stacks', async () => {
       const store = await openWorld(backend, { grants: [] });
-      await yard(store);
+      await flatYard(store);
       await grant(store, OWNER, { [PEA]: 4 });
       const room = (await hub(store).enter('w1'))!;
       const owner = await join(room, 'owner', OWNER);
@@ -235,7 +204,7 @@ for (const backend of [memory, postgres]) {
 
     it('a visitor without a grant is forbidden to raise, place or open, and nothing changes', async () => {
       const store = await openWorld(backend, { grants: [] });
-      await yard(store);
+      await flatYard(store);
       const room = (await hub(store).enter('w1'))!;
       const owner = await join(room, 'owner', OWNER);
       act(room, owner, 1, 'k-chest3', 'place', 'chest', EAST);
@@ -261,7 +230,7 @@ for (const backend of [memory, postgres]) {
 
     it('a visitor with the open grant sees the contents alone, and the owner is not told', async () => {
       const store = await openWorld(backend, { grants: ['open'] });
-      await yard(store);
+      await flatYard(store);
       await grant(store, OWNER, { [PEA]: 4 });
       const room = (await hub(store).enter('w1'))!;
       const owner = await join(room, 'owner', OWNER);
@@ -283,7 +252,7 @@ for (const backend of [memory, postgres]) {
 
     it('nobody builds on a cell someone stands on: the owner cannot wall in their own feet', async () => {
       const store = await openWorld(backend, { grants: [] });
-      await yard(store);
+      await flatYard(store);
       const room = (await hub(store).enter('w1'))!;
       const owner = await join(room, 'owner', OWNER);
 
@@ -296,8 +265,8 @@ for (const backend of [memory, postgres]) {
 
     it('the shovel raises flat ground one level for its energy, and a step that would trap a neighbour is refused', async () => {
       const store = await openWorld(backend, { grants: [] });
-      await yard(store);
-      await paint(store, { [EAST_KEY]: { level: 1 } });
+      await flatYard(store);
+      await paintCells(store, { [EAST_KEY]: { level: 1 } });
       const room = (await hub(store).enter('w1'))!;
       const owner = await join(room, 'owner', OWNER);
       const energy = owner.c.of('world:inv').at(-1)!.energy;

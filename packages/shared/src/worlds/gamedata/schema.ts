@@ -88,8 +88,8 @@ export const ItemSchema = z
     if (!EDIBLE_KINDS.includes(item.kind) && item.edibility !== undefined) {
       ctx.addIssue({ code: 'custom', path: ['edibility'], message: 'only food, crops and forage have edibility' });
     }
-    if (item.block !== undefined && item.kind !== 'building') {
-      ctx.addIssue({ code: 'custom', path: ['block'], message: 'only buildings are placed as blocks' });
+    if (item.block !== undefined && item.kind !== 'building' && item.kind !== 'machine') {
+      ctx.addIssue({ code: 'custom', path: ['block'], message: 'only buildings and machines are placed as blocks' });
     }
     if (item.effect?.kind === 'sprinkler' && item.kind !== 'building') {
       ctx.addIssue({ code: 'custom', path: ['effect'], message: 'only buildings have an effect' });
@@ -166,6 +166,8 @@ export const RecipeSchema = z
     station: z.enum(STATIONS),
     output: z.object({ item: IdSchema, qty: Qty }),
     inputs: z.array(z.object({ item: IdSchema, qty: Qty })).min(1).max(6),
+    /** Days in a machine before the output is ready (P17.25); 0 is instant, at a bench or stove. */
+    days: int(0, 7).default(0),
   })
   .superRefine((recipe, ctx) => {
     const ids = recipe.inputs.map((input) => input.item);

@@ -7,6 +7,8 @@ import { expect, test, type Browser, type Page } from '@playwright/test';
  * and a pick on bare ground is refused with its message. The bag and the farm change after each.
  * P17.24 adds the build test: a wall placed and picked up, the shovel raising the ground, and a chest
  * that holds a stack until it is taken back out of the dialog.
+ * P17.25 adds the craft test: a bench placed from the bag, its recipes opened by an empty hand, and a craft
+ * the bag cannot pay for, refused by the server with its message.
  * Runs in the 2D project only: the 2.5D world view reuses the same hooks (P17.15).
  */
 
@@ -341,4 +343,46 @@ test('building in my world: a wall placed and picked up, the ground raised, and 
   await expect.poll(async () => (await inventory(a)).wood_wall ?? 0, { timeout: 30_000 }).toBe(walls);
   await panel.getByRole('button', { name: 'Fermer le coffre' }).click();
   await expect(panel).toBeHidden();
+});
+
+test('crafting in my world: a bench placed from the bag opens its recipes, and a craft the bag cannot pay for is refused', async ({ browser }) => {
+  test.setTimeout(300_000);
+  const a = await enter(browser, 0, 20);
+  await claimJungle6(a);
+  await waitPrompt(a, 'world');
+  await a.keyboard.press('x');
+  await waitWorld(a);
+  await expect(a.locator('button.wh-slot[data-item="hoe_1"]')).toBeVisible({ timeout: 30_000 });
+
+  // the cells in reach of the spawn (the same as the building test)
+  const around: (readonly [number, number])[] = [
+    [0, 1],
+    [1, 1],
+    [-1, 1],
+    [0, -1],
+    [-1, 0],
+    [1, 0],
+  ];
+
+  // a bench from the bag onto bare ground: the bag loses it, and the cell holds it
+  const [bx, by] = await freeCell(a, around);
+  await hold(a, 'workbench');
+  await clickCell(a, bx, by);
+  await a.waitForFunction(([x, y]) => (window as any).__agora.view.cellInfo(x, y)?.decor === 'workbench', [bx, by], {
+    timeout: 30_000,
+    polling: 200,
+  });
+  await expect.poll(async () => (await inventory(a)).workbench ?? 0, { timeout: 30_000 }).toBe(0);
+  await expect(a.locator('.wh-hand')).toHaveText(/Rien en main/, { timeout: 30_000 });
+
+  // an empty hand on the bench opens its recipes: the panel is the client's, the craft is the server's
+  await clickCell(a, bx, by);
+  const panel = a.getByRole('dialog', { name: 'Établi' });
+  await expect(panel).toBeVisible({ timeout: 30_000 });
+
+  // a fence needs softwood and fiber, which the starter bag does not hold: the server refuses it
+  await panel.getByRole('button', { name: /Clôture/ }).click();
+  await expect(a.locator('.wh-notice')).toHaveText(/Il te manque quelque chose/, { timeout: 30_000 });
+  expect((await inventory(a)).fence ?? 0).toBe(0);
+  expect((await cellInfo(a, bx, by))!.decor).toBe('workbench');
 });

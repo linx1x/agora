@@ -4,6 +4,9 @@ import { ActQueue, NO_FACTS, actionFor, factsOf, faceCell, type CellFacts } from
 
 const data = loadGameData();
 
+/** The facts of a cell, with the rest left as bare ground (no container, housing, station or shop). */
+const facts = (over: Partial<CellFacts> = {}): CellFacts => ({ ...NO_FACTS, ...over });
+
 /** A seed in the starter kit: the plant action takes it. */
 const SEED = 'dawn_radish_seed';
 
@@ -121,11 +124,20 @@ describe('ActQueue: one key per intent, kept until answered (P17.21b)', () => {
     expect(sent[0]).toEqual({ t: 'world:act', op: 1, kind: 'harvest', at: { x: 3, y: 3 }, key: 'key-1-abcdef' });
     expect('item' in (sent[0] as object)).toBe(false);
   });
+
+  it('sends the target of a craft (its recipe), and leaves it out when there is none (P17.25)', () => {
+    const { q, sent } = queue();
+    q.submit('w1', { kind: 'craft', at: { x: 2, y: 2 }, target: 'fence' });
+    q.submit('w1', { kind: 'buy', at: { x: 2, y: 2 }, item: 'dawn_radish_seed' });
+    expect(sent[0]).toMatchObject({ t: 'world:act', kind: 'craft', target: 'fence' });
+    expect(sent[1]).toMatchObject({ kind: 'buy', item: 'dawn_radish_seed' });
+    expect('target' in (sent[1] as object)).toBe(false);
+  });
 });
 
 describe('actionFor with the cell facts: shovel, pick, chests (P17.24)', () => {
-  const PLACED: CellFacts = { container: false, removable: true };
-  const CHEST: CellFacts = { container: true, removable: true };
+  const PLACED = facts({ removable: true });
+  const CHEST = facts({ container: true, removable: true });
   it('a shovel raises the ground, and with Shift lowers it', () => {
     expect(actionFor('shovel_1', data)).toBe('raise');
     expect(actionFor('shovel_1', data, NO_FACTS, true)).toBe('lower');
@@ -151,8 +163,8 @@ describe('actionFor with the cell facts: shovel, pick, chests (P17.24)', () => {
 
 describe('factsOf: what a terrain cell holds (P17.24)', () => {
   it('a chest is a container, and a placed wall can be removed', () => {
-    expect(factsOf({ decor: 'chest' }, data)).toEqual({ container: true, removable: true });
-    expect(factsOf({ decor: 'wood_wall' }, data)).toEqual({ container: false, removable: true });
+    expect(factsOf({ decor: 'chest' }, data)).toMatchObject({ container: true, removable: true });
+    expect(factsOf({ decor: 'wood_wall' }, data)).toMatchObject({ container: false, removable: true });
   });
   it('a tree, a boulder or bare ground is neither', () => {
     expect(factsOf({ decor: 'oak_tree' }, data)).toEqual(NO_FACTS);
@@ -160,5 +172,48 @@ describe('factsOf: what a terrain cell holds (P17.24)', () => {
   });
   it('the shipping bin is a fitting of the starter: placed by nobody, so not removable', () => {
     expect(factsOf({ decor: 'shipping_bin' }, data).removable).toBe(false);
+  });
+});
+
+describe('actionFor for housings, machines, stations and shops (P17.25)', () => {
+  const COOP = facts({ housing: true, removable: true });
+  const FURNACE = facts({ machine: true, station: true, removable: true });
+  const BENCH = facts({ station: true, removable: true });
+  const BOARD = facts({ shop: true });
+  it('an empty hand collects from a housing or a machine', () => {
+    expect(actionFor(null, data, COOP)).toBe('collect');
+    expect(actionFor(null, data, FURNACE)).toBe('collect');
+  });
+  it('an empty hand on a station or a shop board is no server action: the panel opens instead', () => {
+    expect(actionFor(null, data, BENCH)).toBeNull();
+    expect(actionFor(null, data, BOARD)).toBeNull();
+  });
+  it('an animal or a machine in hand is placed, feed goes into a housing and nowhere else', () => {
+    expect(actionFor('plume_hen', data)).toBe('place');
+    expect(actionFor('furnace', data)).toBe('place');
+    expect(actionFor('fodder', data, COOP)).toBe('feed');
+    expect(actionFor('fodder', data)).toBeNull();
+    expect(actionFor('fodder', data, BENCH)).toBeNull();
+  });
+  it('a material held on a station does nothing: recipes are chosen in the panel', () => {
+    expect(actionFor('softwood', data, BENCH)).toBeNull();
+  });
+  it('a pick takes a placed housing or machine back, like any placed block', () => {
+    expect(actionFor('pick_1', data, COOP)).toBe('remove');
+    expect(actionFor('pick_1', data, FURNACE)).toBe('remove');
+  });
+});
+
+describe('factsOf for housings, machines, stations and shops (P17.25)', () => {
+  it('a coop or a barn is a housing; a furnace is a machine and a station; a bench or a stove is a station only', () => {
+    expect(factsOf({ decor: 'coop' }, data)).toMatchObject({ housing: true, machine: false, station: false });
+    expect(factsOf({ decor: 'barn' }, data)).toMatchObject({ housing: true, station: false });
+    expect(factsOf({ decor: 'furnace' }, data)).toMatchObject({ machine: true, station: true, housing: false });
+    expect(factsOf({ decor: 'workbench' }, data)).toMatchObject({ station: true, machine: false, housing: false });
+    expect(factsOf({ decor: 'stove' }, data)).toMatchObject({ station: true, machine: false });
+  });
+  it('the shop board is a shop, and nothing else is', () => {
+    expect(factsOf({ decor: 'shop_board' }, data)).toMatchObject({ shop: true, station: false });
+    expect(factsOf({ decor: 'chest' }, data).shop).toBe(false);
   });
 });

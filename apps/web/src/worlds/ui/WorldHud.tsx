@@ -3,7 +3,10 @@ import { useTranslation } from 'react-i18next';
 import { INVENTORY_SLOTS, type WorldTime } from '@agora/shared';
 import { Dialog } from '../../ui/common';
 import { HOTBAR_SLOTS, hotbarItems, slotForKey, worldHud, type HudState, type HudStore } from './hudState';
-import { ChestPanel, type ChestAsk } from './ChestPanel';
+import { ChestPanel } from './ChestPanel';
+import { CraftPanel, batchAt } from './CraftPanel';
+import { ShopPanel } from './ShopPanel';
+import type { WorldAsk } from '../inputActs';
 import './worldHud.css';
 
 /**
@@ -13,7 +16,7 @@ import './worldHud.css';
  * the world screen, only while the person is in a world: `<WorldHud />`, fed by `applyWorldHudMessage`
  * from the world client's message handler.
  */
-export function WorldHud({ store = worldHud, onAsk = () => undefined }: { store?: HudStore; onAsk?: ChestAsk }) {
+export function WorldHud({ store = worldHud, onAsk = () => undefined }: { store?: HudStore; onAsk?: WorldAsk }) {
   const { t } = useTranslation();
   const state = useSyncExternalStore(store.subscribe, store.get, store.get);
   const [inventoryOpen, setInventoryOpen] = useState(false);
@@ -101,6 +104,18 @@ export function WorldHud({ store = worldHud, onAsk = () => undefined }: { store?
       {inventoryOpen && <InventoryPanel state={state} onPick={(item) => store.pick(item)} onClose={() => setInventoryOpen(false)} />}
       {state.chest !== null && (
         <ChestPanel chest={state.chest} hand={state.inHand} onAsk={onAsk} onClose={() => store.closeChest()} />
+      )}
+      {state.panel?.kind === 'shop' && (
+        <ShopPanel at={state.panel.at} money={state.money} onAsk={onAsk} onClose={() => store.closePanel()} />
+      )}
+      {state.panel?.kind === 'craft' && (
+        <CraftPanel
+          at={state.panel.at}
+          block={state.panel.block}
+          batch={batchAt(state.machines, state.panel.at)}
+          onAsk={onAsk}
+          onClose={() => store.closePanel()}
+        />
       )}
     </nav>
   );

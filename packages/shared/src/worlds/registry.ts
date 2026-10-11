@@ -8,6 +8,7 @@ import { z } from 'zod';
 import biomesJson from '../../data/worlds/biomes.json';
 import blocksJson from '../../data/worlds/blocks.json';
 import { LEVEL_MAX } from './constants';
+import { HOUSING, STATIONS } from './gamedata/schema';
 
 /**
  * Tool kinds a harvest can require. They are the kinds of tools.json (P17.18) plus `hand` and
@@ -52,6 +53,15 @@ export const BlockSchema = z
     ramp: z.boolean().default(false),
     /** A chest: it holds items on the farm layer, owner only by default (P17.24, ADR-053). Decor only. */
     container: z.boolean().default(false),
+    /** A coop or a barn: the animals of this housing live on the cell, up to `capacity` (P17.25). */
+    housing: z.enum(HOUSING).optional(),
+    capacity: z.number().int().min(1).max(12).optional(),
+    /** A crafting station: recipes of this station are made with the block in reach (P17.25). */
+    station: z.enum(STATIONS).optional(),
+    /** A machine holds one timed batch at a time, collected once its days are done (P17.25). */
+    machine: z.boolean().default(false),
+    /** A shop board: items are bought with money here (P17.25). */
+    shop: z.boolean().default(false),
     /** A hoe can till this ground block into a plot (P17.21). Ground blocks only. */
     tillable: z.boolean().default(false),
     light: z.number().int().min(0).max(15).default(0),
@@ -75,6 +85,15 @@ export const BlockSchema = z
     }
     if (block.layer === 'ground' && block.harvest) {
       ctx.addIssue({ code: 'custom', path: ['harvest'], message: 'only decor blocks are harvested' });
+    }
+    if ((block.housing === undefined) !== (block.capacity === undefined)) {
+      ctx.addIssue({ code: 'custom', path: ['capacity'], message: 'housing and capacity go together' });
+    }
+    if (block.machine && block.station === undefined) {
+      ctx.addIssue({ code: 'custom', path: ['machine'], message: 'a machine is a station' });
+    }
+    if ((block.housing !== undefined || block.station !== undefined || block.shop) && block.layer !== 'decor') {
+      ctx.addIssue({ code: 'custom', path: ['layer'], message: 'housing, stations and shops are decor' });
     }
   });
 export type Block = z.infer<typeof BlockSchema>;

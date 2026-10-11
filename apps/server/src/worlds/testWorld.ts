@@ -1,5 +1,5 @@
 import { expect } from 'vitest';
-import { localIndexOf, chunkOfCell, WORLD_CELL_PX, worldTime, type ChunkDelta, type S2CMsg } from '@agora/shared';
+import { localIndexOf, chunkOfCell, WORLD_CELL_PX, worldTime, type CellPatch, type ChunkDelta, type S2CMsg } from '@agora/shared';
 import { opened, type Backend } from './testStores';
 import type { WorldStore } from './worldStore';
 import type { WorldMember } from './worldRoom';
@@ -65,6 +65,40 @@ export async function setCells(store: WorldStore, cells: Record<string, { block?
       expect(saved.ok).toBe(true);
     });
   }
+}
+
+/**
+ * Paints cells (keyed "x,y") in the stored deltas of w1, level, block and decor, one transaction per
+ * chunk. Call it before the room opens: a room reads its terrain when it loads.
+ */
+export async function paintCells(store: WorldStore, cells: Record<string, CellPatch>): Promise<void> {
+  const byChunk = new Map<string, { cx: number; cy: number; list: [number, number, CellPatch][] }>();
+  for (const [key, patch] of Object.entries(cells)) {
+    const [x, y] = key.split(',').map(Number) as [number, number];
+    const { cx, cy } = chunkOfCell(x, y);
+    const entry = byChunk.get(`${cx},${cy}`) ?? { cx, cy, list: [] };
+    entry.list.push([x, y, patch]);
+    byChunk.set(`${cx},${cy}`, entry);
+  }
+  for (const { cx, cy, list } of byChunk.values()) {
+    await store.withTxn(async (tx) => {
+      const [cur] = await tx.chunksOf('w1', [{ cx, cy }]);
+      const delta: ChunkDelta = { ...(cur?.delta ?? {}) };
+      for (const [x, y, patch] of list) {
+        const index = localIndexOf(x, y);
+        delta[index] = { ...(delta[index] ?? {}), ...patch };
+      }
+      const saved = await tx.saveChunk('w1', cx, cy, delta, cur?.rev ?? 0, 40_000);
+      expect(saved.ok).toBe(true);
+    });
+  }
+}
+
+/** A flat, clear yard of 7 by 7 cells around the origin, where every test's spawn stands. */
+export async function flatYard(store: WorldStore): Promise<void> {
+  const cells: Record<string, CellPatch> = {};
+  for (let x = -3; x <= 3; x++) for (let y = -3; y <= 3; y++) cells[`${x},${y}`] = { level: 0, block: 'meadow_grass', decor: '' };
+  await paintCells(store, cells);
 }
 
 /** Gives the account these items, on top of what it holds. */

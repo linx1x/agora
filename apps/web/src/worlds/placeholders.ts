@@ -58,6 +58,11 @@ export const LOOKS: Readonly<Record<string, Look>> = {
   shop_board: { top: 'plaster2', side: 'wood0', shape: 'box' },
   chest: { top: 'wood1', side: 'wood0', shape: 'box' },
   fence: { top: 'wood2', side: 'wood0', shape: 'post' },
+  coop: { top: 'wood2', side: 'wood1', shape: 'box' },
+  barn: { top: 'terra', side: 'wood0', shape: 'box' },
+  workbench: { top: 'wood2', side: 'wood0', shape: 'box' },
+  stove: { top: 'stone2', side: 'stone0', shape: 'box' },
+  furnace: { top: 'stone1', side: 'terra', shape: 'box' },
 };
 
 export interface Tile {

@@ -40,6 +40,8 @@ export interface AnimalState {
   readonly id: string;
   /** Animal id in animals.json. */
   readonly animal: string;
+  /** The housing cell ("x,y") it lives in: a coop or a barn (P17.25). */
+  readonly cell: string;
   /** Day the animal was last fed. */
   readonly fedOn: number;
   /** Fed days toward the next product. */
@@ -52,10 +54,12 @@ export interface MachineState {
   readonly id: string;
   /** Cell key of the machine. */
   readonly cell: string;
-  /** Machine item id (kind machine). */
+  /** Machine block id (blocks.json, a machine block). */
   readonly machine: string;
   /** Item the machine will hold when done. */
   readonly output: string;
+  /** How many of the output it holds (the recipe's quantity). */
+  readonly qty: number;
   /** Days left until the output is ready; 0 means ready. */
   readonly daysLeft: number;
 }

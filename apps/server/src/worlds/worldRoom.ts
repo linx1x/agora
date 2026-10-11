@@ -157,6 +157,8 @@ function timeSlotOf(t: WorldTime): number {
 
 /** Two plot records with the same content (a reload from the store makes new objects). */
 const samePlot = (a: PlotState | undefined, b: PlotState): boolean => a === b || (a !== undefined && JSON.stringify(a) === JSON.stringify(b));
+/** Two farm lists (animals, machines) with the same entries in the same order. */
+const sameList = (a: readonly unknown[], b: readonly unknown[]): boolean => a === b || JSON.stringify(a) === JSON.stringify(b);
 
 export class WorldRoom {
   readonly id: string;
@@ -290,13 +292,16 @@ export class WorldRoom {
   private applyFarm(next: WorldSimState): void {
     const prev = this.farm ?? emptySim(next.day);
     this.farm = next;
+    // animals and machines are whole lists, sent to everyone in the world when either changed (P17.25)
+    const livestock = !sameList(prev.animals, next.animals) || !sameList(prev.machines, next.machines);
     for (const m of this.members.values()) {
       if (!m.conn) continue;
       const plots: Record<string, PlotState | null> = {};
       for (const [key, plot] of Object.entries(next.plots))
         if (!samePlot(prev.plots[key], plot) && plotInView(m, key)) plots[key] = plot;
       for (const key of Object.keys(prev.plots)) if (!(key in next.plots) && plotInView(m, key)) plots[key] = null;
-      if (Object.keys(plots).length > 0 || prev.day !== next.day) m.conn.send({ t: 'world:farm', day: next.day, plots });
+      if (Object.keys(plots).length > 0 || prev.day !== next.day || livestock)
+        m.conn.send({ t: 'world:farm', day: next.day, plots, animals: next.animals, machines: next.machines });
     }
   }
 
@@ -306,7 +311,7 @@ export class WorldRoom {
     if (!farm || !m.conn) return;
     const plots: Record<string, PlotState> = {};
     for (const [key, plot] of Object.entries(farm.plots)) if (plotInView(m, key)) plots[key] = plot;
-    m.conn.send({ t: 'world:farm', day: farm.day, plots });
+    m.conn.send({ t: 'world:farm', day: farm.day, plots, animals: farm.animals, machines: farm.machines });
   }
 
   get size(): number {

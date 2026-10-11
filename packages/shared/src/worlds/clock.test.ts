@@ -147,27 +147,27 @@ describe('simulateDays', () => {
   });
 
   it('feeds animals: a fed day adds progress and a product when it is complete', () => {
-    const s = world(0, {}, { animals: [{ id: 'a1', animal: 'plume_hen', fedOn: 1, progress: 0, pending: 0 }] });
+    const s = world(0, {}, { animals: [{ id: 'a1', animal: 'plume_hen', cell: '0,0', fedOn: 1, progress: 0, pending: 0 }] });
     const next = simulateDays(s, 0, 1, data);
     expect(next.animals[0]).toMatchObject({ progress: 0, pending: 1 });
-    const cow = world(0, {}, { animals: [{ id: 'c1', animal: 'milk_cow', fedOn: 1, progress: 0, pending: 0 }] });
+    const cow = world(0, {}, { animals: [{ id: 'c1', animal: 'milk_cow', cell: '0,0', fedOn: 1, progress: 0, pending: 0 }] });
     expect(simulateDays(cow, 0, 1, data).animals[0]).toMatchObject({ progress: 1, pending: 0 });
   });
 
   it('does not progress an unfed animal and stops at the product cap', () => {
-    const unfed = world(0, {}, { animals: [{ id: 'a1', animal: 'plume_hen', fedOn: 0, progress: 0, pending: 0 }] });
+    const unfed = world(0, {}, { animals: [{ id: 'a1', animal: 'plume_hen', cell: '0,0', fedOn: 0, progress: 0, pending: 0 }] });
     expect(simulateDays(unfed, 0, 1, data).animals[0]).toMatchObject({ progress: 0, pending: 0 });
-    const full = world(0, {}, { animals: [{ id: 'a1', animal: 'plume_hen', fedOn: 1, progress: 0, pending: 9 }] });
+    const full = world(0, {}, { animals: [{ id: 'a1', animal: 'plume_hen', cell: '0,0', fedOn: 1, progress: 0, pending: 9 }] });
     expect(simulateDays(full, 0, 1, data).animals[0]?.pending).toBe(9);
   });
 
   it('counts machines down and stops at zero', () => {
-    const s = world(0, {}, { machines: [{ id: 'm1', cell: '0,0', machine: 'cask', output: 'rune_cheese', daysLeft: 2 }] });
+    const s = world(0, {}, { machines: [{ id: 'm1', cell: '0,0', machine: 'cask', output: 'rune_cheese', qty: 1, daysLeft: 2 }] });
     expect(simulateDays(s, 0, 5, data).machines[0]?.daysLeft).toBe(0);
   });
 
   it('simulates at most one year of a longer gap', () => {
-    const s = world(0, {}, { machines: [{ id: 'm1', cell: '0,0', machine: 'cask', output: 'rune_cheese', daysLeft: 200 }] });
+    const s = world(0, {}, { machines: [{ id: 'm1', cell: '0,0', machine: 'cask', output: 'rune_cheese', qty: 1, daysLeft: 200 }] });
     const next = simulateDays(s, 0, 500, data);
     expect(next.day).toBe(500);
     expect(next.machines[0]?.daysLeft).toBe(200 - MAX_SIM_DAYS);

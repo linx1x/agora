@@ -93,6 +93,9 @@ export const planRemove: ActionPlanner = (view, req, env) => {
   const key = cellKey(x, y);
   const cell = view.cell(x, y);
   if (cell.decor === '') return refuse('gone');
+  // a coop or a barn with animals in it, and a machine with a batch in it, stay where they are (P17.25)
+  if (view.sim.animals.some((animal) => animal.cell === key)) return refuse('invalid');
+  if (view.sim.machines.some((machine) => machine.cell === key)) return refuse('busy');
   const block = getBlock(BLOCKS, cell.decor);
   const item = block?.placeable ? itemOfBlock(env.data, block.id) : undefined;
   if (item === undefined) return refuse('invalid');

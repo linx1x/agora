@@ -104,3 +104,46 @@ describe('the chest the person opened (P17.24)', () => {
     expect(store.get()).toBe(before);
   });
 });
+
+describe('the farm the person sees: animals and machines (P17.25)', () => {
+  const hen = { id: 'a1', animal: 'plume_hen', cell: '1,0', fedOn: 0, progress: 0, pending: 1 };
+  const furnace = { id: '1,0', cell: '1,0', machine: 'furnace', output: 'dull_bar', qty: 1, daysLeft: 0 };
+  const farm = (extra: Partial<Extract<S2CMsg, { t: 'world:farm' }>> = {}): S2CMsg => ({ t: 'world:farm', day: 2, plots: {}, ...extra });
+
+  it('takes the whole lists of animals and machines when a farm message carries them', () => {
+    const store = createHudStore();
+    expect(store.get()).toMatchObject({ animals: [], machines: [] });
+    expect(store.dispatch(farm({ animals: [hen], machines: [furnace] }))).toBe(true);
+    expect(store.get()).toMatchObject({ animals: [hen], machines: [furnace] });
+  });
+
+  it('keeps the lists it has when a farm message leaves them out (they did not change)', () => {
+    const state = reduceHud(initialHud(), farm({ animals: [hen] }));
+    expect(reduceHud(state, farm({ plots: {} })).animals).toEqual([hen]);
+    expect(reduceHud(state, farm({ machines: [] })).machines).toEqual([]);
+    expect(reduceHud(state, farm({}))).toBe(state);
+  });
+
+  it('a farm message with no animals and no machines changes nothing', () => {
+    const store = createHudStore();
+    const before = store.get();
+    expect(store.dispatch(farm({}))).toBe(false);
+    expect(store.get()).toBe(before);
+  });
+});
+
+describe('the shop or crafting panel open on a block (P17.25)', () => {
+  it('opens the panel the scene asks for and closes it; closing a closed panel changes nothing', () => {
+    const store = createHudStore();
+    store.dispatch({ t: 'world:inv', items: { hoe_1: 1 }, money: 500, energy: 270, maxEnergy: 270 });
+    store.openPanel({ kind: 'shop', at: { x: 2, y: 0 } });
+    expect(store.get()).toMatchObject({ panel: { kind: 'shop', at: { x: 2, y: 0 } }, money: 500, items: { hoe_1: 1 } });
+    store.openPanel({ kind: 'craft', at: { x: 3, y: 0 }, block: 'workbench' });
+    expect(store.get().panel).toEqual({ kind: 'craft', at: { x: 3, y: 0 }, block: 'workbench' });
+    store.closePanel();
+    expect(store.get().panel).toBeNull();
+    const before = store.get();
+    store.closePanel();
+    expect(store.get()).toBe(before);
+  });
+});

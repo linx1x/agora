@@ -23,6 +23,10 @@ export const ACTION_KINDS = [
   'open',
   'stash',
   'take',
+  'buy',
+  'feed',
+  'collect',
+  'craft',
 ] as const;
 export type ActionKind = (typeof ACTION_KINDS)[number];
 
@@ -48,6 +52,9 @@ export const WORLD_REFUSALS = [
   'asleep',
   'occupied',
   'trap',
+  'money',
+  'busy',
+  'capacity',
 ] as const;
 export type WorldRefusal = (typeof WORLD_REFUSALS)[number];
 

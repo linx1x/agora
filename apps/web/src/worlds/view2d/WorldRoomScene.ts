@@ -147,7 +147,7 @@ export class WorldRoomScene extends Phaser.Scene {
     );
 
     this.onKey = (e: KeyboardEvent) => {
-      if (isTyping() || e.metaKey || e.ctrlKey || e.altKey || store.get().dialog || worldHud.get().chest !== null) return;
+      if (isTyping() || e.metaKey || e.ctrlKey || e.altKey || store.get().dialog || worldHud.get().chest !== null || worldHud.get().panel !== null) return;
       if (e.key === 'x' || e.key === 'X') this.act();
       else if (e.key === ' ') {
         e.preventDefault();
@@ -272,8 +272,16 @@ export class WorldRoomScene extends Phaser.Scene {
     const hand = worldHud.get().inHand;
     const data = loadGameData();
     const cell = worldSession.terrain?.cellAt(at.x, at.y);
-    const kind = actionFor(hand, data, cell ? factsOf(cell, data) : NO_FACTS, shift);
-    if (world === null || kind === null) return false;
+    const facts = cell ? factsOf(cell, data) : NO_FACTS;
+    if (world === null) return false;
+    // an empty hand on a shop board or a station opens its panel; the server decides each action in it
+    if (hand === null && cell && (facts.shop || facts.station)) {
+      const panelAt = { x: at.x, y: at.y };
+      worldHud.openPanel(facts.shop ? { kind: 'shop', at: panelAt } : { kind: 'craft', at: panelAt, block: cell.decor });
+      return true;
+    }
+    const kind = actionFor(hand, data, facts, shift);
+    if (kind === null) return false;
     worldActs.submit(world, { kind, at, ...(hand !== null ? { item: hand } : {}) });
     const tool = hand === null ? undefined : toolOf(data, baseItemOf(hand));
     if (tool) this.playSwing(worldSession.you, this.walker.d, tool.tier, true, tool.speed);
