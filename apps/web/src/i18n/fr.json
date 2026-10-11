@@ -978,6 +978,8 @@
       "slotEmpty": "Emplacement {{n}} : vide",
       "money": "Argent : {{amount}}",
       "nothingInHand": "Rien en main",
+      "keys": "Chiffres 1 à 9 : choisir · Espace ou clic : utiliser · I : inventaire",
+      "nothingToDo": "Rien à faire avec cela ici.",
       "inHand": "En main : {{item}}",
       "inventory": "Inventaire (I)",
       "inventoryTitle": "Inventaire",

@@ -1,0 +1,145 @@
+/**
+ * What a click or Space asks the server for in a personal world (P17.21b, ADR-053). Pure: the
+ * client picks the action from the item in hand and the cell; the server decides everything else.
+ * `ActQueue` keeps one idempotency key per intent until the server answers (`world:acted` or
+ * `world:refused`), and sends it again after a reconnect, so a resend cannot repeat an effect.
+ */
+import {
+  WORLD_CELL_PX,
+  baseItemOf,
+  toolOf,
+  type ActionKind,
+  type C2SMsg,
+  type CellRef,
+  type Dir,
+  type GameData,
+} from '@agora/shared';
+
+/** The cell in front of the feet (Space acts on it). `feetX`, `feetY` are world pixels. */
+export function faceCell(feetX: number, feetY: number, dir: Dir): CellRef {
+  const cx = Math.floor(feetX / WORLD_CELL_PX);
+  const cy = Math.floor(feetY / WORLD_CELL_PX);
+  switch (dir) {
+    case 'up':
+      return { x: cx, y: cy - 1 };
+    case 'down':
+      return { x: cx, y: cy + 1 };
+    case 'left':
+      return { x: cx - 1, y: cy };
+    case 'right':
+      return { x: cx + 1, y: cy };
+  }
+}
+
+/** The action a tool performs, by the tool's kind. A rod does nothing yet (fishing is P17.34). */
+const TOOL_ACTION: Readonly<Record<string, ActionKind>> = {
+  hoe: 'till',
+  can: 'water',
+  axe: 'chop',
+  pick: 'mine',
+};
+
+/**
+ * The action the held item asks for on the cell: empty hand harvests, a tool does its work, a seed
+ * is planted, fertilizer spread, a building placed, food eaten. `null` when the item does nothing
+ * on a cell (a rod, a material).
+ */
+export function actionFor(item: string | null, data: GameData): ActionKind | null {
+  if (item === null) return 'harvest';
+  const id = baseItemOf(item);
+  const tool = toolOf(data, id);
+  if (tool) return TOOL_ACTION[tool.tool] ?? null;
+  switch (data.itemsById.get(id)?.kind) {
+    case 'seed':
+      return 'plant';
+    case 'fertilizer':
+      return 'fertilize';
+    case 'building':
+      return 'place';
+    case 'food':
+      return 'eat';
+    default:
+      return null;
+  }
+}
+
+/** The request one intent sends (without its key and op). */
+export interface ActItem {
+  readonly kind: ActionKind;
+  readonly at: CellRef;
+  /** the held stack key, when the action needs an item (a tool, a seed, a building) */
+  readonly item?: string;
+}
+
+interface Pending {
+  readonly key: string;
+  readonly world: string;
+  readonly act: ActItem;
+  /** the op of the last message sent for this intent: the server echoes it in its answer */
+  op: number;
+}
+
+export interface ActQueueDeps {
+  readonly send: (m: C2SMsg) => void;
+  /** a fresh idempotency key per intent (crypto.randomUUID in the app) */
+  readonly newKey: () => string;
+  /** the most intents kept unanswered at once; the oldest is dropped beyond it */
+  readonly limit?: number;
+}
+
+export class ActQueue {
+  private readonly pending = new Map<string, Pending>();
+  private lastOp = 0;
+  private readonly limit: number;
+
+  constructor(private readonly deps: ActQueueDeps) {
+    this.limit = deps.limit ?? 32;
+  }
+
+  /** Unanswered intents. */
+  get size(): number {
+    return this.pending.size;
+  }
+
+  /** Whether an intent with this key is still waiting for the server. */
+  has(key: string): boolean {
+    return this.pending.has(key);
+  }
+
+  /** A new intent in `world`: one key, sent now, kept until the server answers. Returns the key. */
+  submit(world: string, act: ActItem): string {
+    const key = this.deps.newKey();
+    const entry: Pending = { key, world, act, op: 0 };
+    this.pending.set(key, entry);
+    while (this.pending.size > this.limit) this.pending.delete(this.pending.keys().next().value as string);
+    this.transmit(entry);
+    return key;
+  }
+
+  /** The server answered `op`: the intent it was about is done (approved or refused). */
+  answer(op: number): void {
+    for (const [key, entry] of this.pending) if (entry.op === op) this.pending.delete(key);
+  }
+
+  /**
+   * The world was entered again (after a reconnect, or on arrival): every intent of `world` is sent
+   * again with its own key, and the intents of other worlds are dropped (they cannot apply here).
+   */
+  resend(world: string): void {
+    for (const [key, entry] of this.pending) if (entry.world !== world) this.pending.delete(key);
+    for (const entry of this.pending.values()) this.transmit(entry);
+  }
+
+  private transmit(entry: Pending): void {
+    entry.op = ++this.lastOp;
+    const { act } = entry;
+    this.deps.send({
+      t: 'world:act',
+      op: entry.op,
+      kind: act.kind,
+      at: { x: act.at.x, y: act.at.y },
+      ...(act.item !== undefined ? { item: act.item } : {}),
+      key: entry.key,
+    });
+  }
+}

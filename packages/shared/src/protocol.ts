@@ -334,6 +334,12 @@ export type S2CMsg =
       maxEnergy: number;
     }
   /**
+   * P17.21b (ADR-053): someone in my view swung a tool (sent when an action with a tool is
+   * accepted, to the others in view, never to the actor). Cosmetic only: no state. `dir` is the
+   * way they faced, `tier` the tool's tier (1 to 3).
+   */
+  | { t: 'world:swing'; id: string; dir: Dir; tier: number }
+  /**
    * SFU backend (ADR-031): the media rooms the server places me in, with fresh
    * tokens (used when (re)connecting; a live connection is kept). `zone` null =
    * leave any zone room; `publish` = the only room I may send my microphone,

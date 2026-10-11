@@ -144,3 +144,10 @@
 .wh-energy-text {
   font-variant-numeric: tabular-nums;
 }
+
+/* P17.21b: the key hint under the hand line */
+.wh-hint {
+  margin: 0.2em 0;
+  font-size: 0.8em;
+  opacity: 0.85;
+}

@@ -24,6 +24,7 @@ import {
   mergeDeltas,
   returnTrigger,
   starterPatches,
+  toolOf,
   validateWorldMove,
   worldCollides,
   worldGenParamsFor,
@@ -516,6 +517,7 @@ export class WorldRoom {
     if (worldTime(this.world.createdAt, this.clock()).day !== this.farmDay) await this.catchUp();
     if (this.disposed || this.members.get(m.id) !== m) return;
     let result: ActionResult;
+    const data = loadGameData();
     try {
       result = await runAction({
         world: {
@@ -532,7 +534,7 @@ export class WorldRoom {
         key: req.key,
         now: this.clock(),
         store: this.store,
-        data: loadGameData(),
+        data,
         planners: this.planners,
       });
     } catch (err) {
@@ -552,6 +554,20 @@ export class WorldRoom {
       energy: result.energy,
       maxEnergy: result.maxEnergy,
     });
+    this.swing(m, req, data);
+  }
+
+  /**
+   * P17.21b: an accepted action with a tool is seen as a swing by the others whose view holds the
+   * actor's chunk. Cosmetic: nothing is stored, and the actor draws their own swing from the click.
+   */
+  private swing(m: WorldMember, req: WorldActRequest, data: GameData): void {
+    const tool = req.item ? toolOf(data, req.item) : undefined;
+    if (!tool) return;
+    const at = chunkOfPoint(m.x, m.y);
+    const key = chunkKey(at.cx, at.cy);
+    for (const o of this.members.values())
+      if (o !== m && o.view.has(key)) o.conn?.send({ t: 'world:swing', id: m.id, dir: m.d, tier: tool.tier });
   }
 
   /** A chunk's stored delta changed: this room's terrain follows it, and its viewers get it. */

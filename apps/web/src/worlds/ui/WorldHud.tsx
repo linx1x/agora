@@ -2,8 +2,15 @@ import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import { INVENTORY_SLOTS, type WorldTime } from '@agora/shared';
 import { Dialog } from '../../ui/common';
+import { useStore } from '../../state/store';
 import { HOTBAR_SLOTS, hotbarItems, slotForKey, worldHud, type HudState, type HudStore } from './hudState';
 import './worldHud.css';
+
+/** The HUD while the person is in a world, and nothing in the office (which has its own controls). */
+export function WorldHudInWorld() {
+  const inWorld = useStore((s) => s.worldId !== null);
+  return inWorld ? <WorldHud /> : null;
+}
 
 /**
  * The world HUD (ADR-053, P17.20, P17.23): the clock (time, day, season), the energy bar, money, a
@@ -68,6 +75,7 @@ export function WorldHud({ store = worldHud }: { store?: HudStore }) {
                 className="wh-slot"
                 aria-pressed={held}
                 aria-label={label}
+                data-item={item ?? undefined}
                 onClick={() => store.pick(item)}
               >
                 <span className="wh-key" aria-hidden="true">
@@ -89,6 +97,7 @@ export function WorldHud({ store = worldHud }: { store?: HudStore }) {
           ? t('worlds.hud.nothingInHand')
           : t('worlds.hud.inHand', { item: t(`worlds.item.${state.inHand}`) })}
       </p>
+      <p className="wh-hint">{t('worlds.hud.keys')}</p>
       <button type="button" className="wh-open" aria-haspopup="dialog" onClick={() => setInventoryOpen(true)}>
         {t('worlds.hud.inventory')}
       </button>

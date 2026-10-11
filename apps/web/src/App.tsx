@@ -16,6 +16,7 @@ import { SidePanel } from './ui/SidePanel';
 import { VideoStrip } from './ui/VideoStrip';
 import { DeskDialog } from './ui/DeskDialog';
 import { WorldTuning } from './worlds/WorldTuning';
+import { WorldHudInWorld } from './worlds/ui/WorldHud';
 import { Minimap, zoomStep } from './ui/Minimap';
 import { PromptBar } from './ui/PromptBar';
 import { TalkBox } from './ui/TalkBox';
@@ -258,6 +259,7 @@ function SpaceApp({ slug }: { slug: string }) {
       <BuildPanel />
       <ControlBar />
       <Hud />
+      <WorldHudInWorld />
       <PromptBar />
       <TalkBox />
       {showMinimap && <Minimap />}

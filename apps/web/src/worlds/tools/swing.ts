@@ -82,3 +82,17 @@ export function swingParams(tool: Pick<Tool, 'tier' | 'speed'>, facing: Facing, 
     pitch: soundPitch(tool.tier),
   };
 }
+
+/** Sparks one hit throws: 4 at tier 1, 6 at tier 2, 8 at tier 3. */
+export function sparkCount(tier: number): number {
+  assertTier(tier);
+  return 2 + 2 * tier;
+}
+
+/**
+ * The `intensity` argument of a camera shake (Phaser takes a fraction of the view width): about
+ * `shakePx` times 2 pixels each way at 1x zoom. 0 when there is no shake or no width.
+ */
+export function shakeIntensity(shakePx: number, viewWidth: number): number {
+  return shakePx > 0 && viewWidth > 0 ? (2 * shakePx) / viewWidth : 0;
+}
