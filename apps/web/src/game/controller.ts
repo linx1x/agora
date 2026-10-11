@@ -460,7 +460,8 @@ export class WorldController {
     }
     // P17.26b: the office shop board (its zone in front of it; the server checks again)
     if (!prompt && myZone?.kind === 'shop' && s.config?.flags.worlds === true) prompt = { kind: 'shop' };
-    if (s.officeShop && myZone?.kind !== 'shop') store.set({ officeShop: false, officeShopRefused: null });
+    if ((s.officeShop || s.officeMarket) && myZone?.kind !== 'shop')
+      store.set({ officeShop: false, officeShopRefused: null, officeMarket: false, marketRefused: null });
     // a character within talking range, on the open floor (the server checks again)
     if (
       !prompt &&

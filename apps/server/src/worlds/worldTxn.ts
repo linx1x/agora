@@ -14,6 +14,7 @@ import {
   type Contract,
   type FriendRecord,
   type Inventory,
+  type Listing,
   type RestState,
   type Skill,
   type WorldSimState,
@@ -75,6 +76,16 @@ export interface WorldTxn {
   contractsOf(worldId: string, lock: boolean): Promise<Contract[]>;
   contractById(id: string, lock: boolean): Promise<Contract | null>;
   saveContract(c: Contract): Promise<void>;
+  /** P17.30: the open listings of the marketplace board, oldest first (at most `limit`). */
+  openListings(limit: number): Promise<Listing[]>;
+  listingById(id: string, lock: boolean): Promise<Listing | null>;
+  saveListing(l: Listing): Promise<void>;
+  /** P17.30: one person's open listings, and what they listed and bought on an office day. */
+  marketCounts(userId: string, day: number): Promise<{ active: number; listedToday: number; boughtToday: number }>;
+  /** P17.30: the open listings that expired by `now` (to give their items back), oldest first. */
+  expiredListings(now: number, limit: number): Promise<Listing[]>;
+  /** P17.30: when the person first appeared in the economy (their first ledger row), or null. */
+  firstSeenOf(userId: string): Promise<number | null>;
   simOf(worldId: string, lock: boolean): Promise<SimRow | null>;
   /** Replaces the farm state when `expectedRev` matches. Returns the new revision, or null on conflict. */
   saveSim(worldId: string, state: WorldSimState, expectedRev: number): Promise<number | null>;
@@ -103,6 +114,8 @@ export interface MemoryState {
   friends: Map<string, FriendRecord>;
   /** P17.28: by contract id */
   contracts: Map<string, Contract>;
+  /** P17.30: by listing id */
+  listings: Map<string, Listing>;
   ledger: Map<string, LedgerRow>;
 }
 
@@ -114,6 +127,7 @@ export const emptyMemoryState = (): MemoryState => ({
   showOff: new Map(),
   friends: new Map(),
   contracts: new Map(),
+  listings: new Map(),
   ledger: new Map(),
 });
 
@@ -126,6 +140,7 @@ export function cloneMemoryState(s: MemoryState): MemoryState {
     showOff: new Map(s.showOff),
     friends: new Map(s.friends),
     contracts: new Map(s.contracts),
+    listings: new Map(s.listings),
     ledger: new Map(s.ledger),
   };
 }
@@ -210,6 +225,46 @@ export class MemoryWorldTxn implements WorldTxn {
 
   async contractById(id: string): Promise<Contract | null> {
     return this.draft.contracts.get(id) ?? null;
+  }
+
+  async openListings(limit: number): Promise<Listing[]> {
+    return [...this.draft.listings.values()]
+      .filter((l) => l.state === 'open')
+      .sort((a, b) => a.createdAt - b.createdAt || a.id.localeCompare(b.id))
+      .slice(0, limit);
+  }
+
+  async listingById(id: string): Promise<Listing | null> {
+    return this.draft.listings.get(id) ?? null;
+  }
+
+  async saveListing(l: Listing): Promise<void> {
+    this.draft.listings.set(l.id, structuredClone(l));
+  }
+
+  async marketCounts(userId: string, day: number): Promise<{ active: number; listedToday: number; boughtToday: number }> {
+    let active = 0;
+    let listedToday = 0;
+    let boughtToday = 0;
+    for (const l of this.draft.listings.values()) {
+      if (l.sellerId === userId && l.state === 'open') active++;
+      if (l.sellerId === userId && l.listDay === day) listedToday++;
+      if (l.buyerId === userId && l.buyDay === day) boughtToday++;
+    }
+    return { active, listedToday, boughtToday };
+  }
+
+  async expiredListings(now: number, limit: number): Promise<Listing[]> {
+    return [...this.draft.listings.values()]
+      .filter((l) => l.state === 'open' && l.expiresAt <= now)
+      .sort((a, b) => a.expiresAt - b.expiresAt || a.id.localeCompare(b.id))
+      .slice(0, limit);
+  }
+
+  async firstSeenOf(userId: string): Promise<number | null> {
+    let first: number | null = null;
+    for (const row of this.draft.ledger.values()) if (row.actor === userId && (first === null || row.at < first)) first = row.at;
+    return first;
   }
 
   async saveContract(c: Contract): Promise<void> {
@@ -441,6 +496,63 @@ export class PgWorldTxn implements WorldTxn {
     );
   }
 
+  async openListings(limit: number): Promise<Listing[]> {
+    const r = await this.client.query<ListingDbRow>(
+      `SELECT ${LISTING_COLS} FROM market_listings WHERE state = 'open' ORDER BY created_at, id LIMIT $1`,
+      [limit],
+    );
+    return r.rows.map(listingOfRow);
+  }
+
+  async listingById(id: string, lock: boolean): Promise<Listing | null> {
+    const r = await this.client.query<ListingDbRow>(
+      `SELECT ${LISTING_COLS} FROM market_listings WHERE id = $1${lock ? ' FOR UPDATE' : ''}`,
+      [id],
+    );
+    return r.rows[0] ? listingOfRow(r.rows[0]) : null;
+  }
+
+  async saveListing(l: Listing): Promise<void> {
+    await this.client.query(
+      `INSERT INTO market_listings (id, seller_id, item, qty, price, fee, state, buyer_id, created_at, expires_at, closed_at, list_day, buy_day)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+       ON CONFLICT (id) DO UPDATE SET state = EXCLUDED.state, buyer_id = EXCLUDED.buyer_id,
+         closed_at = EXCLUDED.closed_at, buy_day = EXCLUDED.buy_day`,
+      [l.id, l.sellerId, l.item, l.qty, l.price, l.fee, l.state, l.buyerId, l.createdAt, l.expiresAt, l.closedAt, l.listDay, l.buyDay],
+    );
+  }
+
+  async marketCounts(userId: string, day: number): Promise<{ active: number; listedToday: number; boughtToday: number }> {
+    const r = await this.client.query<{ active: string; listed: string; bought: string }>(
+      `SELECT
+         count(*) FILTER (WHERE seller_id = $1 AND state = 'open') AS active,
+         count(*) FILTER (WHERE seller_id = $1 AND list_day = $2) AS listed,
+         count(*) FILTER (WHERE buyer_id = $1 AND buy_day = $2) AS bought
+       FROM market_listings WHERE seller_id = $1 OR buyer_id = $1`,
+      [userId, day],
+    );
+    const row = r.rows[0];
+    return { active: Number(row?.active ?? 0), listedToday: Number(row?.listed ?? 0), boughtToday: Number(row?.bought ?? 0) };
+  }
+
+  async expiredListings(now: number, limit: number): Promise<Listing[]> {
+    const r = await this.client.query<ListingDbRow>(
+      `SELECT ${LISTING_COLS} FROM market_listings WHERE state = 'open' AND expires_at <= $1
+       ORDER BY expires_at, id LIMIT $2 FOR UPDATE SKIP LOCKED`,
+      [now, limit],
+    );
+    return r.rows.map(listingOfRow);
+  }
+
+  async firstSeenOf(userId: string): Promise<number | null> {
+    const r = await this.client.query<{ first_ms: string | null }>(
+      'SELECT extract(epoch from min(at)) * 1000 AS first_ms FROM ledger WHERE actor = $1',
+      [userId],
+    );
+    const v = r.rows[0]?.first_ms;
+    return v === null || v === undefined ? null : Math.round(Number(v));
+  }
+
   async simOf(worldId: string, lock: boolean): Promise<SimRow | null> {
     const r = await this.client.query<SimDbRow>(
       `SELECT state, rev FROM world_sim WHERE world_id = $1${lock ? ' FOR UPDATE' : ''}`,
@@ -528,4 +640,36 @@ const contractOfRow = (r: ContractDbRow): Contract => ({
   winner: r.winner,
   createdAt: Number(r.created_at),
   closedAt: r.closed_at === null ? null : Number(r.closed_at),
+});
+
+interface ListingDbRow {
+  id: string;
+  seller_id: string;
+  item: string;
+  qty: number;
+  price: string | number;
+  fee: string | number;
+  state: Listing['state'];
+  buyer_id: string | null;
+  created_at: string | number;
+  expires_at: string | number;
+  closed_at: string | number | null;
+  list_day: number;
+  buy_day: number | null;
+}
+const LISTING_COLS = 'id, seller_id, item, qty, price, fee, state, buyer_id, created_at, expires_at, closed_at, list_day, buy_day';
+const listingOfRow = (r: ListingDbRow): Listing => ({
+  id: r.id,
+  sellerId: r.seller_id,
+  item: r.item,
+  qty: r.qty,
+  price: Number(r.price),
+  fee: Number(r.fee),
+  state: r.state,
+  buyerId: r.buyer_id,
+  createdAt: Number(r.created_at),
+  expiresAt: Number(r.expires_at),
+  closedAt: r.closed_at === null ? null : Number(r.closed_at),
+  listDay: r.list_day,
+  buyDay: r.buy_day,
 });

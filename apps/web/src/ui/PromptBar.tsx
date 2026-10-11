@@ -11,7 +11,7 @@ export function PromptBar() {
   const knocks = useStore((s) => s.knocks);
   const callover = useStore((s) => s.callover);
   const talking = useStore((s) => s.talkTo !== null);
-  const officeShop = useStore((s) => s.officeShop);
+  const officeShop = useStore((s) => s.officeShop || s.officeMarket);
   const tradeAsk = useStore((s) => s.tradeAsk);
   const map = useStore((s) => s.map);
   const fr = i18n.language.startsWith('fr');

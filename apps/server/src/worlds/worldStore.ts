@@ -171,6 +171,25 @@ CREATE TABLE IF NOT EXISTS world_contracts (
   closed_at BIGINT
 );
 CREATE INDEX IF NOT EXISTS world_contracts_open ON world_contracts (world_id) WHERE state = 'open';
+-- P17.30: the marketplace board; the items are held by the listing until sold, expired or cancelled
+CREATE TABLE IF NOT EXISTS market_listings (
+  id TEXT PRIMARY KEY,
+  seller_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  item TEXT NOT NULL,
+  qty INTEGER NOT NULL,
+  price BIGINT NOT NULL,
+  fee BIGINT NOT NULL,
+  state TEXT NOT NULL,
+  buyer_id TEXT,
+  created_at BIGINT NOT NULL,
+  expires_at BIGINT NOT NULL,
+  closed_at BIGINT,
+  list_day INTEGER NOT NULL,
+  buy_day INTEGER
+);
+CREATE INDEX IF NOT EXISTS market_listings_open ON market_listings (created_at) WHERE state = 'open';
+CREATE INDEX IF NOT EXISTS market_listings_seller ON market_listings (seller_id);
+CREATE INDEX IF NOT EXISTS market_listings_buyer ON market_listings (buyer_id) WHERE buyer_id IS NOT NULL;
 `;
 
 const chunkKey = (cx: number, cy: number) => `${cx},${cy}`;
@@ -292,6 +311,7 @@ export class MemoryWorldStore implements WorldStore {
       draft.state.progress.delete(ownerId);
       draft.state.showOff.delete(ownerId);
       for (const key of [...draft.state.friends.keys()]) if (key.startsWith(`${ownerId}|`)) draft.state.friends.delete(key);
+      for (const [id, l] of [...draft.state.listings]) if (l.sellerId === ownerId) draft.state.listings.delete(id);
       for (const [key, row] of [...draft.state.ledger]) if (row.actor === ownerId) draft.state.ledger.delete(key);
       return { value: undefined, commit: true };
     });

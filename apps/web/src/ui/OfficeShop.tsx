@@ -32,6 +32,15 @@ export function OfficeShop() {
         world.send({ t: 'office:buy', item, key: newKey() });
       }}
       onClose={() => store.set({ officeShop: false, officeShopRefused: null })}
+      footer={
+        <button
+          type="button"
+          className="btn secondary small-btn wh-market-link"
+          onClick={() => store.set({ officeShop: false, officeShopRefused: null, officeMarket: true })}
+        >
+          {t('market.open')}
+        </button>
+      }
     />
   );
 }

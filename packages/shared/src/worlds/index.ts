@@ -20,3 +20,4 @@ export * from './friendship';
 export * from './office';
 export * from './contracts';
 export * from './trade';
+export * from './market';

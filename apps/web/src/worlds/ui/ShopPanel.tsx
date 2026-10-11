@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { loadGameData, stockOf } from '@agora/shared';
 import { Dialog } from '../../ui/common';
@@ -13,12 +14,15 @@ export function ShopPanel({
   onBuy,
   onClose,
   notice,
+  footer,
 }: {
   money: number;
   onBuy: (item: string) => void;
   onClose: () => void;
   /** why the last purchase was refused, if it was */
   notice?: string | null;
+  /** P17.30: more at this board (the office board links to the marketplace) */
+  footer?: ReactNode;
 }) {
   const { t } = useTranslation();
   const stock = stockOf(loadGameData());
@@ -46,6 +50,7 @@ export function ShopPanel({
           })}
         </ul>
       )}
+      {footer}
     </Dialog>
   );
 }

@@ -1500,5 +1500,40 @@
       "stale": "L'échange a changé : vérifiez-le, puis confirmez de nouveau.",
       "conflict": "Quelque chose a changé entre-temps. Rien n'a bougé; réessayez."
     }
+  },
+  "market": {
+    "open": "Marché des membres",
+    "title": "Marché des membres",
+    "backToShop": "Retour à la boutique",
+    "limits": "Aujourd'hui : {{listed}} sur {{list}} mises en vente, {{bought}} sur {{buy}} achats. Les limites augmentent avec l'ancienneté de votre compte.",
+    "none": "Rien en vente pour l'instant.",
+    "price": "· {{price}}",
+    "until": "En vente jusqu'au {{date}}",
+    "buy": "Acheter",
+    "buyLabel": "Acheter {{item}} ×{{qty}} pour {{price}}",
+    "takeBack": "Retirer de la vente",
+    "sell": "Mettre en vente",
+    "nothingToSell": "Rien dans votre sac ne peut être vendu ici (les outils et les machines restent à vous).",
+    "itemLabel": "Objet",
+    "qtyLabel": "Quantité",
+    "priceLabel": "Prix (pour le lot)",
+    "feeNote": "Frais de mise en vente : {{fee}}, non remboursables. Les objets quittent votre sac et y reviennent si personne n'achète en {{days}} jours.",
+    "listBtn": "Mettre en vente",
+    "sold": "Vous avez vendu un lot au marché : +{{price}}.",
+    "refused": {
+      "disabled": "Le marché est fermé sur ce serveur.",
+      "rate": "Doucement : réessayez dans un instant.",
+      "range": "Placez-vous devant le comptoir du marché.",
+      "invalid": "Cette annonce n'est pas valide.",
+      "restricted": "Les outils, les machines et les objets liés au compte ne se vendent pas ici.",
+      "missing": "Votre sac ne contient plus cela.",
+      "money": "Pas assez d'argent.",
+      "full": "Votre sac est plein.",
+      "active": "Vous avez déjà 5 objets en vente.",
+      "daily": "Limite du jour atteinte. Elle augmente avec l'ancienneté de votre compte.",
+      "own": "C'est votre propre annonce.",
+      "gone": "Cette annonce n'est plus en vente.",
+      "conflict": "Quelque chose a changé entre-temps. Réessayez."
+    }
   }
 }

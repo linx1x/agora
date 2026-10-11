@@ -1500,5 +1500,40 @@
       "stale": "The trade changed: check it, then confirm again.",
       "conflict": "Something changed meanwhile. Nothing moved; try again."
     }
+  },
+  "market": {
+    "open": "Members' market",
+    "title": "Members' market",
+    "backToShop": "Back to the shop",
+    "limits": "Today: {{listed}} of {{list}} listings, {{bought}} of {{buy}} purchases. Limits grow with your account's age.",
+    "none": "Nothing for sale yet.",
+    "price": "· {{price}}",
+    "until": "For sale until {{date}}",
+    "buy": "Buy",
+    "buyLabel": "Buy {{item}} ×{{qty}} for {{price}}",
+    "takeBack": "Take it back",
+    "sell": "Put up for sale",
+    "nothingToSell": "Nothing in your bag can be sold here (tools and machines stay yours).",
+    "itemLabel": "Item",
+    "qtyLabel": "Quantity",
+    "priceLabel": "Price (for the lot)",
+    "feeNote": "Listing fee: {{fee}}, not refunded. The items leave your bag and come back if nobody buys within {{days}} days.",
+    "listBtn": "Put up for sale",
+    "sold": "You sold a lot at the market: +{{price}}.",
+    "refused": {
+      "disabled": "The market is closed on this server.",
+      "rate": "Easy: try again in a moment.",
+      "range": "Stand in front of the market board.",
+      "invalid": "That listing is not valid.",
+      "restricted": "Tools, machines and account-bound items are not sold here.",
+      "missing": "Your bag no longer holds that.",
+      "money": "Not enough money.",
+      "full": "Your bag is full.",
+      "active": "You already have 5 things for sale.",
+      "daily": "Today's limit is reached. It grows with your account's age.",
+      "own": "That is your own listing.",
+      "gone": "That listing is no longer for sale.",
+      "conflict": "Something changed meanwhile. Try again."
+    }
   }
 }

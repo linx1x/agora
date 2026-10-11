@@ -41,6 +41,13 @@ import {
   type TradeOffer,
   type TradeRefusal,
 } from './worlds/trade';
+import {
+  MARKET_PRICE_MAX,
+  MARKET_QTY_MAX,
+  type ListingView,
+  type MarketLimits,
+  type MarketRefusal,
+} from './worlds/market';
 import { WORLD_COORD_LIMIT } from './worlds/constants';
 import { SKILLS } from './worlds/gamedata/schema';
 import type { Badge } from './worlds/progression';
@@ -50,6 +57,8 @@ import type { Badge } from './worlds/progression';
 /** P17.29: a trade id (12 hex) and a stack key of a bag (an item id, with its quality `~n`) */
 export const TRADE_ID = z.string().regex(/^[a-f0-9]{12}$/);
 export const STACK_KEY = z.string().min(2).max(40).regex(/^[a-z][a-z0-9_]+(~[124])?$/);
+/** P17.30: a marketplace listing id */
+export const LISTING_ID = z.string().regex(/^m[a-f0-9]{15}$/);
 
 /** P17.27: an opaque name for a person in a world's visitor list (user ids never reach a client). */
 export const VISITOR_REF = z.string().regex(/^[a-f0-9]{16}$/);
@@ -132,6 +141,17 @@ export const C2S = z.discriminatedUnion('t', [
   }),
   /** P17.26b: my bag and money in the office (answered with `world:inv`), and my hearts (`friendship`). */
   z.object({ t: z.literal('office:inv') }),
+  /** P17.30: the marketplace board (standing at the office board) */
+  z.object({ t: z.literal('market:browse') }),
+  z.object({
+    t: z.literal('market:list'),
+    item: STACK_KEY,
+    qty: z.number().int().min(1).max(MARKET_QTY_MAX),
+    price: z.number().int().min(1).max(MARKET_PRICE_MAX),
+    key: z.string().min(8).max(64).regex(/^[A-Za-z0-9_-]+$/),
+  }),
+  z.object({ t: z.literal('market:buy'), id: LISTING_ID, key: z.string().min(8).max(64).regex(/^[A-Za-z0-9_-]+$/) }),
+  z.object({ t: z.literal('market:cancel'), id: LISTING_ID }),
   /** P17.29: ask someone beside me to trade (their session id) */
   z.object({ t: z.literal('trade:ask'), to: z.string().min(1).max(64) }),
   z.object({ t: z.literal('trade:answer'), id: TRADE_ID, accept: z.boolean() }),
@@ -454,6 +474,18 @@ export type S2CMsg =
   | { t: 'world:visitors'; away: AwayRule; grants: ActionKind[]; people: VisitorView[] }
   /** P17.27: why my change to the matrix did nothing */
   | { t: 'world:visitors:refused'; reason: VisitorRefusal }
+  /** P17.30: the marketplace board as I see it: open listings (mine marked, nobody named), my limits today */
+  | {
+      t: 'market:board';
+      listings: ListingView[];
+      limits: MarketLimits;
+      listedToday: number;
+      boughtToday: number;
+      active: number;
+    }
+  | { t: 'market:result'; op: 'list' | 'buy' | 'cancel'; ok: boolean; reason?: MarketRefusal }
+  /** P17.30: something I listed was bought (the money is in my bag) */
+  | { t: 'market:sold'; item: string; qty: number; price: number }
   /** P17.29: someone beside me asks to trade */
   | { t: 'trade:asked'; id: string; from: string; name: string }
   /** P17.29: the trade as I see it: my side, theirs, its revision and who confirmed it */

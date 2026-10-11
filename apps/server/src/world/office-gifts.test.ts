@@ -205,3 +205,34 @@ describe('the office shop board (P17.26b)', () => {
     expect(conns[0]!.of('friendship').length).toBeGreaterThanOrEqual(2);
   });
 });
+
+describe('the marketplace board in the room (P17.30)', () => {
+  const board = map.zones.find((z) => z.kind === 'shop')!;
+  const front = { x: board.x + TILE / 2, y: board.y + TILE / 2 + 10 };
+
+  it('works only at the board; a sale reaches the seller and every board view, never the seller’s name', async () => {
+    const { room, players, conns } = await scene();
+    const [seller, buyer] = players as [Player, Player];
+    room.handle(seller, { t: 'market:browse' });
+    room.handle(seller, { t: 'market:list', item: loved, qty: 1, price: 30, key: 'room-list-0001' });
+    await flush();
+    expect(conns[0]!.of('market:result').at(-1)).toMatchObject({ op: 'list', ok: false, reason: 'range' });
+    expect(conns[0]!.of('market:board')).toHaveLength(0);
+
+    place(room, seller, front);
+    place(room, buyer, { x: front.x + TILE, y: front.y });
+    room.handle(seller, { t: 'market:list', item: loved, qty: 1, price: 30, key: 'room-list-0002' });
+    await flush();
+    expect(conns[0]!.of('market:result').at(-1)).toMatchObject({ op: 'list', ok: true });
+    const seen = conns[1]!.of('market:board').at(-1)!;
+    expect(seen.listings).toHaveLength(1);
+    expect(seen.listings[0]).toMatchObject({ item: loved, qty: 1, price: 30, mine: false });
+    expect(JSON.stringify(seen)).not.toContain('u0');
+
+    room.handle(buyer, { t: 'market:buy', id: seen.listings[0]!.id, key: 'room-buy-0101' });
+    await flush();
+    expect(conns[1]!.of('market:result').at(-1)).toMatchObject({ op: 'buy', ok: true });
+    expect(conns[0]!.of('market:sold').at(-1)).toEqual({ t: 'market:sold', item: loved, qty: 1, price: 30 });
+    expect(conns[1]!.of('market:board').at(-1)!.listings).toEqual([]);
+  });
+});

@@ -9,6 +9,7 @@ import {
   NPC_TALK_SLACK_TILES,
   NPC_TALK_TILES,
   giftNpcOf,
+  type MarketRefusal,
   TRADE_RANGE_TILES,
   WORLD_CELL_PX,
   applyVisitorEdit,
@@ -73,6 +74,7 @@ import type { RoomStore, StoredDesk } from '../db/store';
 import { Bucket } from './rate';
 import { heartsOfUser, officeBuy, officeGift, officeInventory } from '../worlds/office';
 import { executeTrade } from '../worlds/trade';
+import { boardOf, buyListing, cancelListing, listItem, sweepExpired } from '../worlds/market';
 import { TradeDesk } from './trades';
 import { OfficeCat } from './pets';
 import type { ScoreWeights } from '@agora/shared';
@@ -720,6 +722,11 @@ export class SpaceRoom {
       case 'trade:confirm':
       case 'trade:cancel':
         return this.onTrade(p, m);
+      case 'market:browse':
+      case 'market:list':
+      case 'market:buy':
+      case 'market:cancel':
+        return void this.onMarket(p, m);
       case 'callover':
         return this.onCallover(p, m.to);
       case 'ping':
@@ -1286,6 +1293,54 @@ export class SpaceRoom {
       default:
         return;
     }
+  }
+
+  // ───────────────────────────────────────────── marketplace board (P17.30)
+  /**
+   * The marketplace board, at the office board only (its `shop` zone). Expired listings are given
+   * back first, so the list never shows them and their items are home before anything else happens.
+   */
+  private async onMarket(p: Player, m: Extract<C2SMsg, { t: `market:${string}` }>): Promise<void> {
+    const op = m.t === 'market:list' ? 'list' : m.t === 'market:buy' ? 'buy' : m.t === 'market:cancel' ? 'cancel' : null;
+    const refuse = (reason: MarketRefusal) =>
+      op ? p.conn?.send({ t: 'market:result', op, ok: false, reason }) : undefined;
+    if (!this.officeOpen) return void refuse('disabled');
+    if (!p.buckets.misc.take()) return void refuse('rate');
+    if (zoneAt(this.map, p.x, p.y)?.kind !== 'shop') return void refuse('range');
+    const data = loadGameData();
+    const now = Date.now();
+    try {
+      await sweepExpired(this.store.worlds, data, now);
+      if (m.t === 'market:browse') return await this.sendBoard(p);
+      const r =
+        m.t === 'market:list'
+          ? await listItem(this.store.worlds, data, { userId: p.uid, item: m.item, qty: m.qty, price: m.price, key: m.key, now })
+          : m.t === 'market:buy'
+            ? await buyListing(this.store.worlds, data, { userId: p.uid, id: m.id, key: m.key, now })
+            : await cancelListing(this.store.worlds, data, { userId: p.uid, id: m.id, now });
+      if (!r.ok) return void refuse(r.reason);
+      p.conn?.send({ t: 'market:result', op: op!, ok: true });
+      await this.sendOfficeInv(p);
+      if (m.t === 'market:buy') {
+        const l = r.listing;
+        for (const s of this.reachableOf(l.sellerId)) {
+          s.conn?.send({ t: 'market:sold', item: l.item, qty: l.qty, price: l.price });
+          if (s.world) s.world.room.refreshInventory(s.world.member);
+          else void this.sendOfficeInv(s).catch(() => {});
+        }
+      }
+      // everyone at the board sees the board as it is now
+      for (const q of this.players.values())
+        if (q.conn && zoneAt(this.map, q.x, q.y)?.kind === 'shop') await this.sendBoard(q);
+    } catch (err) {
+      this.log.warn({ err }, 'market request failed');
+      refuse('conflict');
+    }
+  }
+
+  private async sendBoard(p: Player): Promise<void> {
+    const board = await boardOf(this.store.worlds, p.uid, Date.now());
+    p.conn?.send({ t: 'market:board', ...board });
   }
 
   // ───────────────────────────────────────────── direct trades (P17.29)

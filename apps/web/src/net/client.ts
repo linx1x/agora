@@ -284,6 +284,15 @@ export class WorldClient {
         store.set({ npcMemory: {} });
         toast('talk.memory.forgot');
         break;
+      case 'market:board':
+        store.set({ market: m });
+        break;
+      case 'market:result':
+        store.set({ marketRefused: m.ok ? null : (m.reason ?? 'invalid') });
+        break;
+      case 'market:sold':
+        toast('market.sold', { price: String(m.price) }, 6000);
+        break;
       case 'trade:asked':
         store.set({ tradeAsk: { id: m.id, from: m.from, name: m.name } });
         break;
