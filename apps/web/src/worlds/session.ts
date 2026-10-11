@@ -107,6 +107,7 @@ export class WorldSession {
           worldOwner: m.owner,
           worldMine: m.mine === true,
           worldPerms: null,
+          contracts: [],
           prompt: null,
           talkTo: null,
         });
@@ -176,7 +177,15 @@ export class WorldSession {
     this.correction = null;
     // the office position comes back with the next `state` tick (the server sends none on exit)
     if (me) link.samples.delete(me);
-    store.set({ worldId: null, worldOwner: '', worldMine: false, worldPerms: null, prompt: null });
+    store.set({
+      worldId: null,
+      worldOwner: '',
+      worldMine: false,
+      worldPerms: null,
+      contracts: [],
+      contractsOpen: false,
+      prompt: null,
+    });
     this.emit('exit');
   }
 }

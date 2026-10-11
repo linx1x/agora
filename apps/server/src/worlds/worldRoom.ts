@@ -17,6 +17,11 @@ import {
   loadGameData,
   parseCaveId,
   visitorKinds,
+  contractFor,
+  contractKinds,
+  contractView,
+  type ActionKind,
+  type Contract,
   WORLD_CELL_PX,
   WORLD_SPAWN,
   WORLD_VIEW_CHUNKS,
@@ -62,10 +67,12 @@ import { accountView, grantStarterKit } from './inventory';
 import { settleEnergy } from './energy';
 import { runAction, type ActionResult } from './actions';
 import { catchUpFarm } from './farm';
+import { cancelContract, openContracts, postContract, workContract } from './contracts';
 import type { StoredChunk, StoredWorld, WorldStore } from './worldStore';
 
 /** The world action request as the protocol carries it (P17.20). */
 export type WorldActRequest = Extract<C2SMsg, { t: 'world:act' }>;
+export type ContractMsg = Extract<C2SMsg, { t: 'contract:post' | 'contract:cancel' }>;
 
 /** What a world room needs from the server: the store for transactions, the rules, a logger. */
 export interface WorldRoomDeps {
@@ -195,6 +202,8 @@ export class WorldRoom {
   /** actions queued or running; the room stays open until they finish (their caches are this room's) */
   private pending = 0;
   disposed = false;
+  /** P17.28: the world's open contracts, as the store last said (loaded with the room, refreshed on change) */
+  private contracts: Contract[] = [];
   /** The farm as this room last sent it (null until the first catch-up is done). */
   private farm: WorldSimState | null = null;
   /** The world day the farm was last brought up to. */
@@ -243,6 +252,7 @@ export class WorldRoom {
     this.timeSlot = timeSlotOf(worldTime(world.createdAt, this.clock()));
     // the farm is brought up to today on load (actions also catch up in their own transaction); a cave has none
     this.farmReady = this.cave ? Promise.resolve() : this.enqueue(() => this.catchUp());
+    if (!this.cave) void this.enqueue(() => this.reloadContracts());
     if (deps.autoTick !== false) {
       this.timer = setInterval(() => this.tick(), 1000);
       this.timer.unref?.();
@@ -428,6 +438,7 @@ export class WorldRoom {
     void this.farmReady.then(() => {
       if (this.members.get(m.id) === m) this.sendFarm(m);
     });
+    if (!this.cave) this.sendContracts(m);
     return m;
   }
 
@@ -598,6 +609,7 @@ export class WorldRoom {
           seed: this.world.seed,
           createdAt: this.world.createdAt,
           settings: this.world.settings,
+          opened: contractKinds(this.contracts),
         },
         params: this.params,
         stamp: this.stamp,
@@ -629,6 +641,86 @@ export class WorldRoom {
     });
     if (result.reply?.chest) m.conn?.send({ t: 'world:chest', at: result.reply.chest.at, items: { ...result.reply.chest.items } });
     this.swing(m, req, data);
+    // P17.28: a visitor's accepted action counts on the oldest open contract of its kind
+    if (m.uid !== this.world.ownerId && contractFor(this.contracts, req.kind)) await this.work(m, req.kind, req.key);
+  }
+
+  /** One accepted action on a contract: counted once, paid when it reaches the goal. */
+  private async work(m: WorldMember, kind: ActionKind, key: string): Promise<void> {
+    const w = await workContract(this.store, loadGameData(), {
+      worldId: this.world.id,
+      actor: m.uid,
+      kind,
+      key,
+      now: this.clock(),
+    }).catch((err: unknown) => {
+      this.log.warn({ err: String(err), world: this.id }, 'contract step failed');
+      return null;
+    });
+    if (!w?.contract) return;
+    await this.reloadContracts();
+    if (w.paid > 0) {
+      m.conn?.send({ t: 'contract:paid', id: w.contract.id, kind: w.contract.kind, reward: w.paid });
+      this.sendInventory(m);
+    }
+  }
+
+  /** The open contracts from the store, then to everyone here, each with their own progress. */
+  private async reloadContracts(): Promise<void> {
+    if (this.disposed || this.cave) return;
+    try {
+      this.contracts = await openContracts(this.store, this.world.id);
+    } catch (err: unknown) {
+      this.log.warn({ err: String(err), world: this.id }, 'contracts not read');
+      return;
+    }
+    for (const m of this.members.values()) this.sendContracts(m);
+  }
+
+  private sendContracts(m: WorldMember): void {
+    m.conn?.send({ t: 'world:contracts', contracts: this.contracts.map((c) => contractView(c, m.uid)) });
+  }
+
+  /**
+   * The owner posts or cancels a contract (P17.28). Runs in the room's order, after the actions sent
+   * before it; the answer goes to the owner, the new list to everyone here.
+   */
+  contract(m: WorldMember, msg: ContractMsg): void {
+    if (this.disposed || this.members.get(m.id) !== m) return;
+    const op = msg.t === 'contract:post' ? 'post' : 'cancel';
+    if (this.cave || m.uid !== this.world.ownerId) {
+      m.conn?.send({ t: 'contract:result', op, ok: false, reason: 'forbidden' });
+      return;
+    }
+    this.pending++;
+    this.chain = this.chain
+      .then(async () => {
+        const data = loadGameData();
+        const r =
+          msg.t === 'contract:post'
+            ? await postContract(this.store, data, {
+                worldId: this.world.id,
+                ownerId: m.uid,
+                kind: msg.kind,
+                goal: msg.goal,
+                reward: msg.reward,
+                key: msg.key,
+                now: this.clock(),
+              })
+            : await cancelContract(this.store, data, { worldId: this.world.id, ownerId: m.uid, id: msg.id, now: this.clock() });
+        if (!r.ok) return void m.conn?.send({ t: 'contract:result', op, ok: false, reason: r.reason });
+        m.conn?.send({ t: 'contract:result', op, ok: true, id: r.contract.id });
+        this.sendInventory(m);
+        await this.reloadContracts();
+      })
+      .catch((err: unknown) => {
+        this.log.warn({ err: String(err), world: this.id }, 'contract request failed');
+        m.conn?.send({ t: 'contract:result', op, ok: false, reason: 'conflict' });
+      })
+      .finally(() => {
+        this.pending--;
+        this.closeIfIdle();
+      });
   }
 
   /**

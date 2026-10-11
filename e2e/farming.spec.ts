@@ -540,3 +540,32 @@ test('crafting in my world: a bench placed from the bag opens its recipes, and a
   expect((await inventory(a)).fence ?? 0).toBe(0);
   expect((await cellInfo(a, bx, by))!.decor).toBe('workbench');
 });
+
+test('a contract in my world (P17.28): posting holds the reward from my money, cancelling gives it back', async ({
+  browser,
+}) => {
+  test.setTimeout(300_000);
+  const a = await enter(browser, 1, 20);
+  await claimJungle6(a);
+  await waitPrompt(a, 'world');
+  await a.keyboard.press('x');
+  await waitWorld(a);
+  await expect(a.locator('.wh-money').first()).toHaveText(/\d/, { timeout: 30_000 });
+  const moneyOf = async () => Number((await a.locator('.wh-hud .wh-money').textContent())!.replace(/\D/g, ''));
+  const before = await moneyOf();
+
+  await a.getByRole('button', { name: /^Contrats/ }).click();
+  const panel = a.getByRole('dialog', { name: 'Contrats' });
+  await expect(panel.getByText('Aucun contrat ouvert.')).toBeVisible();
+  await panel.getByRole('combobox', { name: 'Tâche' }).selectOption('chop');
+  await panel.getByRole('spinbutton', { name: 'Combien de fois' }).fill('3');
+  await panel.getByRole('spinbutton', { name: 'Récompense' }).fill('40');
+  await panel.getByRole('button', { name: 'Publier' }).click();
+  await expect(panel.getByText('Couper 3 arbres')).toBeVisible({ timeout: 30_000 });
+  await expect.poll(moneyOf, { timeout: 30_000 }).toBe(before - 40);
+  await a.screenshot({ path: 'test-results/contracts-panel.png' });
+
+  await panel.getByRole('button', { name: /Annuler \(vous récupérez 40\)/ }).click();
+  await expect(panel.getByText('Aucun contrat ouvert.')).toBeVisible({ timeout: 30_000 });
+  await expect.poll(moneyOf, { timeout: 30_000 }).toBe(before);
+});

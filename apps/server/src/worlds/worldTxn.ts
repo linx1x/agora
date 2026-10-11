@@ -11,6 +11,7 @@ import {
   deltaCells,
   type ActionChanges,
   type ChunkDelta,
+  type Contract,
   type FriendRecord,
   type Inventory,
   type RestState,
@@ -70,6 +71,10 @@ export interface WorldTxn {
   /** P17.26b: a person's friendship records by character (absent: never received a gift). */
   friendsOf(userId: string, lock: boolean): Promise<Record<string, FriendRecord>>;
   saveFriend(userId: string, npc: string, record: FriendRecord): Promise<void>;
+  /** P17.28: a world's open contracts (closed ones are kept for the record but not listed). */
+  contractsOf(worldId: string, lock: boolean): Promise<Contract[]>;
+  contractById(id: string, lock: boolean): Promise<Contract | null>;
+  saveContract(c: Contract): Promise<void>;
   simOf(worldId: string, lock: boolean): Promise<SimRow | null>;
   /** Replaces the farm state when `expectedRev` matches. Returns the new revision, or null on conflict. */
   saveSim(worldId: string, state: WorldSimState, expectedRev: number): Promise<number | null>;
@@ -96,6 +101,8 @@ export interface MemoryState {
   showOff: Map<string, Skill>;
   /** P17.26b: key `user|npc` */
   friends: Map<string, FriendRecord>;
+  /** P17.28: by contract id */
+  contracts: Map<string, Contract>;
   ledger: Map<string, LedgerRow>;
 }
 
@@ -106,6 +113,7 @@ export const emptyMemoryState = (): MemoryState => ({
   progress: new Map(),
   showOff: new Map(),
   friends: new Map(),
+  contracts: new Map(),
   ledger: new Map(),
 });
 
@@ -117,6 +125,7 @@ export function cloneMemoryState(s: MemoryState): MemoryState {
     progress: new Map(s.progress),
     showOff: new Map(s.showOff),
     friends: new Map(s.friends),
+    contracts: new Map(s.contracts),
     ledger: new Map(s.ledger),
   };
 }
@@ -191,6 +200,20 @@ export class MemoryWorldTxn implements WorldTxn {
 
   async saveFriend(userId: string, npc: string, record: FriendRecord): Promise<void> {
     this.draft.friends.set(`${userId}|${npc}`, { ...record });
+  }
+
+  async contractsOf(worldId: string): Promise<Contract[]> {
+    return [...this.draft.contracts.values()]
+      .filter((c) => c.worldId === worldId && c.state === 'open')
+      .sort((a, b) => a.createdAt - b.createdAt || a.id.localeCompare(b.id));
+  }
+
+  async contractById(id: string): Promise<Contract | null> {
+    return this.draft.contracts.get(id) ?? null;
+  }
+
+  async saveContract(c: Contract): Promise<void> {
+    this.draft.contracts.set(c.id, structuredClone(c));
   }
 
   async simOf(worldId: string): Promise<SimRow | null> {
@@ -391,6 +414,33 @@ export class PgWorldTxn implements WorldTxn {
     );
   }
 
+  async contractsOf(worldId: string, lock: boolean): Promise<Contract[]> {
+    const r = await this.client.query<ContractDbRow>(
+      `SELECT ${CONTRACT_COLS} FROM world_contracts WHERE world_id = $1 AND state = 'open'
+       ORDER BY created_at, id${lock ? ' FOR UPDATE' : ''}`,
+      [worldId],
+    );
+    return r.rows.map(contractOfRow);
+  }
+
+  async contractById(id: string, lock: boolean): Promise<Contract | null> {
+    const r = await this.client.query<ContractDbRow>(
+      `SELECT ${CONTRACT_COLS} FROM world_contracts WHERE id = $1${lock ? ' FOR UPDATE' : ''}`,
+      [id],
+    );
+    return r.rows[0] ? contractOfRow(r.rows[0]) : null;
+  }
+
+  async saveContract(c: Contract): Promise<void> {
+    await this.client.query(
+      `INSERT INTO world_contracts (id, world_id, owner_id, kind, goal, reward, progress, state, winner, created_at, closed_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+       ON CONFLICT (id) DO UPDATE SET progress = EXCLUDED.progress, state = EXCLUDED.state,
+         winner = EXCLUDED.winner, closed_at = EXCLUDED.closed_at`,
+      [c.id, c.worldId, c.ownerId, c.kind, c.goal, c.reward, JSON.stringify(c.progress), c.state, c.winner, c.createdAt, c.closedAt],
+    );
+  }
+
   async simOf(worldId: string, lock: boolean): Promise<SimRow | null> {
     const r = await this.client.query<SimDbRow>(
       `SELECT state, rev FROM world_sim WHERE world_id = $1${lock ? ' FOR UPDATE' : ''}`,
@@ -451,3 +501,31 @@ export class PgWorldTxn implements WorldTxn {
     return { ok: true, rev: Number(saved.rows[0]?.rev ?? rev + 1) };
   }
 }
+
+interface ContractDbRow {
+  id: string;
+  world_id: string;
+  owner_id: string;
+  kind: Contract['kind'];
+  goal: number;
+  reward: number;
+  progress: Record<string, number> | null;
+  state: Contract['state'];
+  winner: string | null;
+  created_at: string | number;
+  closed_at: string | number | null;
+}
+const CONTRACT_COLS = 'id, world_id, owner_id, kind, goal, reward, progress, state, winner, created_at, closed_at';
+const contractOfRow = (r: ContractDbRow): Contract => ({
+  id: r.id,
+  worldId: r.world_id,
+  ownerId: r.owner_id,
+  kind: r.kind,
+  goal: r.goal,
+  reward: r.reward,
+  progress: r.progress ?? {},
+  state: r.state,
+  winner: r.winner,
+  createdAt: Number(r.created_at),
+  closedAt: r.closed_at === null ? null : Number(r.closed_at),
+});

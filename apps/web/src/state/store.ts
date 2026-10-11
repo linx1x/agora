@@ -20,6 +20,8 @@ import type {
   ActionKind,
   S2CMsg,
   VisitorRefusal,
+  ContractRefusal,
+  ContractView,
 } from '@agora/shared';
 
 export type ConnState =
@@ -284,6 +286,12 @@ export interface AppState {
   worldPerms: ActionKind[] | null;
   /** P17.27: my world's visitor matrix as the server last sent it (owner only) */
   worldVisitors: Extract<S2CMsg, { t: 'world:visitors' }> | null;
+  /** P17.28: the open contracts of the world I am in, with my own progress */
+  contracts: ContractView[];
+  /** P17.28: the contracts panel is open */
+  contractsOpen: boolean;
+  /** P17.28: why my last post or cancel did nothing */
+  contractRefused: ContractRefusal | null;
   /** P17.27: the visitors panel is open */
   visitorsOpen: boolean;
   /** P17.27: why my last change to the matrix did nothing */
@@ -396,6 +404,9 @@ const initial: AppState = {
   worldPerms: null,
   worldVisitors: null,
   visitorsOpen: false,
+  contracts: [],
+  contractsOpen: false,
+  contractRefused: null,
   visitorsRefused: null,
   worldOwner: '',
   admitted: [],

@@ -260,3 +260,29 @@
 .wh-perms {
   margin: 0;
 }
+/* P17.28: contracts */
+.cp-list {
+  list-style: none;
+  margin: 8px 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.cp-list li {
+  border-top: 1px solid rgba(127, 127, 127, 0.35);
+  padding-top: 6px;
+}
+.cp-form {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+.cp-form label {
+  display: grid;
+  gap: 2px;
+}
+.cp-form input:focus-visible,
+.cp-form select:focus-visible {
+  outline: 3px solid #1a6cff;
+  outline-offset: 2px;
+}

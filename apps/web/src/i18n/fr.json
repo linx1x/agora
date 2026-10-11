@@ -1409,5 +1409,51 @@
       "full": "Votre liste est pleine (50 personnes).",
       "self": "C'est vous!"
     }
+  },
+  "contracts": {
+    "title": "Contrats",
+    "open_one": "Contrats ({{count}})",
+    "open_other": "Contrats ({{count}})",
+    "aboutOwner": "Publiez une tâche pour vos visiteurs. La récompense est retirée de votre argent dès maintenant et versée à la première personne qui atteint l'objectif. Annuler vous la rend.",
+    "aboutVisitor": "Les tâches du propriétaire de ce monde. La première personne qui atteint l'objectif reçoit toute la récompense.",
+    "none": "Aucun contrat ouvert.",
+    "kind": {
+      "water_one": "Arroser {{count}} culture",
+      "water_other": "Arroser {{count}} cultures",
+      "harvest_one": "Récolter {{count}} culture",
+      "harvest_other": "Récolter {{count}} cultures",
+      "chop_one": "Couper {{count}} arbre",
+      "chop_other": "Couper {{count}} arbres",
+      "mine_one": "Miner {{count}} roche",
+      "mine_other": "Miner {{count}} roches"
+    },
+    "reward": "· récompense {{reward}}",
+    "progress": "Vous : {{mine}} sur {{goal}} · meilleur : {{best}}",
+    "best": "Meilleure progression : {{best}} sur {{goal}}",
+    "cancel": "Annuler (vous récupérez {{reward}})",
+    "post": "Publier un contrat",
+    "kindLabel": "Tâche",
+    "goalLabel": "Combien de fois",
+    "rewardLabel": "Récompense",
+    "escrow": "{{reward}} sera retiré de votre argent ({{money}}) jusqu'à la fin du contrat.",
+    "postBtn": "Publier",
+    "full": "Au plus {{max}} contrats ouverts à la fois.",
+    "paid": "Contrat rempli! Vous recevez {{reward}}.",
+    "refused": {
+      "disabled": "Les mondes personnels sont fermés sur ce serveur.",
+      "rate": "Doucement : réessayez dans un instant.",
+      "forbidden": "Seul le propriétaire de ce monde publie ou annule un contrat.",
+      "invalid": "Ce contrat n'est pas valide.",
+      "money": "Pas assez d'argent pour cette récompense.",
+      "limit": "Trop de contrats ouverts.",
+      "gone": "Ce contrat n'est plus ouvert.",
+      "conflict": "Quelque chose a changé entre-temps. Réessayez."
+    },
+    "task": {
+      "water": "Arroser des cultures",
+      "harvest": "Récolter des cultures",
+      "chop": "Couper des arbres",
+      "mine": "Miner de la roche"
+    }
   }
 }

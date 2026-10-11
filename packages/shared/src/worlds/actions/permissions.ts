@@ -6,12 +6,15 @@
 import { ACTION_KINDS, type ActionKind } from './kinds';
 import { VISITOR_RULES } from './rules';
 import { grantsFor } from './visitors';
+import { isContractKind } from '../contracts';
 
 export { VISITOR_RULES, type VisitorRule } from './rules';
 
 export interface WorldAccess {
   readonly ownerId: string;
   readonly settings: Readonly<Record<string, unknown>>;
+  /** P17.28: kinds the world's open contracts open to visitors (contract kinds only) */
+  readonly opened?: readonly ActionKind[];
 }
 
 /** The kinds the owner granted to visitors, from `settings.grants` (unknown entries are ignored). */
@@ -28,6 +31,8 @@ export function grantsOf(settings: Readonly<Record<string, unknown>>): ActionKin
  */
 export function canDo(world: WorldAccess, actorId: string, kind: ActionKind): boolean {
   if (actorId === world.ownerId) return true;
+  // an open contract is the owner's say-so for its task, and only for a contract kind
+  if (world.opened?.includes(kind) && isContractKind(kind)) return true;
   const rule = VISITOR_RULES[kind];
   if (rule === 'allow') return true;
   if (rule === 'deny') return false;

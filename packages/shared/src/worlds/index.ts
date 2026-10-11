@@ -18,3 +18,4 @@ export * from './actions/index';
 export * from './progression';
 export * from './friendship';
 export * from './office';
+export * from './contracts';

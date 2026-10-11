@@ -1223,6 +1223,14 @@ export class SpaceRoom {
         if (isCaveId(m.id)) return void this.onCaveEnter(p, m.id);
         return p.conn?.send({ t: 'portal:refused', id: m.id, reason: 'unknown' });
       }
+      case 'contract:post':
+      case 'contract:cancel':
+        // P17.28: the world room decides (the owner only, in their own world)
+        if (this.opts.clientConfig.flags.worlds !== true)
+          return p.conn?.send({ t: 'contract:result', op: m.t === 'contract:post' ? 'post' : 'cancel', ok: false, reason: 'disabled' });
+        if (!p.buckets.misc.take())
+          return p.conn?.send({ t: 'contract:result', op: m.t === 'contract:post' ? 'post' : 'cancel', ok: false, reason: 'rate' });
+        return w.room.contract(w.member, m);
       // P17.27: the owner answers a knock and edits the visitor matrix from inside their world too
       case 'knock:answer':
         return this.onKnockAnswer(p, m.visitor, m.accept);

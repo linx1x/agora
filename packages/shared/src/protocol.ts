@@ -26,6 +26,14 @@ import type { Taste } from './worlds/friendship';
 import type { AnimalState, MachineState, PlotState } from './worlds/gamedata/state';
 import { ACTION_KINDS, type ActionChanges, type ActionKind, type WorldRefusal } from './worlds/actions/kinds';
 import { AWAY_RULES, type AwayRule } from './worlds/actions/visitors';
+import {
+  CONTRACT_GOAL_MAX,
+  CONTRACT_KINDS,
+  CONTRACT_REWARD_MAX,
+  type ContractKind,
+  type ContractRefusal,
+  type ContractView,
+} from './worlds/contracts';
 import { WORLD_COORD_LIMIT } from './worlds/constants';
 import { SKILLS } from './worlds/gamedata/schema';
 import type { Badge } from './worlds/progression';
@@ -113,6 +121,16 @@ export const C2S = z.discriminatedUnion('t', [
   }),
   /** P17.26b: my bag and money in the office (answered with `world:inv`), and my hearts (`friendship`). */
   z.object({ t: z.literal('office:inv') }),
+  /** P17.28: the owner posts a contract in their world (the reward leaves their account into it) */
+  z.object({
+    t: z.literal('contract:post'),
+    kind: z.enum(CONTRACT_KINDS),
+    goal: z.number().int().min(1).max(CONTRACT_GOAL_MAX),
+    reward: z.number().int().min(1).max(CONTRACT_REWARD_MAX),
+    key: z.string().min(8).max(64).regex(/^[A-Za-z0-9_-]+$/),
+  }),
+  /** P17.28: the owner cancels an open contract (the reward comes back) */
+  z.object({ t: z.literal('contract:cancel'), id: z.string().regex(/^c[a-f0-9]{15}$/) }),
   /** P17.27: the owner reads their world's visitor matrix (answered with `world:visitors`, to them alone). */
   z.object({ t: z.literal('world:visitors') }),
   /**
@@ -412,6 +430,12 @@ export type S2CMsg =
   | { t: 'world:visitors'; away: AwayRule; grants: ActionKind[]; people: VisitorView[] }
   /** P17.27: why my change to the matrix did nothing */
   | { t: 'world:visitors:refused'; reason: VisitorRefusal }
+  /** P17.28: the open contracts of the world I am in, with my own progress */
+  | { t: 'world:contracts'; contracts: ContractView[] }
+  /** P17.28: the answer to my post or cancel */
+  | { t: 'contract:result'; op: 'post' | 'cancel'; ok: boolean; id?: string; reason?: ContractRefusal }
+  /** P17.28: I reached a contract's goal and was paid */
+  | { t: 'contract:paid'; id: string; kind: ContractKind; reward: number }
   /** P17.27: what I may do in the world I am visiting (each visitor hears only their own) */
   | { t: 'world:perms'; kinds: ActionKind[] }
   /** P17.26b: the answer to an office purchase */

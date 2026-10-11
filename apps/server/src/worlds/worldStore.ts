@@ -156,6 +156,21 @@ CREATE TABLE IF NOT EXISTS friendships (
   gifts_this_week INTEGER NOT NULL,
   PRIMARY KEY (user_id, npc)
 );
+-- P17.28: contracts the owner posts in their world; the reward is held here (escrow) until paid or refunded
+CREATE TABLE IF NOT EXISTS world_contracts (
+  id TEXT PRIMARY KEY,
+  world_id TEXT NOT NULL REFERENCES worlds(id) ON DELETE CASCADE,
+  owner_id TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  goal INTEGER NOT NULL,
+  reward INTEGER NOT NULL,
+  progress JSONB NOT NULL DEFAULT '{}'::jsonb,
+  state TEXT NOT NULL,
+  winner TEXT,
+  created_at BIGINT NOT NULL,
+  closed_at BIGINT
+);
+CREATE INDEX IF NOT EXISTS world_contracts_open ON world_contracts (world_id) WHERE state = 'open';
 `;
 
 const chunkKey = (cx: number, cy: number) => `${cx},${cy}`;
@@ -270,6 +285,7 @@ export class MemoryWorldStore implements WorldStore {
         this.worlds.delete(w.id);
         draft.state.chunks.delete(w.id);
         draft.state.sims.delete(w.id);
+        for (const [id, c] of [...draft.state.contracts]) if (c.worldId === w.id) draft.state.contracts.delete(id);
       }
       // the account's own rows, as the users cascade does in Postgres
       draft.state.accounts.delete(ownerId);

@@ -26,6 +26,7 @@ import {
   settleDay,
   worldTime,
   type ActionChanges,
+  type ActionKind,
   type ActionPlanner,
   type ActionPlanners,
   type ActionReply,
@@ -52,6 +53,8 @@ export interface ActionWorld {
   readonly seed: number;
   readonly createdAt: number;
   readonly settings: Readonly<Record<string, unknown>>;
+  /** P17.28: kinds the world's open contracts open to visitors */
+  readonly opened?: readonly ActionKind[];
 }
 
 export interface ActionInput {

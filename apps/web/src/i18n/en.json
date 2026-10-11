@@ -1409,5 +1409,51 @@
       "full": "Your list is full (50 people).",
       "self": "That's you!"
     }
+  },
+  "contracts": {
+    "title": "Contracts",
+    "open_one": "Contracts ({{count}})",
+    "open_other": "Contracts ({{count}})",
+    "aboutOwner": "Post a task for your visitors. The reward leaves your money now and goes to the first person to reach the goal. Cancelling gives it back.",
+    "aboutVisitor": "Tasks from this world's owner. The first person to reach the goal gets the whole reward.",
+    "none": "No open contracts.",
+    "kind": {
+      "water_one": "Water {{count}} crop",
+      "water_other": "Water {{count}} crops",
+      "harvest_one": "Harvest {{count}} crop",
+      "harvest_other": "Harvest {{count}} crops",
+      "chop_one": "Chop {{count}} tree",
+      "chop_other": "Chop {{count}} trees",
+      "mine_one": "Mine {{count}} rock",
+      "mine_other": "Mine {{count}} rocks"
+    },
+    "reward": "· reward {{reward}}",
+    "progress": "You: {{mine}} of {{goal}} · best: {{best}}",
+    "best": "Best progress: {{best}} of {{goal}}",
+    "cancel": "Cancel (you get {{reward}} back)",
+    "post": "Post a contract",
+    "kindLabel": "Task",
+    "goalLabel": "How many times",
+    "rewardLabel": "Reward",
+    "escrow": "{{reward}} will be held from your money ({{money}}) until the contract ends.",
+    "postBtn": "Post",
+    "full": "At most {{max}} open contracts at a time.",
+    "paid": "Contract done! You receive {{reward}}.",
+    "refused": {
+      "disabled": "Personal worlds are closed on this server.",
+      "rate": "Easy: try again in a moment.",
+      "forbidden": "Only this world's owner posts or cancels a contract.",
+      "invalid": "That contract is not valid.",
+      "money": "Not enough money for that reward.",
+      "limit": "Too many open contracts.",
+      "gone": "That contract is no longer open.",
+      "conflict": "Something changed meanwhile. Try again."
+    },
+    "task": {
+      "water": "Water crops",
+      "harvest": "Harvest crops",
+      "chop": "Chop trees",
+      "mine": "Mine rock"
+    }
   }
 }

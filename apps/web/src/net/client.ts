@@ -284,6 +284,15 @@ export class WorldClient {
         store.set({ npcMemory: {} });
         toast('talk.memory.forgot');
         break;
+      case 'world:contracts':
+        store.set({ contracts: m.contracts });
+        break;
+      case 'contract:result':
+        store.set({ contractRefused: m.ok ? null : (m.reason ?? 'invalid') });
+        break;
+      case 'contract:paid':
+        toast('contracts.paid', { reward: String(m.reward) }, 6000);
+        break;
       case 'world:perms':
         store.set({ worldPerms: m.kinds });
         break;
