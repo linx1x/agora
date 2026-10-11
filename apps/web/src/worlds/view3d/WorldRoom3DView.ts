@@ -11,7 +11,12 @@
  */
 import * as THREE from 'three';
 import { worldHud } from '../ui/hudState';
-import { CHUNK_SIZE, TILE, type Dir, type GridCell } from '@agora/shared';
+import { faceCell } from '../inputActs';
+import * as use from '../use';
+import { liveUse } from '../useLive';
+import { speedOfTier } from '../tools/swing';
+import { farmSprites, type FarmSprites } from '../farmArt';
+import { CHUNK_SIZE, TILE, type CellRef, type Dir, type GridCell } from '@agora/shared';
 import { world as link } from '../../net/client';
 import { rendered } from '../../game/controller';
 import { inputVector, isTyping } from '../../game/input';
@@ -49,7 +54,8 @@ import { rememberView } from '../../game3d/engine';
 import { pixelTexture } from '../../game3d/meshes';
 import { buildWorldAtlas, type WorldAtlas } from './atlas3d';
 import { buildChunk, type CellIn, type ChunkGeometry } from './geometry';
-import { cellOnRay, chunkKey, chunksIn, heightOf, windowOf, type ChunkIndex } from './math3d';
+import { cellOnRay, chunkKey, chunksIn, heightOf, windowOf, worldOfDrawn, type ChunkIndex } from './math3d';
+import { SwingFx } from './swing3d';
 
 const BG = 0x1b2733;
 const FADE_BG = 'rgb(10, 20, 30)';
@@ -95,6 +101,8 @@ export class WorldRoom3DView {
   private dirtyAll = true;
   private win: CellWindow | null = null;
   private readonly people: PaperFigures;
+  /** the tool swings in view: arcs, marks, sparks and the shake (P17.21c) */
+  private readonly swingFx: SwingFx;
   private readonly overlays: Overlays;
   private readonly fade: HTMLDivElement;
   private fadeStart = 0;
@@ -172,6 +180,7 @@ export class WorldRoom3DView {
     this.fadeStart = performance.now();
 
     this.people = new PaperFigures(this.scene, paperScale(window.devicePixelRatio || 1));
+    this.swingFx = new SwingFx(this.scene);
     // after the canvas and the fade: the names go between them, so the fade covers them too
     this.overlays = new Overlays(parent);
 
@@ -180,6 +189,7 @@ export class WorldRoom3DView {
         if (c === 'chunks' || c === 'farm' || c === 'welcome') this.dirtyAll = true;
       }),
     );
+    this.unsubs.push(worldSession.onSwing((s) => this.playSwing(s.id, s.dir, s.tier)));
     this.bindInput();
     this.bindLayout();
     this.layout();
@@ -207,6 +217,7 @@ export class WorldRoom3DView {
     this.clearPath();
     this.people.dispose();
     this.overlays.destroy();
+    this.swingFx.dispose();
     this.pathMat.dispose();
     this.goalMat.dispose();
     this.material.dispose();
@@ -254,6 +265,33 @@ export class WorldRoom3DView {
     store.set({ zoom: next });
   }
 
+  /** The keyboard's state for the world keys (X, Space): a busy keyboard does nothing (use.ts). */
+  private keys(e: KeyboardEvent): use.KeyContext {
+    return {
+      typing: isTyping(),
+      modifier: e.metaKey || e.ctrlKey || e.altKey,
+      dialog: !!store.get().dialog,
+      chest: worldHud.get().chest !== null,
+      panel: worldHud.get().panel !== null,
+    };
+  }
+
+  /** The input's world: the held item acts on a cell, and my own swing is played from here. */
+  private useEnv(): use.UseEnv {
+    return liveUse(
+      (at, tier, speed) =>
+        this.playSwing(worldSession.you, this.walker?.d ?? 'down', tier, true, speed, at),
+      (key) => toast(key),
+    );
+  }
+
+  /** Space: the held item acts on the cell in front of me; with nothing to do there, the status says so. */
+  private useFaced(shift: boolean): void {
+    const focused = document.activeElement;
+    if (focused instanceof HTMLElement && focused.closest('.wh-hud')) focused.blur();
+    if (this.walker) use.useFaced(this.useEnv(), this.walker, shift);
+  }
+
   private bindInput(): void {
     const c = this.canvas;
     c.addEventListener('pointerdown', (e: PointerEvent) => {
@@ -261,14 +299,21 @@ export class WorldRoom3DView {
       (document.activeElement as HTMLElement | null)?.blur?.();
       const r = c.getBoundingClientRect();
       const cell = this.cellAtCanvas(e.clientX - r.left, e.clientY - r.top);
-      if (cell) this.walkTo(cell);
+      if (!cell) return;
+      // the held item acts on a cell in reach (the server decides); any other click walks there
+      if (!use.useAt(this.useEnv(), this.walker, { x: cell.cx, y: cell.cy }, e.shiftKey))
+        this.walkTo(cell);
     });
     c.addEventListener('wheel', (e: WheelEvent) => this.stepZoom(e.deltaY > 0 ? -1 : 1), {
       passive: true,
     });
     this.onKey = (e: KeyboardEvent) => {
-      if (isTyping() || e.metaKey || e.ctrlKey || e.altKey || store.get().dialog) return;
+      if (use.keysBusy(this.keys(e))) return;
       if (e.key === 'x' || e.key === 'X') this.act();
+      else if (e.key === ' ') {
+        e.preventDefault();
+        if (!e.repeat) this.useFaced(e.shiftKey);
+      }
     };
     window.addEventListener('keydown', this.onKey);
 
@@ -343,9 +388,12 @@ export class WorldRoom3DView {
       this.lastSlow = now;
       this.slowTick();
     }
+    this.swingFx.update(now);
+    // a swing's shake slides the eye and the target together, so the view moves and does not turn
+    const [sx, sy, sz] = this.swingFx.shake(this.cam, now);
     const [x, y, z] = camPos(this.cam);
-    this.camera.position.set(x, y, z);
-    this.camera.lookAt(this.cam.tx, 0, this.cam.tz);
+    this.camera.position.set(x + sx, y + sy, z + sz);
+    this.camera.lookAt(this.cam.tx + sx, sy, this.cam.tz + sz);
     this.camera.updateMatrixWorld();
     this.renderer.render(this.scene, this.camera);
   };
@@ -501,6 +549,7 @@ export class WorldRoom3DView {
     if (!moved && !this.dirtyAll) return;
     this.win = win;
     const want = chunksIn(win);
+    const sprites = farmSprites(worldHud.get().animals, worldHud.get().machines);
     const keep = new Set(want.map(chunkKey));
     for (const [key, v] of this.chunks)
       if (!keep.has(key)) {
@@ -515,12 +564,12 @@ export class WorldRoom3DView {
         this.dropChunk(have);
         this.chunks.delete(key);
       }
-      this.chunks.set(key, this.buildChunkView(c));
+      this.chunks.set(key, this.buildChunkView(c, sprites));
     }
     this.dirtyAll = false;
   }
 
-  private buildChunkView(c: ChunkIndex): ChunkView {
+  private buildChunkView(c: ChunkIndex, sprites: FarmSprites): ChunkView {
     const s = worldSession;
     const t = s.terrain!;
     const read = (cx: number, cy: number): CellIn => {
@@ -539,6 +588,8 @@ export class WorldRoom3DView {
             ? cropFrameName(plot.crop.crop, farm.crop)
             : null,
         sprinkler: farm?.sprinkler ?? false,
+        animals: sprites.animals.get(`${cx},${cy}`) ?? [],
+        mark: sprites.marks.get(`${cx},${cy}`) ?? null,
       };
     };
     const geo: ChunkGeometry = buildChunk(
@@ -618,12 +669,41 @@ export class WorldRoom3DView {
   }
 
   /**
-   * A tool swing by a person (P17.21b). The 2.5D view takes the same hook as the flat view; the
-   * swing frames, sparks and shake are not drawn yet.
+   * A tool swing by a person in view (P17.21b, P17.21c): mine (`own`, which shakes the view) or
+   * another's. The arc starts at the hand; the sparks land on `at`, or on the cell in front of the feet.
    */
-  playSwing(_personId: string, _dir: Dir, _tier: number): void {
-    // TODO(P17.21c): paper swing frames per direction, sparks and the shake (off under reduced motion)
+  playSwing(
+    id: string,
+    dir: Dir,
+    tier: number,
+    own = false,
+    speed = speedOfTier(tier),
+    at?: CellRef,
+  ): void {
+    const t = worldSession.terrain;
+    const feet = id === worldSession.you ? this.walker : rendered.get(id);
+    if (!t || !feet) return;
+    const target = at ?? faceCell(feet.x, feet.y, dir);
     this.swings++;
+    this.swingFx.play(
+      {
+        feetX: feet.x / TILE,
+        feetZ: feet.y / TILE,
+        floor: heightOf(this.levelAtPx(feet.x, feet.y)),
+        dir,
+        tier,
+        speed,
+        target: {
+          cx: target.x,
+          cy: target.y,
+          floor: heightOf(t.cellAt(target.x, target.y).level),
+        },
+        own,
+        reduced: reducedMotion(),
+        sounds: store.get().settings.sounds,
+      },
+      performance.now(),
+    );
   }
   /** swings asked of this view (test hook, as in the flat view) */
   private swings = 0;
@@ -638,7 +718,9 @@ export class WorldRoom3DView {
       engine: '2.5d',
       toClient: (x, y) => {
         const r = this.canvas.getBoundingClientRect();
-        const p = project(this.cam, [x / TILE, heightOf(this.levelAtPx(x, y)), y / TILE]);
+        // the flat view's pixels (a raised top is drawn higher): the same ground, in 2.5D
+        const w = worldOfDrawn(x, y, (cx, cy) => worldSession.terrain?.cellAt(cx, cy).level ?? 0);
+        const p = project(this.cam, [w.x / TILE, w.height, w.y / TILE]);
         return p ? { x: r.left + p.x, y: r.top + p.y } : { x: r.left, y: r.top };
       },
       centerOn: (x, y) => {

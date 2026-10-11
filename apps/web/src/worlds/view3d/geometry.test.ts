@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildChunk, type CellIn, type UvRect } from './geometry';
+import { animalSlot, buildChunk, type CellIn, type UvRect } from './geometry';
 
 const BASE: CellIn = {
   level: 0,
@@ -10,6 +10,8 @@ const BASE: CellIn = {
   watered: false,
   crop: null,
   sprinkler: false,
+  animals: [],
+  mark: null,
 };
 
 /** Every sprite the tests use has a place in a made-up atlas; a name not listed is missing. */
@@ -23,6 +25,8 @@ const SPRITES = new Set([
   'decor:wood_wall',
   'crop:wheat',
   'sprinkler',
+  'animal:plume_hen',
+  'mark:busy',
 ]);
 const uv = (name: string): UvRect | undefined =>
   SPRITES.has(name) ? { u0: 0.1, u1: 0.2, vt: 0.9, vb: 0.8 } : undefined;
@@ -104,5 +108,32 @@ describe('buildChunk', () => {
     const g = buildChunk({ x0: 0, y0: 0, size: 2 }, reader({ '1,1': { level: 3 } }), uv);
     expect(g.fade.length).toBe(g.quads * 4);
     expect(g.fade.every((f) => f === 1)).toBe(true);
+  });
+});
+
+describe('animals and marks of the farm (P17.21c)', () => {
+  it('each animal of a housing cell is one card, and a mark is one more card on the corner', () => {
+    const g = buildChunk(
+      { x0: 0, y0: 0, size: 1 },
+      reader({ '0,0': { animals: ['animal:plume_hen', 'animal:plume_hen'], mark: 'mark:busy' } }),
+      uv,
+    );
+    // the top, and two animals and the mark
+    expect(g.quads).toBe(4);
+  });
+
+  it('two animals stand in two columns, the second row nearer the viewer', () => {
+    const one = animalSlot(0, 1);
+    expect(one.x0).toBeCloseTo(0.1);
+    expect(one.x1 - one.x0).toBeCloseTo(0.72, 6);
+    const four = [0, 1, 2, 3].map((i) => animalSlot(i, 4));
+    expect(four[0]!.x0).toBeLessThan(four[1]!.x0);
+    expect(four[2]!.z).toBeGreaterThan(four[0]!.z);
+    const six = [0, 1, 2, 3, 4, 5].map((i) => animalSlot(i, 6));
+    expect(new Set(six.map((a) => a.x0)).size).toBe(3);
+  });
+
+  it('every animal stands in front of the housing card (the animal row is south of the cell centre)', () => {
+    for (let i = 0; i < 6; i++) expect(animalSlot(i, 6).z).toBeGreaterThan(0.5);
   });
 });

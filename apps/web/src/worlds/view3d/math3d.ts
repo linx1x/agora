@@ -5,7 +5,8 @@
  * camera.ts and scene.ts. The walker's own position stays in world pixels, as in the flat view.
  */
 import { CHUNK_SIZE, WORLD_CELL_PX, type GridCell } from '@agora/shared';
-import { LEVEL_PX, type CellWindow } from '../view2d/math';
+import { LEVEL_PX, pickCell, type CellWindow } from '../view2d/math';
+import { focal, type Cam } from '../../game3d/camera';
 
 type V3 = readonly [number, number, number];
 
@@ -61,6 +62,33 @@ export function cellOnRay(
     if (py <= heightOf(levelAt(cx, cy))) return { cx, cy };
   }
   return null;
+}
+
+/**
+ * A point as the flat view draws it (a raised cell's top is LEVEL_PX higher, `pickCell`), and where
+ * the 2.5D view has it: the same ground in world pixels, and its height in tiles. Clicks and the e2e
+ * hooks use the flat view's pixels, so both views agree on every cell.
+ */
+export function worldOfDrawn(
+  x: number,
+  y: number,
+  levelAt: (cx: number, cy: number) => number,
+): { x: number; y: number; height: number } {
+  const cell = pickCell(x, y, levelAt);
+  const level = levelAt(cell.cx, cell.cy);
+  return { x, y: y + LEVEL_PX * level, height: heightOf(level) };
+}
+
+/**
+ * A shift of the view by `right` and `up` screen pixels, as a world offset in tiles. The eye and the
+ * target move by the same offset, so the view slides without turning. A tile at the target is
+ * `focal / dist` px, so one px is `dist / focal` tiles there; `up` follows the camera's up axis.
+ */
+export function screenShift(cam: Cam, right: number, up: number): V3 {
+  const tilesPerPx = cam.dist / focal(cam.h, cam.fov);
+  const t = (cam.tilt * Math.PI) / 180;
+  const u = up * tilesPerPx;
+  return [right * tilesPerPx, u * Math.cos(t), -u * Math.sin(t)];
 }
 
 /** Cells the camera can see, from floor points (tiles, x and z), with margins for raised tops and tall decor. */

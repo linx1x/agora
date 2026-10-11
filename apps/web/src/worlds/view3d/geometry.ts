@@ -25,6 +25,10 @@ export interface CellIn {
   /** the crop's sprite name (`cropFrameName`), or null */
   readonly crop: string | null;
   readonly sprinkler: boolean;
+  /** the animals housed on this cell (sprite names, `animalSprite`), in the order they were bought */
+  readonly animals: readonly string[];
+  /** the state mark of this cell's machine or housing (sprite name, `markSprite`), or null */
+  readonly mark: string | null;
 }
 
 export type CellReader = (cx: number, cy: number) => CellIn;
@@ -67,6 +71,11 @@ const WHITE: readonly [number, number, number] = [1, 1, 1];
 export const SOIL_LIFT = 0.003;
 /** Decor and crops stand this many tiles tall: one cell, as the flat view's 32 px sprites. */
 const STAND = 1;
+/** Animals stand on the front half of their housing cell, in rows: in front of the housing's own card. */
+const ANIMAL_ROW_Z = 0.62;
+const ANIMAL_ROW_STEP = 0.22;
+/** A machine's mark sits on the front-right corner of its cell, clear of the decor card. */
+const MARK_BOX = { x0: 0.6, x1: 0.95, z: 0.7, y0: 0.6, y1: 0.95 } as const;
 /** Sprinkler and crops stand a little apart on the cell so they do not share a plane. */
 const CROP_Z = 0.5;
 const SPRINKLER_Z = 0.7;
@@ -143,14 +152,29 @@ function standQuad(
   frac: number,
   col: readonly [number, number, number],
 ): number {
+  return cardQuad(acc, x, x + 1, z, yBot, yTop, uv, frac, col);
+}
+
+/** A north-facing card from `x0` to `x1` (any width), the rows of `standQuad`. */
+function cardQuad(
+  acc: Acc,
+  x0: number,
+  x1: number,
+  z: number,
+  yBot: number,
+  yTop: number,
+  uv: UvRect,
+  frac: number,
+  col: readonly [number, number, number],
+): number {
   const vb = uv.vt + (uv.vb - uv.vt) * frac;
   return pushQuad(
     acc,
     [
-      [x, yTop, z],
-      [x + 1, yTop, z],
-      [x + 1, yBot, z],
-      [x, yBot, z],
+      [x0, yTop, z],
+      [x1, yTop, z],
+      [x1, yBot, z],
+      [x0, yBot, z],
     ],
     [
       [uv.u0, uv.vt],
@@ -160,6 +184,22 @@ function standQuad(
     ],
     col,
   );
+}
+
+/**
+ * Where animal `i` of `n` on a housing cell stands: a card of `size` tiles from `x0` to `x1`, at depth
+ * `z` on the cell. Up to four animals in two columns, more in three; each row is a step nearer.
+ */
+export function animalSlot(
+  i: number,
+  n: number,
+): { x0: number; x1: number; z: number; size: number } {
+  const cols = n > 4 ? 3 : n > 1 ? 2 : 1;
+  const col = i % cols;
+  const row = Math.floor(i / cols);
+  const width = 0.8 / cols;
+  const x0 = 0.1 + col * width;
+  return { x0, x1: x0 + width * 0.9, z: ANIMAL_ROW_Z + row * ANIMAL_ROW_STEP, size: width };
 }
 
 /**
@@ -216,6 +256,35 @@ export function buildChunk(region: ChunkRegion, read: CellReader, uv: SpriteUv):
             WHITE,
           );
       }
+      c.animals.forEach((name, i) => {
+        const sprite = uv(name);
+        if (!sprite) return;
+        const at = animalSlot(i, c.animals.length);
+        cardQuad(
+          acc,
+          cx + at.x0,
+          cx + at.x1,
+          cy + at.z,
+          h + SOIL_LIFT,
+          h + SOIL_LIFT + at.size,
+          sprite,
+          1,
+          WHITE,
+        );
+      });
+      const mark = c.mark ? uv(c.mark) : undefined;
+      if (mark)
+        cardQuad(
+          acc,
+          cx + MARK_BOX.x0,
+          cx + MARK_BOX.x1,
+          cy + MARK_BOX.z,
+          h + MARK_BOX.y0,
+          h + MARK_BOX.y1,
+          mark,
+          1,
+          WHITE,
+        );
     }
   }
   return {

@@ -1,10 +1,12 @@
 /**
  * The 2.5D world view's texture (P17.15): the block tops, cliff sides, decor and crop frames of the
  * flat view (view2d/art.ts), packed into one canvas, one row per kind, so the whole world is one
- * material. Browser only (it draws to a canvas). The frames are the same pixels as the flat view.
+ * material. Browser only (it draws to a canvas). The frames are the same pixels as the flat view. The
+ * last row holds the farm's animals and state marks (P17.21c, farmArt.ts), which the flat view does not draw.
  */
 import { TILE_PX } from '../placeholders';
 import { SIDE_PX, allBlockFrames, cropFrameSet, sprinklerPixels, type Rgba } from '../view2d/art';
+import { ANIMAL_KINDS, MARK_KINDS, animalPixels, animalSprite, markPixels, markSprite } from '../farmArt';
 import type { UvRect } from './geometry';
 
 export interface WorldAtlas {
@@ -32,6 +34,10 @@ export function buildWorldAtlas(): WorldAtlas {
     blocks.map(([id, f]) => ({ name: `side:${id}`, w: TILE_PX, h: SIDE_PX, px: f.side })),
     blocks.map(([id, f]) => ({ name: `decor:${id}`, w: TILE_PX, h: TILE_PX, px: f.decor })),
     [...crops, { name: 'sprinkler', w: TILE_PX, h: TILE_PX, px: sprinklerPixels() }],
+    [
+      ...ANIMAL_KINDS.map((k) => ({ name: animalSprite(k), w: TILE_PX, h: TILE_PX, px: animalPixels(k) })),
+      ...MARK_KINDS.map((m) => ({ name: markSprite(m), w: TILE_PX, h: TILE_PX, px: markPixels(m) })),
+    ],
   ];
   const width = Math.max(...rows.map((r) => r.length)) * TILE_PX;
   const height = rows.reduce((sum, r) => sum + Math.max(...r.map((f) => f.h)), 0);

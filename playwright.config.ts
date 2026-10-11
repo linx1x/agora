@@ -85,13 +85,14 @@ export default defineConfig({
     },
     permissions: ['camera', 'microphone'],
   },
-  // The specs written for both world views (world, worlds, mobile, media, build) run once in each
-  // (P16.12, P16.13 and P17.15, see e2e/views.ts); the 2.5D-only specs (world25d*) run in the default `2d` project.
+  // The specs written for both world views (world, worlds, mobile, media, build, farming) run once in each
+  // (P16.12, P16.13, P17.15 and P17.21c, see e2e/views.ts); the 2.5D-only specs (world25d*) run in the default `2d` project.
+  // The farming spec runs in 2.5D too: the flat view is removed (ADR-054), so the 2.5D project is the one that counts.
   projects: [
     { name: '2d' },
     {
       name: '2.5d',
-      testMatch: /(world|worlds|mobile|media|build)\.spec\.ts$/,
+      testMatch: /(world|worlds|mobile|media|build|farming)\.spec\.ts$/,
       use: { baseURL: `http://localhost:${VIEW_25D_PORT}` },
     },
   ],

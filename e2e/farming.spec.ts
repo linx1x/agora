@@ -9,7 +9,8 @@ import { expect, test, type Browser, type Page } from '@playwright/test';
  * that holds a stack until it is taken back out of the dialog.
  * P17.25 adds the craft test: a bench placed from the bag, its recipes opened by an empty hand, and a craft
  * the bag cannot pay for, refused by the server with its message.
- * Runs in the 2D project only: the 2.5D world view reuses the same hooks (P17.15).
+ * Runs in the 2.5D project (the view of ADR-054) and, until P16.22 removes it, in the 2D project. Every
+ * step goes through the view-neutral hooks (`view.world()`, `inventory()`, `cellInfo()`, `toClient`).
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
