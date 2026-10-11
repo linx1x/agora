@@ -8,6 +8,9 @@ import {
   NPC_GROUP_TILES,
   NPC_TALK_SLACK_TILES,
   NPC_TALK_TILES,
+  giftNpcOf,
+  officeDayOf,
+  type OfficeRefusal,
   TILE,
   TICK_HZ,
   cellOf,
@@ -53,10 +56,12 @@ import {
   type Zone,
   type Badge,
   type Skill,
+  type Taste,
   loadGameData,
 } from '@agora/shared';
 import type { RoomStore, StoredDesk } from '../db/store';
 import { Bucket } from './rate';
+import { heartsOfUser, officeBuy, officeGift, officeInventory } from '../worlds/office';
 import { OfficeCat } from './pets';
 import type { ScoreWeights } from '@agora/shared';
 import {
@@ -554,6 +559,7 @@ export class SpaceRoom {
     if (this.officeCat) conn.send({ t: 'pet:state', pets: [this.officeCat.snapshot()] });
     if (this.npcDirector) conn.send({ t: 'npc:state', npcs: this.npcDirector.snapshot() });
     this.sendNpcConsent(p);
+    void this.sendFriendship(p);
     if (this.deskOf(p.uid)) this.broadcastDesks();
     void this.gate?.joined(this.gp(p));
     return p;
@@ -637,6 +643,12 @@ export class SpaceRoom {
         }
         return;
       }
+      case 'gift':
+        return void this.onGift(p, m);
+      case 'office:buy':
+        return void this.onOfficeBuy(p, m);
+      case 'office:inv':
+        return void this.onOfficeInv(p);
       case 'npc:talk':
         return this.onNpcTalk(p, m);
       case 'npc:consent':
@@ -779,6 +791,92 @@ export class SpaceRoom {
       this.setProfile(p, { badge });
     } catch (err) {
       this.log.warn({ err }, 'badge not saved');
+    }
+  }
+
+  // ───────────────────────────────────────────── office shop and gifts (P17.26b)
+  /** Office gifts and the office board need personal worlds (the account store) on. */
+  private get officeOpen(): boolean {
+    return this.opts.clientConfig.flags.worlds === true;
+  }
+
+  /** My hearts with each character: on join (when the characters are here) and after each gift. */
+  private async sendFriendship(p: Player): Promise<void> {
+    if (!this.officeOpen || !this.npcDirector) return;
+    try {
+      p.conn?.send({ t: 'friendship', hearts: await heartsOfUser(this.store.worlds, p.uid) });
+    } catch (err) {
+      this.log.warn({ err }, 'friendship not read');
+    }
+  }
+
+  /** My bag and money in the office, as a world shows them (`world:inv`). */
+  private async sendOfficeInv(p: Player): Promise<void> {
+    const inv = await officeInventory(this.store.worlds, p.uid, loadGameData(), Date.now());
+    p.conn?.send({ t: 'world:inv', ...inv });
+  }
+
+  private async onOfficeInv(p: Player): Promise<void> {
+    if (!this.officeOpen || !p.buckets.misc.take()) return;
+    try {
+      await this.sendOfficeInv(p);
+      await this.sendFriendship(p);
+    } catch (err) {
+      this.log.warn({ err }, 'office inventory not read');
+    }
+  }
+
+  /**
+   * A gift to a character (P17.26b). The talking rules decide where: the character is here, the giver is
+   * on the open floor (never in a private room, desk pod or quiet zone) and within talking range. The
+   * account action decides the rest (the bag, the day and week limits) in one transaction.
+   */
+  private async onGift(p: Player, m: Extract<C2SMsg, { t: 'gift' }>): Promise<void> {
+    const reply = (ok: boolean, extra: { reason?: OfficeRefusal; taste?: Taste; hearts?: Record<string, number> }) =>
+      p.conn?.send({ t: 'gift:result', key: m.key, npcId: m.npcId, ok, ...extra });
+    if (!this.officeOpen || !this.npcDirector) return reply(false, { reason: 'disabled' });
+    if (!p.buckets.misc.take()) return reply(false, { reason: 'rate' });
+    const npc = this.npcDirector.get(m.npcId);
+    const who = giftNpcOf(m.npcId);
+    if (!npc || !who) return reply(false, { reason: 'gone' });
+    if (NPC_FORBIDDEN.includes(this.placed(p).zoneKind ?? 'area')) return reply(false, { reason: 'zone' });
+    const reach = (NPC_TALK_TILES + NPC_TALK_SLACK_TILES) * TILE;
+    if (Math.hypot(npc.state.x - p.x, npc.state.y - p.y) > reach) return reply(false, { reason: 'range' });
+    const now = Date.now();
+    try {
+      const r = await officeGift(this.store.worlds, loadGameData(), {
+        userId: p.uid,
+        npc: who,
+        item: m.item,
+        key: m.key,
+        day: officeDayOf(now),
+        now,
+      });
+      if (!r.ok) return reply(false, { reason: r.reason });
+      reply(true, { taste: r.taste, hearts: r.hearts });
+      p.conn?.send({ t: 'friendship', hearts: r.hearts });
+      await this.sendOfficeInv(p);
+    } catch (err) {
+      this.log.warn({ err }, 'gift failed');
+      reply(false, { reason: 'conflict' });
+    }
+  }
+
+  /** A purchase at the office shop board (P17.26b): only standing in front of it (its `shop` zone). */
+  private async onOfficeBuy(p: Player, m: Extract<C2SMsg, { t: 'office:buy' }>): Promise<void> {
+    const reply = (ok: boolean, reason?: OfficeRefusal) =>
+      p.conn?.send({ t: 'office:bought', key: m.key, item: m.item, ok, ...(reason ? { reason } : {}) });
+    if (!this.officeOpen) return reply(false, 'disabled');
+    if (!p.buckets.misc.take()) return reply(false, 'rate');
+    if (zoneAt(this.map, p.x, p.y)?.kind !== 'shop') return reply(false, 'range');
+    try {
+      const r = await officeBuy(this.store.worlds, loadGameData(), { userId: p.uid, item: m.item, key: m.key, now: Date.now() });
+      if (!r.ok) return reply(false, r.reason);
+      reply(true);
+      await this.sendOfficeInv(p);
+    } catch (err) {
+      this.log.warn({ err }, 'office purchase failed');
+      reply(false, 'conflict');
     }
   }
 

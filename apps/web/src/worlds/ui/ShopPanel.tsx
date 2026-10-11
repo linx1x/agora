@@ -1,19 +1,35 @@
 import { useTranslation } from 'react-i18next';
-import { loadGameData, stockOf, type CellRef } from '@agora/shared';
+import { loadGameData, stockOf } from '@agora/shared';
 import { Dialog } from '../../ui/common';
-import type { WorldAsk } from '../inputActs';
 
 /**
  * The shop board (ADR-053, P17.25): every item the board sells, with its stable price. A buy asks the
  * server (`buy` at the board); the money and the bag change only when the server approves it, and a
- * refusal (not enough money, out of reach) shows in the HUD's notice.
+ * refusal (not enough money, out of reach) shows in the HUD's notice. The same panel serves the office
+ * board (P17.26b), where a buy is `office:buy`.
  */
-export function ShopPanel({ at, money, onAsk, onClose }: { at: CellRef; money: number; onAsk: WorldAsk; onClose: () => void }) {
+export function ShopPanel({
+  money,
+  onBuy,
+  onClose,
+  notice,
+}: {
+  money: number;
+  onBuy: (item: string) => void;
+  onClose: () => void;
+  /** why the last purchase was refused, if it was */
+  notice?: string | null;
+}) {
   const { t } = useTranslation();
   const stock = stockOf(loadGameData());
   return (
     <Dialog title={t('worlds.shop.title')} onClose={onClose} className="wh-panel">
       <p className="wh-money">{t('worlds.hud.money', { amount: money })}</p>
+      {notice && (
+        <p className="wh-notice" role="alert">
+          {notice}
+        </p>
+      )}
       {stock.length === 0 ? (
         <p>{t('worlds.shop.empty')}</p>
       ) : (
@@ -22,7 +38,7 @@ export function ShopPanel({ at, money, onAsk, onClose }: { at: CellRef; money: n
             const name = t(`worlds.item.${id}`);
             return (
               <li key={id}>
-                <button type="button" aria-label={t('worlds.shop.buyLabel', { item: name, price })} onClick={() => onAsk('buy', at, id)}>
+                <button type="button" aria-label={t('worlds.shop.buyLabel', { item: name, price })} onClick={() => onBuy(id)}>
                   {name} <span>{t('worlds.shop.price', { price })}</span> <span className="wh-take">{t('worlds.shop.buy')}</span>
                 </button>
               </li>

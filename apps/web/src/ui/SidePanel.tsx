@@ -146,6 +146,7 @@ function OfficePeople() {
   const npcs = useStore((s) => s.npcs);
   const minds = useStore((s) => s.npcMinds);
   const brain = useStore((s) => s.npcBrain);
+  const hearts = useStore((s) => s.hearts);
   const compact = useCompactLayout();
   /** on phones the sheet covers the world: close it so you see where you go */
   const hide = compact ? { panelOpen: false } : {};
@@ -267,7 +268,15 @@ function OfficePeople() {
                         <span className="sr-only"> ({t('npc.about')})</span>
                       </span>
                     </div>
-                    <div className="muted small">{t(`npc.act.${n.act}`)}</div>
+                    <div className="muted small">
+                      {t(`npc.act.${n.act}`)}
+                      {hearts && hearts[n.id.replace(/^npc:/, '')] !== undefined && (
+                        <span className="hearts">
+                          {' · '}
+                          {t('gift.hearts', { count: hearts[n.id.replace(/^npc:/, '')], max: 10 })}
+                        </span>
+                      )}
+                    </div>
                     {minds[n.id] && <NpcBrain mind={minds[n.id]!} name={n.name} />}
                   </div>
                   <span className="person-actions">

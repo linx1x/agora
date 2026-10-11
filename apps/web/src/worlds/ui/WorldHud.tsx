@@ -120,7 +120,11 @@ export function WorldHud({
         <ChestPanel chest={state.chest} hand={state.inHand} onAsk={onAsk} onClose={() => store.closeChest()} />
       )}
       {state.panel?.kind === 'shop' && (
-        <ShopPanel at={state.panel.at} money={state.money} onAsk={onAsk} onClose={() => store.closePanel()} />
+        <ShopPanel
+          money={state.money}
+          onBuy={(id) => state.panel && onAsk('buy', state.panel.at, id)}
+          onClose={() => store.closePanel()}
+        />
       )}
       {state.panel?.kind === 'craft' && (
         <CraftPanel

@@ -1869,6 +1869,10 @@ function hub() {
   r.spawn('reception', 14.5, 51, true);
   req(r, 14, 51);
   r.zone('accueil', 'area', 'Accueil', 'Reception', 1, 43, 28, 10);
+  // P17.26b: the office shop board (seeds and basics at stable prices); stand in front of it to buy
+  r.set(furniture, 22, 46, 'sign');
+  r.zone('comptoir', 'shop', 'Comptoir du marché', 'Market board', 21, 47, 3, 2);
+  req(r, 22, 47);
   r.light(15, 47, 'ceiling', 7, '#fff1d6', 0.5);
   clearZone(r, 11, 42, 8, 4);
   clearZone(r, 12, 47, 6, 6);

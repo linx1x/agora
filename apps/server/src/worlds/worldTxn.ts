@@ -11,6 +11,7 @@ import {
   deltaCells,
   type ActionChanges,
   type ChunkDelta,
+  type FriendRecord,
   type Inventory,
   type RestState,
   type Skill,
@@ -66,6 +67,9 @@ export interface WorldTxn {
   showOffOf(userId: string): Promise<Skill | null>;
   /** Chooses the skill to show, or null to show none. The progress row is not touched. */
   saveShowOff(userId: string, skill: Skill | null): Promise<void>;
+  /** P17.26b: a person's friendship records by character (absent: never received a gift). */
+  friendsOf(userId: string, lock: boolean): Promise<Record<string, FriendRecord>>;
+  saveFriend(userId: string, npc: string, record: FriendRecord): Promise<void>;
   simOf(worldId: string, lock: boolean): Promise<SimRow | null>;
   /** Replaces the farm state when `expectedRev` matches. Returns the new revision, or null on conflict. */
   saveSim(worldId: string, state: WorldSimState, expectedRev: number): Promise<number | null>;
@@ -90,6 +94,8 @@ export interface MemoryState {
   accounts: Map<string, AccountRow>;
   progress: Map<string, ProgressRow>;
   showOff: Map<string, Skill>;
+  /** P17.26b: key `user|npc` */
+  friends: Map<string, FriendRecord>;
   ledger: Map<string, LedgerRow>;
 }
 
@@ -99,6 +105,7 @@ export const emptyMemoryState = (): MemoryState => ({
   accounts: new Map(),
   progress: new Map(),
   showOff: new Map(),
+  friends: new Map(),
   ledger: new Map(),
 });
 
@@ -109,6 +116,7 @@ export function cloneMemoryState(s: MemoryState): MemoryState {
     accounts: new Map(s.accounts),
     progress: new Map(s.progress),
     showOff: new Map(s.showOff),
+    friends: new Map(s.friends),
     ledger: new Map(s.ledger),
   };
 }
@@ -170,6 +178,19 @@ export class MemoryWorldTxn implements WorldTxn {
   async saveShowOff(userId: string, skill: Skill | null): Promise<void> {
     if (skill === null) this.draft.showOff.delete(userId);
     else this.draft.showOff.set(userId, skill);
+  }
+
+  async friendsOf(userId: string): Promise<Record<string, FriendRecord>> {
+    const out: Record<string, FriendRecord> = {};
+    for (const [key, record] of this.draft.friends) {
+      const [user, npc] = key.split('|') as [string, string];
+      if (user === userId) out[npc] = record;
+    }
+    return out;
+  }
+
+  async saveFriend(userId: string, npc: string, record: FriendRecord): Promise<void> {
+    this.draft.friends.set(`${userId}|${npc}`, { ...record });
   }
 
   async simOf(worldId: string): Promise<SimRow | null> {
@@ -347,6 +368,26 @@ export class PgWorldTxn implements WorldTxn {
       `INSERT INTO show_off (user_id, skill) VALUES ($1, $2)
        ON CONFLICT (user_id) DO UPDATE SET skill = EXCLUDED.skill`,
       [userId, skill],
+    );
+  }
+
+  async friendsOf(userId: string, lock: boolean): Promise<Record<string, FriendRecord>> {
+    const r = await this.client.query<{ npc: string; points: number; gift_day: number; week: number; gifts_this_week: number }>(
+      `SELECT npc, points, gift_day, week, gifts_this_week FROM friendships WHERE user_id = $1${lock ? ' FOR UPDATE' : ''}`,
+      [userId],
+    );
+    const out: Record<string, FriendRecord> = {};
+    for (const row of r.rows)
+      out[row.npc] = { points: row.points, giftDay: row.gift_day, week: row.week, giftsThisWeek: row.gifts_this_week };
+    return out;
+  }
+
+  async saveFriend(userId: string, npc: string, record: FriendRecord): Promise<void> {
+    await this.client.query(
+      `INSERT INTO friendships (user_id, npc, points, gift_day, week, gifts_this_week) VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT (user_id, npc) DO UPDATE SET points = EXCLUDED.points, gift_day = EXCLUDED.gift_day,
+         week = EXCLUDED.week, gifts_this_week = EXCLUDED.gifts_this_week`,
+      [userId, npc, record.points, record.giftDay, record.week, record.giftsThisWeek],
     );
   }
 

@@ -21,6 +21,8 @@ import { PORTAL_ID, type PortalRefusal } from './portals';
 import type { WorldGenParams } from './worlds/gen';
 import type { ChunkDelta } from './worlds/delta';
 import type { WorldTime } from './worlds/clock';
+import type { OfficeRefusal } from './worlds/office';
+import type { Taste } from './worlds/friendship';
 import type { AnimalState, MachineState, PlotState } from './worlds/gamedata/state';
 import { ACTION_KINDS, type ActionChanges, type WorldRefusal } from './worlds/actions/kinds';
 import { WORLD_COORD_LIMIT } from './worlds/constants';
@@ -72,6 +74,28 @@ export const C2S = z.discriminatedUnion('t', [
   }),
   /** P17.31: the skill to show on the card (null shows none). The server shows only a level that is earned. */
   z.object({ t: z.literal('badge'), skill: z.enum(SKILLS).nullable() }),
+  /**
+   * P17.26b: a gift to a character in the office (Talk range and zone rules). `item` is a stack key of
+   * my bag; `key` the idempotency key (the same rules as `world:act`).
+   */
+  z.object({
+    t: z.literal('gift'),
+    npcId: z.string().min(1).max(64),
+    item: z
+      .string()
+      .min(2)
+      .max(40)
+      .regex(/^[a-z][a-z0-9_]+(~[124])?$/),
+    key: z.string().min(8).max(64).regex(/^[A-Za-z0-9_-]+$/),
+  }),
+  /** P17.26b: buy one item at the office shop board (standing in its zone). */
+  z.object({
+    t: z.literal('office:buy'),
+    item: z.string().min(2).max(40).regex(/^[a-z][a-z0-9_]+$/),
+    key: z.string().min(8).max(64).regex(/^[A-Za-z0-9_-]+$/),
+  }),
+  /** P17.26b: my bag and money in the office (answered with `world:inv`), and my hearts (`friendship`). */
+  z.object({ t: z.literal('office:inv') }),
   z.object({ t: z.literal('desk:claim'), deskId: z.string().min(1).max(32) }),
   z.object({ t: z.literal('desk:release') }),
   z.object({
@@ -327,6 +351,20 @@ export type S2CMsg =
     }
   /** P17.9: you are back in the office, at your desk */
   | { t: 'world:exit' }
+  /** P17.26b: the answer to a gift: the taste and my hearts with every character, or why not (nothing changed) */
+  | {
+      t: 'gift:result';
+      key: string;
+      npcId: string;
+      ok: boolean;
+      reason?: OfficeRefusal;
+      taste?: Taste;
+      hearts?: Record<string, number>;
+    }
+  /** P17.26b: my hearts with each character (0 to 10), on join and after each gift. Only I get it. */
+  | { t: 'friendship'; hearts: Record<string, number> }
+  /** P17.26b: the answer to an office purchase */
+  | { t: 'office:bought'; key: string; item: string; ok: boolean; reason?: OfficeRefusal }
   /** P17.15b: the office roster again, for someone back from a world (who missed its changes) */
   | { t: 'roster'; profiles: PlayerProfile[]; desks: DeskState[] }
   /**

@@ -2202,6 +2202,30 @@ body {
 .talk-hint {
   margin: 0;
 }
+/* P17.26b: a gift from the bag to the character */
+.talk-gift summary {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.talk-gift summary:focus-visible {
+  outline: 3px solid var(--focus, #2c5a85);
+  outline-offset: 2px;
+}
+.gift-list {
+  list-style: none;
+  margin: 6px 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-height: 120px;
+  overflow-y: auto;
+}
+.hearts {
+  white-space: nowrap;
+}
 .talk-notice .row {
   display: flex;
   gap: 8px;

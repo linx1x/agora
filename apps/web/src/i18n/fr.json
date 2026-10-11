@@ -386,7 +386,10 @@
     "cave": "X : entrer dans la grotte",
     "caveBtn": "Entrer dans la grotte",
     "caveExit": "X : sortir de la grotte",
-    "caveExitBtn": "Sortir de la grotte"
+    "caveExitBtn": "Sortir de la grotte",
+    "shop": "Comptoir du marché (X)",
+    "shopTouch": "Vous êtes au comptoir du marché",
+    "shopBtn": "Ouvrir le comptoir"
   },
   "nav": {
     "unreachable": "Impossible de s'y rendre"
@@ -1308,6 +1311,49 @@
       "inProgress_other": "En cours : {{item}}, encore {{count}} jours",
       "ready": "Prêt : {{item}}, {{count}}",
       "nothing": "Rien à fabriquer ici."
+    }
+  },
+  "gift": {
+    "title": "Offrir un cadeau à {{name}}",
+    "hearts_one": "{{count}} cœur sur {{max}}",
+    "hearts_other": "{{count}} cœurs sur {{max}}",
+    "empty": "Votre sac ne contient rien à offrir. Le comptoir du marché vend des semences.",
+    "listLabel": "Ce que vous pouvez offrir à {{name}}",
+    "giveLabel": "Offrir {{item}} à {{name}} (vous en avez {{count}})",
+    "sending": "Vous tendez votre cadeau…",
+    "rules": "Un cadeau par jour et deux par semaine pour chaque personnage. {{name}} se souvient de ce que vous offrez, dans tous les mondes.",
+    "taste": {
+      "love": "{{name}} adore ça!",
+      "like": "{{name}} aime bien ça.",
+      "neutral": "{{name}} vous remercie.",
+      "dislike": "{{name}} n'aime pas trop ça.",
+      "hate": "{{name}} déteste ça."
+    },
+    "refused": {
+      "disabled": "Les cadeaux ne sont pas offerts sur ce serveur.",
+      "rate": "Doucement : réessayez dans un instant.",
+      "gone": "{{name}} n'accepte pas de cadeaux.",
+      "range": "Approchez-vous de {{name}} pour lui offrir un cadeau.",
+      "zone": "On n'offre pas de cadeau depuis une salle privée, un poste ou une zone calme.",
+      "invalid": "On ne peut pas offrir cet objet.",
+      "missing": "Cet objet n'est plus dans votre sac.",
+      "limit": "Vous avez déjà offert un cadeau à {{name}} aujourd'hui (ou deux cette semaine).",
+      "money": "Pas assez d'argent.",
+      "full": "Votre sac est plein.",
+      "conflict": "Votre sac a changé entre-temps. Réessayez."
+    },
+    "shopRefused": {
+      "disabled": "Le comptoir est fermé sur ce serveur.",
+      "rate": "Doucement : réessayez dans un instant.",
+      "gone": "Le comptoir est fermé.",
+      "range": "Placez-vous devant le comptoir pour acheter.",
+      "zone": "Placez-vous devant le comptoir pour acheter.",
+      "invalid": "Cet article n'est pas à vendre.",
+      "missing": "Cet article n'est plus disponible.",
+      "limit": "Limite d'achats atteinte.",
+      "money": "Pas assez d'argent.",
+      "full": "Votre sac est plein.",
+      "conflict": "Votre sac a changé entre-temps. Réessayez."
     }
   }
 }

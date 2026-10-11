@@ -284,6 +284,24 @@ export class WorldClient {
         store.set({ npcMemory: {} });
         toast('talk.memory.forgot');
         break;
+      case 'friendship':
+        store.set({ hearts: m.hearts });
+        break;
+      case 'gift:result':
+        store.set({
+          giftResult: {
+            key: m.key,
+            npcId: m.npcId,
+            ok: m.ok,
+            ...(m.reason ? { reason: m.reason } : {}),
+            ...(m.taste ? { taste: m.taste } : {}),
+            at: Date.now(),
+          },
+        });
+        break;
+      case 'office:bought':
+        store.set({ officeShopRefused: m.ok ? null : (m.reason ?? 'invalid') });
+        break;
       case 'npc:consent':
         store.set({ npcConsent: m.consent });
         break;

@@ -203,6 +203,10 @@ export class WorldController {
     else if (p.kind === 'knock') world.send({ t: 'knock', deskId: p.deskId });
     else if (p.kind === 'teleport') world.send({ t: 'teleport', to: p.to });
     else if (p.kind === 'talk') store.set({ talkTo: p.npcId });
+    else if (p.kind === 'shop') {
+      store.set({ officeShop: true, officeShopRefused: null });
+      world.send({ t: 'office:inv' });
+    }
     else if (p.kind === 'world') world.send({ t: 'portal:enter', id: deskPortalId(p.deskId) });
   }
 
@@ -454,11 +458,14 @@ export class WorldController {
           break;
         }
     }
+    // P17.26b: the office shop board (its zone in front of it; the server checks again)
+    if (!prompt && myZone?.kind === 'shop' && s.config?.flags.worlds === true) prompt = { kind: 'shop' };
+    if (s.officeShop && myZone?.kind !== 'shop') store.set({ officeShop: false, officeShopRefused: null });
     // a character within talking range, on the open floor (the server checks again)
     if (
       !prompt &&
       meR &&
-      s.config?.flags.npcTalk === true &&
+      (s.config?.flags.npcTalk === true || s.config?.flags.worlds === true) &&
       !NPC_FORBIDDEN.includes(myZone?.kind as never)
     ) {
       const reach = NPC_TALK_TILES * TILE;

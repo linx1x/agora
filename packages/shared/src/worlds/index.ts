@@ -17,3 +17,4 @@ export * from './gamedata/index';
 export * from './actions/index';
 export * from './progression';
 export * from './friendship';
+export * from './office';

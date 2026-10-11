@@ -4,6 +4,7 @@ import { MessageCircle, X } from 'lucide-react';
 import { NPC_TALK_MAX_LEN } from '@agora/shared';
 import { world } from '../net/client';
 import { store, useStore } from '../state/store';
+import { GiftPicker } from './GiftPicker';
 
 /** How long a refusal stays on screen. */
 const REFUSAL_MS = 6000;
@@ -26,12 +27,15 @@ export function TalkBox() {
   const profiles = useStore((s) => s.profiles);
   const npcs = useStore((s) => s.npcs);
   const memoryOn = useStore((s) => s.config?.flags.npcMemory === true);
+  // P17.26b: the box also opens for gifts alone, when personal worlds are on and Talk is off
+  const chatOn = useStore((s) => s.config?.flags.npcTalk === true);
+  const giftOn = useStore((s) => s.config?.flags.worlds === true);
   const remembered = useStore((s) => (s.talkTo ? s.npcMemory[s.talkTo] : undefined));
   const [text, setText] = useState('');
   const [now, setNow] = useState(() => Date.now());
   const input = useRef<HTMLInputElement>(null);
   const logEl = useRef<HTMLDivElement>(null);
-  const needsNotice = !!consent?.needed && !consent.ok;
+  const needsNotice = chatOn && !!consent?.needed && !consent.ok;
 
   const lines = useMemo(() => log.filter((l) => l.npcId === talkTo).slice(-12), [log, talkTo]);
   const last = lines.at(-1);
@@ -107,7 +111,7 @@ export function TalkBox() {
         </button>
       </header>
 
-      {needsNotice && consent ? (
+      {!chatOn ? null : needsNotice && consent ? (
         <div className="talk-notice">
           <h3>{t('talk.notice.title')}</h3>
           <p>
@@ -239,6 +243,7 @@ export function TalkBox() {
           </p>
         </>
       )}
+      {giftOn && <GiftPicker npcId={talkTo} name={npc.name} />}
     </section>
   );
 }

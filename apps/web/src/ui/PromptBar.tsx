@@ -11,6 +11,7 @@ export function PromptBar() {
   const knocks = useStore((s) => s.knocks);
   const callover = useStore((s) => s.callover);
   const talking = useStore((s) => s.talkTo !== null);
+  const officeShop = useStore((s) => s.officeShop);
   const map = useStore((s) => s.map);
   const fr = i18n.language.startsWith('fr');
   /** no X key on a touch screen: prompts get a button instead (P8.2) */
@@ -81,7 +82,7 @@ export function PromptBar() {
           </button>
         </div>
       )}
-      {prompt && !(prompt.kind === 'talk' && talking) && (
+      {prompt && !(prompt.kind === 'talk' && talking) && !(prompt.kind === 'shop' && officeShop) && (
         <div className="prompt-card hint">
           {(prompt.kind === 'sit' || prompt.kind === 'stand') &&
             (touch ? (
@@ -143,6 +144,14 @@ export function PromptBar() {
               <span>{t('prompt.worldExit')}</span>
               <button type="button" className="btn primary small-btn" onClick={act}>
                 {t('prompt.worldExitBtn')}
+              </button>
+            </>
+          )}
+          {prompt.kind === 'shop' && (
+            <>
+              <span>{t(touch ? 'prompt.shopTouch' : 'prompt.shop')}</span>
+              <button type="button" className="btn primary small-btn" onClick={act}>
+                {t('prompt.shopBtn')}
               </button>
             </>
           )}

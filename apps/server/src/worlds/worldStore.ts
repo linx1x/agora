@@ -137,6 +137,16 @@ CREATE TABLE IF NOT EXISTS show_off (
   user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
   skill TEXT NOT NULL
 );
+-- P17.26b: friendship with each character (one row per person and character who received a gift)
+CREATE TABLE IF NOT EXISTS friendships (
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  npc TEXT NOT NULL,
+  points INTEGER NOT NULL,
+  gift_day INTEGER NOT NULL,
+  week INTEGER NOT NULL,
+  gifts_this_week INTEGER NOT NULL,
+  PRIMARY KEY (user_id, npc)
+);
 `;
 
 const chunkKey = (cx: number, cy: number) => `${cx},${cy}`;
@@ -245,6 +255,7 @@ export class MemoryWorldStore implements WorldStore {
       draft.state.accounts.delete(ownerId);
       draft.state.progress.delete(ownerId);
       draft.state.showOff.delete(ownerId);
+      for (const key of [...draft.state.friends.keys()]) if (key.startsWith(`${ownerId}|`)) draft.state.friends.delete(key);
       for (const [key, row] of [...draft.state.ledger]) if (row.actor === ownerId) draft.state.ledger.delete(key);
       return { value: undefined, commit: true };
     });

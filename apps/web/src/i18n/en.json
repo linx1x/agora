@@ -386,7 +386,10 @@
     "cave": "X: enter the cave",
     "caveBtn": "Enter the cave",
     "caveExit": "X: leave the cave",
-    "caveExitBtn": "Leave the cave"
+    "caveExitBtn": "Leave the cave",
+    "shop": "Market board (X)",
+    "shopTouch": "You are at the market board",
+    "shopBtn": "Open the board"
   },
   "nav": {
     "unreachable": "Can't get there"
@@ -1308,6 +1311,49 @@
       "inProgress_other": "In progress: {{item}}, {{count}} days left",
       "ready": "Ready: {{item}}, {{count}}",
       "nothing": "Nothing to craft here."
+    }
+  },
+  "gift": {
+    "title": "Give {{name}} a gift",
+    "hearts_one": "{{count}} heart of {{max}}",
+    "hearts_other": "{{count}} hearts of {{max}}",
+    "empty": "Nothing in your bag to give. The market board sells seeds.",
+    "listLabel": "What you can give {{name}}",
+    "giveLabel": "Give {{item}} to {{name}} (you have {{count}})",
+    "sending": "You hold out your gift…",
+    "rules": "One gift a day and two a week for each character. {{name}} remembers what you give, in every world.",
+    "taste": {
+      "love": "{{name}} loves it!",
+      "like": "{{name}} likes it.",
+      "neutral": "{{name}} thanks you.",
+      "dislike": "{{name}} doesn't care for it.",
+      "hate": "{{name}} hates it."
+    },
+    "refused": {
+      "disabled": "Gifts are not offered on this server.",
+      "rate": "Easy: try again in a moment.",
+      "gone": "{{name}} does not take gifts.",
+      "range": "Get closer to {{name}} to give a gift.",
+      "zone": "No gifts from a private room, a desk pod or a quiet zone.",
+      "invalid": "That item cannot be given.",
+      "missing": "That item is no longer in your bag.",
+      "limit": "You already gave {{name}} a gift today (or two this week).",
+      "money": "Not enough money.",
+      "full": "Your bag is full.",
+      "conflict": "Your bag changed meanwhile. Try again."
+    },
+    "shopRefused": {
+      "disabled": "The board is closed on this server.",
+      "rate": "Easy: try again in a moment.",
+      "gone": "The board is closed.",
+      "range": "Stand in front of the board to buy.",
+      "zone": "Stand in front of the board to buy.",
+      "invalid": "That is not for sale.",
+      "missing": "That is no longer available.",
+      "limit": "Purchase limit reached.",
+      "money": "Not enough money.",
+      "full": "Your bag is full.",
+      "conflict": "Your bag changed meanwhile. Try again."
     }
   }
 }

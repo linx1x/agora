@@ -15,6 +15,8 @@ import type {
   NpcMindView,
   NpcConsentState,
   NpcRefusal,
+  OfficeRefusal,
+  Taste,
 } from '@agora/shared';
 
 export type ConnState =
@@ -44,6 +46,16 @@ export interface RemoteMedia {
 /** SFU connection (ADR-031); 'off' with the peer-to-peer backend. */
 export type SfuState = 'off' | 'connecting' | 'connected' | 'lost';
 
+/** The answer to a gift (P17.26b), as the Talk box shows it. */
+export interface GiftResultView {
+  readonly key: string;
+  readonly npcId: string;
+  readonly ok: boolean;
+  readonly reason?: OfficeRefusal;
+  readonly taste?: Taste;
+  readonly at: number;
+}
+
 export type Prompt =
   | { kind: 'sit' }
   | { kind: 'stand' }
@@ -53,6 +65,8 @@ export type Prompt =
   | { kind: 'teleport'; region: string; to: string }
   /** a character within talking range (P15.4): X opens the Talk box */
   | { kind: 'talk'; npcId: string; name: string }
+  /** P17.26b: standing at the office shop board: X opens it */
+  | { kind: 'shop' }
   /** P17.14: standing in a pod I may enter: X goes into the owner's world (`portal:enter`) */
   | { kind: 'world'; deskId: string; owner: string | null }
   /** P17.14: standing on the return pad of a world: X goes back to the office desk */
@@ -250,6 +264,14 @@ export interface AppState {
   npcRefused: { id: string; reason: NpcRefusal; at: number } | null;
   /** P15.5: what each character told me it remembers about me (undefined: not asked yet) */
   npcMemory: Record<string, string | null>;
+  /** P17.26b: my hearts with each character (null until the server says; only with personal worlds on) */
+  hearts: Record<string, number> | null;
+  /** P17.26b: the answer to my last gift, to show once in the Talk box */
+  giftResult: GiftResultView | null;
+  /** P17.26b: the office shop board is open (standing at it) */
+  officeShop: boolean;
+  /** P17.26b: why the office board refused my last purchase (null: it did not) */
+  officeShopRefused: OfficeRefusal | null;
   myDesk: string | null;
   /** P17.14: the personal world I am in (null: the office). GameView mounts the world view for it. */
   worldId: string | null;
@@ -351,6 +373,10 @@ const initial: AppState = {
   npcTyping: {},
   npcRefused: null,
   npcMemory: {},
+  hearts: null,
+  giftResult: null,
+  officeShop: false,
+  officeShopRefused: null,
   myDesk: null,
   worldId: null,
   worldOwner: '',
