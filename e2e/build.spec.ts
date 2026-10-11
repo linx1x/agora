@@ -411,3 +411,76 @@ test('placement (P9.16–P9.20): several items on a desk, Alt, nudge, stack, str
   await ben.context().close();
   await new Promise((r) => setTimeout(r, 21_000));
 });
+
+test('placement parity (P16.14): a monitor turns (R), raises (PageUp) and flips (F); a coffee lands on the middle spot', async ({
+  browser,
+}) => {
+  test.setTimeout(180_000);
+  const alice = await enter(browser, 0);
+  const ben = await enter(browser, 1);
+  await alice.getByRole('button', { name: /Mode construction|Build mode/ }).click();
+  await alice.waitForFunction(() => !!(window as any).__agora.store.get().build);
+  await alice.evaluate(() => {
+    (window as any).__agora.view.setZoom(3);
+  });
+
+  // a desk on the open Atrium floor, as the placement test (which leaves it clean)
+  const [cx, cy] = [42, 45];
+  expect(await furnAt(alice, cx, cy)).toBe(0);
+  await look(alice, cx, cy);
+  await alice.getByRole('option', { name: /^Bureau$|^Desk$/ }).click();
+  let pt = await screenOf(alice, cx, cy);
+  await alice.mouse.click(pt.x, pt.y);
+  await expect.poll(() => furnAt(ben, cx, cy)).toBeGreaterThan(0);
+  const X = cx * T;
+  const Y = cy * T;
+
+  // a monitor on the left spot; select it; R turns it to its back
+  await alice.getByRole('tab', { name: /Accessoires|Desk items/ }).click();
+  await alice.getByRole('option', { name: /^Écran$|^Monitor$/ }).click();
+  pt = await screenPx(alice, X + 6, Y + 15);
+  await alice.mouse.click(pt.x, pt.y);
+  await expect.poll(async () => (await propsOf(ben)).length).toBe(1);
+  const monitor = (await propsOf(ben))[0]!;
+  expect([monitor.t, monitor.x - X]).toEqual(['prop.monitorFront', 8]);
+  await alice.keyboard.press('c');
+  pt = await propPoint(alice, monitor.id);
+  await alice.mouse.click(pt.x, pt.y);
+  await expect(alice.locator('.build-sel')).toContainText(/Écran|Monitor/);
+  await alice.keyboard.press('r');
+  await expect
+    .poll(async () => (await propsOf(ben)).find((p) => p.id === monitor.id)!.t)
+    .toBe('prop.monitorBack');
+
+  // PageUp raises it one px (its own raise, on the desk); F mirrors it
+  await alice.keyboard.press('PageUp');
+  await expect.poll(async () => (await propsOf(ben)).find((p) => p.id === monitor.id)!.z).toBe(1);
+  await alice.keyboard.press('f');
+  await expect
+    .poll(async () => (await propsOf(ben)).find((p) => p.id === monitor.id)!.f)
+    .toBe(true);
+
+  // the middle spot: a coffee aimed at the middle of the desk lands on it
+  await alice.keyboard.press('Escape'); // lets go of the selection, stays in build mode
+  await alice.keyboard.press('q'); // the paint tool: the palette shows
+  await alice.getByRole('tab', { name: /Accessoires|Desk items/ }).click();
+  await alice.getByRole('option', { name: /^Café$|^Coffee$/ }).click();
+  pt = await screenPx(alice, X + 16, Y + 15);
+  await alice.mouse.click(pt.x, pt.y);
+  await expect.poll(async () => (await propsOf(ben)).length).toBe(2);
+  const coffee = (await propsOf(ben))[1]!;
+  expect([coffee.t, coffee.x - X]).toEqual(['prop.coffee', 16]);
+
+  // leave the server clean for other specs
+  await alice
+    .getByRole('button', { name: /Revenir à la carte générée|Reset to generated map/ })
+    .click();
+  await alice
+    .getByRole('dialog')
+    .getByRole('button', { name: /Réinitialiser|Reset/ })
+    .click();
+  await expect.poll(async () => (await propsOf(ben)).length).toBe(0);
+  await alice.context().close();
+  await ben.context().close();
+  await new Promise((r) => setTimeout(r, 21_000));
+});

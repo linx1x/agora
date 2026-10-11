@@ -16,15 +16,14 @@ export class BuildOverlay {
   private w = 1;
   private h = 1;
 
-  constructor(parent: HTMLElement) {
+  /** The canvas is in the page only while it is shown: outside build mode the view has one canvas. */
+  constructor(private readonly parent: HTMLElement) {
     this.canvas = document.createElement('canvas');
     this.canvas.setAttribute('aria-hidden', 'true');
     Object.assign(this.canvas.style, {
       position: 'absolute',
       pointerEvents: 'none',
-      display: 'none',
     });
-    parent.append(this.canvas);
     this.ctx = this.canvas.getContext('2d')!;
   }
 
@@ -32,12 +31,14 @@ export class BuildOverlay {
   place(left: number, top: number, w: number, h: number, pr: number, shown: boolean): void {
     this.w = Math.max(1, w);
     this.h = Math.max(1, h);
+    if (shown) {
+      if (!this.canvas.isConnected) this.parent.append(this.canvas);
+    } else this.canvas.remove();
     Object.assign(this.canvas.style, {
       left: `${left}px`,
       top: `${top}px`,
       width: `${this.w}px`,
       height: `${this.h}px`,
-      display: shown ? 'block' : 'none',
     });
     this.canvas.width = Math.round(this.w * pr);
     this.canvas.height = Math.round(this.h * pr);
