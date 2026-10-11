@@ -112,9 +112,10 @@ describe('WorldRoom: joining and the view', () => {
   it('the welcome carries the seed and the generator, and the arrival point is free ground', async () => {
     const room = (await new WorldHub(await storeWith('w1')).enter('w1'))!;
     const c1 = new FakeConn();
-    const m1 = room.join(c1, who('p1'));
+    const m1 = room.join(c1, who('p1'), undefined, 'Alice Tremblay');
     expect(c1.of('world:welcome')[0]).toMatchObject({
       worldId: 'w1',
+      owner: 'Alice Tremblay',
       you: 'p1',
       seed: SEED,
       genVersion: 1,

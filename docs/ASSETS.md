@@ -135,6 +135,7 @@ Personal-world blocks are drawn as 32 px placeholder tiles in `apps/web/src/worl
 | `bed` | decor | `worlds/shared/bed` | yes | zen |
 | `shipping_bin` | decor | `worlds/shared/shipping_bin` | yes | zen |
 | `shop_board` | decor | `worlds/shared/shop_board` | yes | zen |
+| `door` | decor | `worlds/shared/door` | no | zen |
 
 Items for the farm (P17.22). Shown in the hotbar and the inventory as 32 px icons; the item's name is `worlds.item.<id>`.
 

@@ -41,6 +41,12 @@ import {
 } from './math';
 
 const D_PATH = 1e8;
+/**
+ * The shade of a side strip (FIX-1): a step is in shadow, a cliff of two or more levels darker
+ * still. The tint multiplies the block's side colour, so a light side reads as a clear face.
+ */
+const STRIP_STEP = 0x8f8f8f;
+const STRIP_STEEP = 0x555555;
 const D_LABEL = 1e9;
 const WALK_SEQ = [1, 0, 3, 2];
 /** Height the phone dock covers at the bottom of the screen (as the office view). */
@@ -299,7 +305,7 @@ export class WorldRoomScene extends Phaser.Scene {
           .image(x, strip.y, TEX.side, `side:${block}`)
           .setOrigin(0, 0)
           .setCrop(0, 0, CELL, strip.h)
-          .setTint(strip.shade === 'steep' ? 0x8c8c8c : 0xc2c2c2)
+          .setTint(strip.shade === 'steep' ? STRIP_STEEP : STRIP_STEP)
           .setDepth(depthOf(base, level, RANK.strip)),
       );
     }

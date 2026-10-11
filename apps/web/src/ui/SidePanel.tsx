@@ -234,6 +234,8 @@ function Chat() {
   const unread = useStore((s) => s.unread);
   const me = useStore((s) => s.me);
   const myZone = useStore((s) => s.myZone);
+  // FIX-1: inside a personal world both channels reach the people of that world only
+  const inWorld = useStore((s) => s.worldId !== null);
   const [draft, setDraft] = useState('');
   const listRef = useRef<HTMLOListElement>(null);
   const msgs = useMemo(() => chat.filter((m) => m.scope === tab), [chat, tab]);
@@ -256,8 +258,9 @@ function Chat() {
       hour: '2-digit',
       minute: '2-digit',
     }).format(m.at);
-  const hint =
-    tab === 'everyone'
+  const hint = inWorld
+    ? t('worlds.card.hint')
+    : tab === 'everyone'
       ? t('chat.hintEveryone')
       : myZone?.kind === 'private'
         ? t('chat.hintRoom')

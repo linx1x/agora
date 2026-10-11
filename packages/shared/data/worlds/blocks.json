@@ -471,6 +471,17 @@
       "placeable": true,
       "light": 0,
       "biomes": []
+    },
+    {
+      "id": "door",
+      "layer": "decor",
+      "sprite": "worlds/shared/door",
+      "solid": false,
+      "liquid": false,
+      "height": 1,
+      "placeable": true,
+      "light": 0,
+      "biomes": []
     }
   ]
 }

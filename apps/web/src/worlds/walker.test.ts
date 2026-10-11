@@ -15,6 +15,7 @@ function plainSession(): WorldSession {
   const s = new WorldSession();
   s.handle({
     t: 'world:welcome',
+    owner: 'Alice Tremblay',
     worldId: 'w-walk',
     you: 'me',
     seed: worldSeedFor('walker'),

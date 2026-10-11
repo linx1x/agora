@@ -92,7 +92,7 @@ describe('starterPatches', () => {
 
   it('draws the house, the farm plot, the bin, the board and the return pad as the legend says', () => {
     expect(patchAt(-5, -5)).toEqual({ level: 2, block: 'wood_floor', decor: 'bed' });
-    expect(patchAt(-4, -2)).toEqual({ level: 2, block: 'wood_floor', decor: '' }); // the door
+    expect(patchAt(-4, -2)).toEqual({ level: 2, block: 'wood_floor', decor: 'door' }); // the door (walkable)
     expect(patchAt(-6, -4)).toEqual({ level: 2, block: 'wood_floor', decor: 'wood_wall' });
     expect(patchAt(6, 0)).toEqual({ level: 2, block: 'tilled_soil', decor: '' });
     expect(patchAt(0, 1)).toEqual({ level: 2, block: 'meadow_dirt', decor: 'shipping_bin' });

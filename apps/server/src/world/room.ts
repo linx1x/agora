@@ -858,7 +858,7 @@ export class SpaceRoom {
       return refuse(again.result === 'ok' ? 'no_world' : again.result);
     }
     p.conn.send({ t: 'portal:go', id, worldId: world.id, spawn: room.spawn() });
-    this.enterWorld(p, room, p.conn);
+    this.enterWorld(p, room, p.conn, this.desks.get(deskId)?.ownerName ?? '');
   }
 
   /**
@@ -866,7 +866,7 @@ export class SpaceRoom {
    * the world. Nothing of the office is sent to them after this (`broadcast` and `recomputeLinks`
    * only reach people in `players`), and nothing of the world reaches the office.
    */
-  private enterWorld(p: Player, room: WorldRoom, conn: Conn) {
+  private enterWorld(p: Player, room: WorldRoom, conn: Conn, owner: string) {
     const from = p.zone;
     this.players.delete(p.id);
     this.opts.npcs?.talk?.engine.end(p.uid);
@@ -883,6 +883,7 @@ export class SpaceRoom {
         conn,
         { id: p.id, uid: p.uid, name: p.profile.name, avatar: p.profile.avatar },
         this.worldMedia(),
+        owner,
       ),
     };
     this.log.info({ player: p.id, world: room.id }, 'entered world');

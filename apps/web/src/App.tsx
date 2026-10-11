@@ -103,7 +103,9 @@ function SpaceApp({ slug }: { slug: string }) {
   const dialog = useStore((s) => s.dialog);
   const conn = useStore((s) => s.conn);
   const me = useStore((s) => (s.me ? s.profiles[s.me] : undefined));
-  const showMinimap = useStore((s) => s.config?.flags.minimap !== false);
+  // FIX-1: the office minimap is the office's floor plan; a personal world has no minimap yet
+  const inWorld = useStore((s) => s.worldId !== null);
+  const showMinimap = useStore((s) => s.config?.flags.minimap !== false) && !inWorld;
   const spaceName = useStore((s) => s.spaceName);
   const compact = useCompactLayout();
   const touch = useTouchControls();

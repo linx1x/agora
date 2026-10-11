@@ -15,6 +15,7 @@ const SEED = worldSeedFor('dev-alice');
 function welcome(over: Partial<Extract<S2CMsg, { t: 'world:welcome' }>> = {}): S2CMsg {
   return {
     t: 'world:welcome',
+    owner: 'Alice Tremblay',
     worldId: 'w-alice',
     you: 'me',
     seed: SEED,

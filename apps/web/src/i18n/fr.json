@@ -1094,7 +1094,8 @@
       "return_pad": "Plateforme de retour",
       "bed": "Lit",
       "shipping_bin": "Caisse d'expédition",
-      "shop_board": "Tableau de la boutique"
+      "shop_board": "Tableau de la boutique",
+      "door": "Porte"
     },
     "biome": {
       "meadow": "Prairie",
@@ -1227,6 +1228,14 @@
       "pearl_anchovy": "Anchois perlé",
       "deep_ray": "Raie des abysses"
     },
-    "noRoute": "Pas de chemin jusque-là."
+    "noRoute": "Pas de chemin jusque-là.",
+    "card": {
+      "title": "Monde de {{owner}}",
+      "untitled": "Monde personnel",
+      "hint": "Seules les personnes dans ce monde vous entendent",
+      "caveTitle": "Grotte de {{owner}}",
+      "caveUntitled": "Grotte",
+      "caveHint": "Seules les personnes dans cette grotte vous entendent"
+    }
   }
 }

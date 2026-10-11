@@ -667,6 +667,8 @@ describe('SpaceRoom: portals into worlds (P17.8, ADR-053)', () => {
       { t: 'portal:go', id: 'desk:jungle-1', worldId: WORLD },
     ]);
     expect(co.of('world:welcome')).toHaveLength(1);
+    // FIX-1: the welcome names the owner for the card ("Monde de Alice"), never the user id
+    expect(co.of('world:welcome')[0]).toMatchObject({ owner: 'Alice' });
     expect(co.of('peers').at(-1)?.peers).toEqual([]);
     expect(cc.of('leave').at(-1)?.id).toBe(owner.id);
     expect(cb.of('leave').at(-1)?.id).toBe(owner.id);

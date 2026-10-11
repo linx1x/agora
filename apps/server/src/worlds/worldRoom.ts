@@ -325,6 +325,7 @@ export class WorldRoom {
     conn: WorldConn,
     who: { id: string; uid: string; name: string; avatar: Avatar },
     media?: WorldMedia,
+    owner = '',
   ): WorldMember {
     const at = this.spawn();
     const m: WorldMember = {
@@ -345,6 +346,7 @@ export class WorldRoom {
     conn.send({
       t: 'world:welcome',
       worldId: this.id,
+      owner,
       you: m.id,
       seed: this.seed,
       genVersion: this.genVersion,

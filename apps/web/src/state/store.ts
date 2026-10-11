@@ -246,6 +246,8 @@ export interface AppState {
   myDesk: string | null;
   /** P17.14: the personal world I am in (null: the office). GameView mounts the world view for it. */
   worldId: string | null;
+  /** FIX-1: the owner's display name of that world (the card says "Monde de <owner>"); '' when unknown */
+  worldOwner: string;
   admitted: string[];
   prompt: Prompt | null;
   knocks: { from: string; name: string; deskId: string }[];
@@ -344,6 +346,7 @@ const initial: AppState = {
   npcMemory: {},
   myDesk: null,
   worldId: null,
+  worldOwner: '',
   admitted: [],
   prompt: null,
   knocks: [],

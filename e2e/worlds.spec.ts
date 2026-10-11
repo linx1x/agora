@@ -183,6 +183,13 @@ test('my world: enter from my desk, walk, cross a level step, come back to the d
   expect(w.people).toBe(1);
   expect((await st(a)).prompt).toBeNull();
 
+  // FIX-1: the card names the world and its owner; never the desk pod, and no office minimap
+  const card = (await a.locator('.room-name').textContent()) ?? '';
+  expect(card).toContain('Monde de Alice Tremblay');
+  expect(card).toContain('Seules les personnes dans ce monde vous entendent');
+  expect(card).not.toMatch(/Poste|poste/);
+  await expect(a.locator('.minimap-wrap')).toHaveCount(0);
+
   // the starter house is flat: holding right moves me east (polled: headless frames are slow)
   const before = w;
   await a.evaluate(() => (window as any).__agora.setHeld(['ArrowRight']));
@@ -245,6 +252,9 @@ test('my world: enter from my desk, walk, cross a level step, come back to the d
     s.me,
     { timeout: 20_000 },
   );
+  // back in the office the card is the desk again, and the minimap is back
+  await expect(a.locator('.room-name')).toContainText('Poste de Alice Tremblay');
+  await expect(a.locator('.minimap-wrap')).toHaveCount(1);
 });
 
 test('a visitor is held at the knock, then let into the owner world', async ({ browser }) => {
