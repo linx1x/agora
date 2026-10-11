@@ -22,6 +22,8 @@ import type { WorldGenParams } from './worlds/gen';
 import type { ChunkDelta } from './worlds/delta';
 import type { WorldTime } from './worlds/clock';
 import type { PlotState } from './worlds/gamedata/state';
+import { ACTION_KINDS, type ActionChanges, type WorldRefusal } from './worlds/actions/kinds';
+import { WORLD_COORD_LIMIT } from './worlds/constants';
 
 /** Client → server messages, all validated with zod on the server. */
 export const C2S = z.discriminatedUnion('t', [
@@ -41,6 +43,30 @@ export const C2S = z.discriminatedUnion('t', [
   z.object({ t: z.literal('portal:enter'), id: z.string().regex(PORTAL_ID) }),
   /** P17.9: walk back out of the world to the office, to your desk. */
   z.object({ t: z.literal('world:leave') }),
+  /**
+   * P17.20 (ADR-053): ask the server for a world action. `op` is the client's number for this
+   * request, echoed in the reply. `key` is an idempotency key, kept for resends: the same key
+   * twice has one effect and gets the same reply.
+   */
+  z.object({
+    t: z.literal('world:act'),
+    op: z.number().int().nonnegative().max(2 ** 31 - 1),
+    kind: z.enum(ACTION_KINDS),
+    at: z
+      .object({
+        x: z.number().int().min(-WORLD_COORD_LIMIT).max(WORLD_COORD_LIMIT),
+        y: z.number().int().min(-WORLD_COORD_LIMIT).max(WORLD_COORD_LIMIT),
+      })
+      .optional(),
+    item: z
+      .string()
+      .min(2)
+      .max(40)
+      .regex(/^[a-z][a-z0-9_]+(~[124])?$/)
+      .optional(),
+    target: z.string().min(1).max(64).optional(),
+    key: z.string().min(8).max(64),
+  }),
   z.object({ t: z.literal('desk:claim'), deskId: z.string().min(1).max(32) }),
   z.object({ t: z.literal('desk:release') }),
   z.object({
@@ -295,6 +321,18 @@ export type S2CMsg =
   | { t: 'world:farm'; day: number; plots: Record<string, PlotState | null> }
   /** P17.19/P17.23: the world clock, sent on welcome and every 10 game minutes */
   | { t: 'world:time'; time: WorldTime }
+  /** P17.20: an approved action (or a resend of one) and what it changed for you. Only you get it. */
+  | { t: 'world:acted'; op: number; changes: ActionChanges }
+  /** P17.20: a refused action and why. Nothing changed. Only you get it. */
+  | { t: 'world:refused'; op: number; reason: WorldRefusal }
+  /** P17.20/P17.23: your inventory, money and energy, on join and after each change. Only you get it. */
+  | {
+      t: 'world:inv';
+      items: Record<string, number>;
+      money: number;
+      energy: number;
+      maxEnergy: number;
+    }
   /**
    * SFU backend (ADR-031): the media rooms the server places me in, with fresh
    * tokens (used when (re)connecting; a live connection is kept). `zone` null =

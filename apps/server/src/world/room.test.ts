@@ -993,3 +993,61 @@ describe('SpaceRoom: the SFU and a personal world (P17.11, ADR-053)', () => {
     expect(back.zone?.room ?? '').not.toContain('world');
   });
 });
+
+describe('SpaceRoom: world actions are routed to the world (P17.20)', () => {
+  const spot = map.desks.find((d) => d.id === 'jungle-1')!;
+  const OWNER = 'owner-7731';
+  const settle = () => new Promise((r) => setTimeout(r, 0));
+
+  async function inWorld(flags: Record<string, boolean>) {
+    const store = new MemoryStore();
+    const flagged = { ...flags };
+    const room = makeRoom(store, 4, undefined, flagged);
+    await room.init();
+    const co = new FakeConn();
+    const owner = (await room.join(co, { uid: OWNER, name: 'Alice' }))!;
+    place(room, owner, cellPos(map, spot.chair), 'sit');
+    room.handle(owner, { t: 'desk:claim', deskId: 'jungle-1' });
+    await store.worlds.createWorld({
+      id: 'world-act',
+      ownerId: OWNER,
+      seed: 3560865791,
+      genVersion: 1,
+      createdAt: 0,
+      lastDay: 0,
+      settings: {},
+    });
+    room.handle(owner, { t: 'portal:enter', id: 'desk:jungle-1' });
+    await settle();
+    expect(co.of('world:welcome')).toHaveLength(1);
+    return { room, co, owner, flagged };
+  }
+
+  const act = (op: number, key: string) => ({ t: 'world:act' as const, op, kind: 'eat' as const, key });
+
+  it('reaches the world room: with no rule for the kind the person is refused as invalid', async () => {
+    const { room, co, owner } = await inWorld({ worlds: true });
+    room.handle(owner, act(7, 'k-route-1'));
+    await settle();
+    expect(co.of('world:refused').at(-1)).toEqual({ t: 'world:refused', op: 7, reason: 'invalid' });
+  });
+
+  it('refuses as disabled once the worlds flag is off', async () => {
+    const { room, co, owner, flagged } = await inWorld({ worlds: true });
+    flagged.worlds = false;
+    room.handle(owner, act(8, 'k-route-2'));
+    await settle();
+    expect(co.of('world:refused').at(-1)).toEqual({ t: 'world:refused', op: 8, reason: 'disabled' });
+  });
+
+  it('rate-limits a burst of actions, refusing the excess as rate', async () => {
+    const { room, co, owner } = await inWorld({ worlds: true });
+    for (let i = 0; i < 20; i++) room.handle(owner, act(100 + i, `k-burst-${i}`));
+    await settle();
+    // the burst of 12 reaches the rules (refused as invalid here); the rest are refused as rate, at once
+    const rate = co.of('world:refused').filter((m) => m.reason === 'rate').map((m) => m.op);
+    expect(rate.length).toBeGreaterThan(0);
+    expect(rate.at(-1)).toBe(119);
+    expect(rate).not.toContain(100);
+  });
+});

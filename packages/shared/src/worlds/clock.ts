@@ -11,6 +11,7 @@ import {
   type Season,
   type WorldSimState,
 } from './gamedata';
+import { hash32 } from './noise';
 
 /** A game day runs from 06:00 to 02:00 the next morning: 20 clock hours. */
 export const GAME_MINUTES_PER_DAY = 20 * 60;
@@ -75,7 +76,7 @@ export function sprinklerCovers(radius: number, dx: number, dy: number): boolean
   return Math.max(Math.abs(dx), Math.abs(dy)) <= radius;
 }
 
-const seasonOfDay = (day: number): Season => SEASONS[seasonIndexOf(day - 1, SEASON_DAYS)]!;
+export const seasonOfDay = (day: number): Season => SEASONS[seasonIndexOf(day - 1, SEASON_DAYS)]!;
 
 function witherOutOfSeason(plots: Record<string, PlotState>, season: Season, rows: Map<string, { seasons: readonly string[] }>) {
   for (const [key, plot] of Object.entries(plots)) {
@@ -85,7 +86,7 @@ function witherOutOfSeason(plots: Record<string, PlotState>, season: Season, row
   }
 }
 
-function growCrop(crop: CropState, stages: readonly number[]): CropState {
+function growCrop(crop: CropState): CropState {
   if (crop.regrowLeft !== null) {
     const left = crop.regrowLeft - 1;
     return left === 0 ? { ...crop, regrowLeft: null, ripe: true } : { ...crop, regrowLeft: left };
@@ -93,10 +94,10 @@ function growCrop(crop: CropState, stages: readonly number[]): CropState {
   let { stage, daysInStage } = crop;
   let ripe = false;
   daysInStage += 1;
-  if (daysInStage >= stages[stage]!) {
-    if (stage + 1 >= stages.length) {
+  if (daysInStage >= crop.stages[stage]!) {
+    if (stage + 1 >= crop.stages.length) {
       ripe = true;
-      daysInStage = stages[stage]!;
+      daysInStage = crop.stages[stage]!;
     } else {
       stage += 1;
       daysInStage = 0;
@@ -105,22 +106,36 @@ function growCrop(crop: CropState, stages: readonly number[]): CropState {
   return { ...crop, stage, daysInStage, ripe };
 }
 
-function growCrops(plots: Record<string, PlotState>, day: number, rows: Map<string, { stages: readonly number[] }>) {
+function growCrops(plots: Record<string, PlotState>, day: number) {
   for (const [key, plot] of Object.entries(plots)) {
     const crop = plot.crop;
     // Growth needs water on this day. Unwatered crops stay as they are.
     if (!crop || crop.ripe || plot.wateredOn !== day) continue;
-    const row = rows.get(crop.crop);
-    if (!row) continue;
-    plots[key] = { ...plot, crop: growCrop(crop, row.stages) };
+    plots[key] = { ...plot, crop: growCrop(crop) };
+  }
+}
+
+/**
+ * Water retention (research section 4): the water used on this day's growth is kept for the next
+ * night with the fertilizer's retention chance. The roll depends only on the world seed, the cell
+ * and the day, so running the days one at a time and running them as one catch-up give the same result.
+ */
+function retainWater(plots: Record<string, PlotState>, day: number, seed: number, items: GameData['itemsById']) {
+  for (const [key, plot] of Object.entries(plots)) {
+    if (plot.wateredOn !== day) continue;
+    const effect = items.get(plot.crop?.fertilizer ?? plot.fertilizer ?? '')?.effect;
+    if (effect?.kind !== 'fertilizer') continue;
+    const roll = hash32(`${seed}:${key}:${day}`) / 0x1_0000_0000;
+    if (roll < effect.retentionPct / 100) plots[key] = { ...plot, wateredOn: day + 1 };
   }
 }
 
 function waterFromSprinklers(plots: Record<string, PlotState>, day: number, items: GameData['itemsById']) {
   for (const [key, plot] of Object.entries(plots)) {
     if (!plot.sprinkler) continue;
-    const radius = items.get(plot.sprinkler)?.effect?.radius;
-    if (radius === undefined) continue;
+    const effect = items.get(plot.sprinkler)?.effect;
+    if (effect?.kind !== 'sprinkler') continue;
+    const radius = effect.radius;
     const [x, y] = key.split(',').map(Number) as [number, number];
     // Radius 0 still reaches the 4 orthogonal neighbours, so scan at least 1 cell out.
     const reach = Math.max(1, radius);
@@ -147,11 +162,12 @@ function stepAnimal(animal: AnimalState, day: number, rows: Map<string, { produc
 /**
  * Runs the night processing for days fromDay+1 .. toDay. The state must be at
  * fromDay. Order each day: season change (withering), crop growth (needs water
- * that day), sprinklers (water for tomorrow), animals, machines.
+ * that day), water retention (fertilizer), sprinklers (water for tomorrow),
+ * animals, machines. `seed` is the world's seed: it drives the retention rolls.
  * At most one year (MAX_SIM_DAYS) is simulated; earlier days in a longer gap are skipped.
  * Pure: the input state is not changed.
  */
-export function simulateDays(state: WorldSimState, fromDay: number, toDay: number, data: GameData): WorldSimState {
+export function simulateDays(state: WorldSimState, fromDay: number, toDay: number, data: GameData, seed = 0): WorldSimState {
   if (!Number.isInteger(fromDay) || !Number.isInteger(toDay)) throw new RangeError('days must be integers');
   if (state.day !== fromDay) throw new RangeError(`state is at day ${state.day}, not ${fromDay}`);
   if (toDay <= fromDay) return state;
@@ -164,7 +180,8 @@ export function simulateDays(state: WorldSimState, fromDay: number, toDay: numbe
   for (let day = first; day <= toDay; day++) {
     const dayOfSeason = ((day - 1) % SEASON_DAYS) + 1;
     if (dayOfSeason === 1 && day > 1) witherOutOfSeason(plots, seasonOfDay(day), cropRows);
-    growCrops(plots, day, cropRows);
+    growCrops(plots, day);
+    retainWater(plots, day, seed, data.itemsById);
     waterFromSprinklers(plots, day, data.itemsById);
     animals = animals.map((animal) => stepAnimal(animal, day, animalRows));
     machines = machines.map((machine) => (machine.daysLeft > 0 ? { ...machine, daysLeft: machine.daysLeft - 1 } : machine));

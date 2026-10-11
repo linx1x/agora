@@ -14,15 +14,25 @@ export interface CropState {
   readonly ripe: boolean;
   /** Watered days still needed after a harvest before the crop is ripe again; null when not regrowing. */
   readonly regrowLeft: number | null;
+  /** Days per stage after the fertilizer's speed bonus was taken off at planting (crops.json has the full list). */
+  readonly stages: readonly number[];
+  /** Fertilizer item the crop was planted with, kept until the crop is cleared (its quality and retention apply). */
+  readonly fertilizer: string | null;
 }
 
 export interface PlotState {
   readonly tilled: boolean;
-  /** Day the plot was last watered: by the player that day, or by a sprinkler the night before. */
+  /**
+   * The day whose 06:00 growth step reads this water (clock.ts `simulateDays`: growth on day N needs
+   * `wateredOn === N`). A player watering on day D sets D + 1, so the water counts for the night D to
+   * D + 1; a sprinkler run at the rollover into day N sets N + 1. 0 means never.
+   */
   readonly wateredOn: number;
   readonly crop: CropState | null;
   /** Sprinkler item id on this cell (an item with a sprinkler effect), or null. */
   readonly sprinkler: string | null;
+  /** Fertilizer item spread on the empty plot; it moves to the crop when one is planted. */
+  readonly fertilizer: string | null;
 }
 
 export interface AnimalState {
@@ -63,3 +73,6 @@ export interface WorldSimState {
 export const MAX_PENDING_PRODUCT = 9;
 
 export const cellKey = (x: number, y: number): string => `${x},${y}`;
+
+/** A world with no farm yet, at `day`. */
+export const emptySim = (day: number): WorldSimState => ({ day, plots: {}, animals: [], machines: [] });

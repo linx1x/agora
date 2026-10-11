@@ -19,6 +19,7 @@ export const ITEM_KINDS = [
   'building',
   'food',
   'fish',
+  'fertilizer',
 ] as const;
 export const ITEM_CATEGORIES = ['open', 'limited', 'restricted', 'account-bound'] as const;
 export const SEASONS = ['spring', 'summer', 'autumn', 'winter'] as const;
@@ -49,6 +50,9 @@ const int = (min: number, max: number) => z.number().int().min(min).max(max);
 
 const unique = (values: readonly string[]) => new Set(values).size === values.length;
 
+/** Kinds that can be eaten; food must carry an edibility, crops and forage may. */
+export const EDIBLE_KINDS: readonly ItemKind[] = ['food', 'crop', 'forage'];
+
 export const ItemSchema = z
   .object({
     id: IdSchema,
@@ -61,18 +65,35 @@ export const ItemSchema = z
     stack: int(1, 999).default(99),
     /** Food only: energy restore basis (research section 9). */
     edibility: int(1, 100).optional(),
-    /** Buildings only: what the building does each night. */
-    effect: z.object({ kind: z.literal('sprinkler'), radius: int(0, 2) }).optional(),
+    /** Buildings (sprinklers) and fertilizer: what the item does on the farm. */
+    effect: z.discriminatedUnion('kind', [
+      z.strictObject({ kind: z.literal('sprinkler'), radius: int(0, 2) }),
+      z.strictObject({
+        kind: z.literal('fertilizer'),
+        /** Harvest quality level the fertilizer gives (research section 6): 1, 2 or 3. */
+        quality: int(1, 3),
+        /** Growth speed bonus in percent: the crop loses this share of its days (research section 5). */
+        speedPct: int(0, 100),
+        /** Chance in percent that the water on the plot is kept for the next night (research section 4). */
+        retentionPct: int(0, 100),
+      }),
+    ]).optional(),
   })
   .superRefine((item, ctx) => {
     if (item.kind === 'food' && item.edibility === undefined) {
       ctx.addIssue({ code: 'custom', path: ['edibility'], message: 'food needs edibility' });
     }
-    if (item.kind !== 'food' && item.edibility !== undefined) {
-      ctx.addIssue({ code: 'custom', path: ['edibility'], message: 'only food has edibility' });
+    if (!EDIBLE_KINDS.includes(item.kind) && item.edibility !== undefined) {
+      ctx.addIssue({ code: 'custom', path: ['edibility'], message: 'only food, crops and forage have edibility' });
     }
-    if (item.effect !== undefined && item.kind !== 'building') {
+    if (item.effect?.kind === 'sprinkler' && item.kind !== 'building') {
       ctx.addIssue({ code: 'custom', path: ['effect'], message: 'only buildings have an effect' });
+    }
+    if (item.effect?.kind === 'fertilizer' && item.kind !== 'fertilizer') {
+      ctx.addIssue({ code: 'custom', path: ['effect'], message: 'only fertilizer has a fertilizer effect' });
+    }
+    if (item.kind === 'fertilizer' && item.effect?.kind !== 'fertilizer') {
+      ctx.addIssue({ code: 'custom', path: ['effect'], message: 'fertilizer needs a fertilizer effect' });
     }
   });
 export type Item = z.infer<typeof ItemSchema>;
@@ -118,7 +139,7 @@ export const ToolSchema = z
     /** Energy per use before the farming-level reduction. */
     energy: int(0, 10),
     power: int(1, 5),
-    /** Multiplier on the action time; 1 is the base speed. */
+    /** Swing speed-up: 1 is the base speed, 1.5 swings half as long again as fast (swing.ts). */
     speed: z.number().min(0.5).max(3),
     /** 0 = one tile; 1 = the 3 x 3 block around the target. */
     radius: int(0, 2),
@@ -225,6 +246,39 @@ export const GiftProfileSchema = z
     }
   });
 export type GiftProfile = z.infer<typeof GiftProfileSchema>;
+
+export const SKILLS = ['farming', 'foraging', 'mining'] as const;
+export type Skill = (typeof SKILLS)[number];
+
+const XpGrantSchema = z.object({ skill: z.enum(SKILLS), amount: int(1, 100) });
+export type XpGrant = z.infer<typeof XpGrantSchema>;
+
+/** Energy, the starter kit and the xp of each action (P17.20; costs of tools live in tools.json). */
+/** Skill levels run 0 to 10; `levelXp` lists the total xp each level 1 to 10 needs. */
+export const SKILL_LEVEL_MAX = 10;
+
+export const ProgressionSchema = z.object({
+  energy: z.object({ max: int(1, 999) }),
+  starterKit: z.object({
+    money: int(0, 1_000_000),
+    /** Item id to quantity. Granted once per account through the ledger. */
+    items: z.record(IdSchema, Qty),
+  }),
+  /** The starter house, in world cells (walls included): passing out at home costs no money. */
+  home: z
+    .strictObject({ x0: int(-1000, 1000), y0: int(-1000, 1000), x1: int(-1000, 1000), y1: int(-1000, 1000) })
+    .refine((h) => h.x0 <= h.x1 && h.y0 <= h.y1, { message: 'home rectangle must not be empty' }),
+  /** Passing out away from home: this share of the money is lost, up to the cap (research section 9). */
+  passOut: z.strictObject({ moneyPct: int(0, 100), moneyCap: int(0, 1_000_000) }),
+  levelXp: z
+    .array(int(1, 1_000_000))
+    .length(SKILL_LEVEL_MAX)
+    .refine((xp) => xp.every((need, i) => i === 0 || need > xp[i - 1]!), { message: 'levelXp must rise' }),
+  xp: z.object({ harvest: XpGrantSchema, chop: XpGrantSchema, mine: XpGrantSchema }),
+});
+export type Progression = z.infer<typeof ProgressionSchema>;
+
+export const ProgressionFileSchema = z.object({ progression: ProgressionSchema });
 
 export const ItemsFileSchema = z.object({ items: z.array(ItemSchema).min(1) });
 export const CropsFileSchema = z.object({ crops: z.array(CropSchema).min(1) });

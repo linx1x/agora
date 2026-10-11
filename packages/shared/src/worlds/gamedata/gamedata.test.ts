@@ -6,6 +6,8 @@ import giftsJson from '../../../data/worlds/npc-gifts.json';
 import itemsJson from '../../../data/worlds/items.json';
 import recipesJson from '../../../data/worlds/recipes.json';
 import toolsJson from '../../../data/worlds/tools.json';
+import progressionJson from '../../../data/worlds/progression.json';
+import blocksJson from '../../../data/worlds/blocks.json';
 import frJson from '../../../../../apps/web/src/i18n/fr.json';
 import enJson from '../../../../../apps/web/src/i18n/en.json';
 import {
@@ -27,6 +29,7 @@ const raw = (): RawGameData =>
     animals: animalsJson,
     fish: fishJson,
     gifts: giftsJson,
+    progression: progressionJson,
   });
 
 type Names = { worlds?: { item?: Record<string, string> } };
@@ -164,6 +167,39 @@ describe('cross-references', () => {
       const issues = (error as GameDataError).issues;
       expect(issues.some((line) => line.startsWith('items'))).toBe(true);
       expect(issues.some((line) => line.startsWith('crops'))).toBe(true);
+    }
+  });
+});
+
+describe('progression and harvest data (P17.20)', () => {
+  it('grants a starter kit that only names items and fits the inventory slots', () => {
+    const game = loadGameData();
+    const kit = game.progression.starterKit;
+    expect(Object.keys(kit.items).length).toBeLessThanOrEqual(36);
+    for (const id of Object.keys(kit.items)) expect(game.itemsById.get(id)?.kind).toBeDefined();
+    expect(kit.money).toBeGreaterThan(0);
+  });
+
+  it('reports a starter kit item that does not exist', () => {
+    const data = raw();
+    (data.progression as { progression: { starterKit: { items: Record<string, number> } } }).progression.starterKit.items.nope_item = 1;
+    try {
+      parseGameData(data);
+      expect.fail('should throw');
+    } catch (error) {
+      expect((error as GameDataError).issues).toContain('progression.starterKit.items: unknown item nope_item');
+    }
+  });
+
+  it('gives every block drop an item that exists, and every harvest a tool kind that exists', () => {
+    const items = new Set(loadGameData().items.map((item) => item.id));
+    const blocks = (blocksJson as { blocks: { id: string; harvest?: { tool: string; drops: { item: string }[] } }[] }).blocks;
+    const tools = new Set(loadGameData().tools.map((tool) => tool.tool));
+    for (const block of blocks) {
+      if (!block.harvest) continue;
+      for (const drop of block.harvest.drops) expect(items.has(drop.item), `${block.id} drops ${drop.item}`).toBe(true);
+      if (block.harvest.tool !== 'hand' && block.harvest.tool !== 'shovel')
+        expect(tools.has(block.harvest.tool as never), `${block.id} needs ${block.harvest.tool}`).toBe(true);
     }
   });
 });

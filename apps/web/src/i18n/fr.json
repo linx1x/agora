@@ -967,6 +967,44 @@
     }
   },
   "worlds": {
+    "hud": {
+      "hotbar": "Barre d'outils",
+      "slot": "Emplacement {{n}} : {{item}}, {{count}}",
+      "slotEmpty": "Emplacement {{n}} : vide",
+      "money": "Argent : {{amount}}",
+      "nothingInHand": "Rien en main",
+      "inHand": "En main : {{item}}",
+      "inventory": "Inventaire (I)",
+      "inventoryTitle": "Inventaire",
+      "slotsUsed": "{{used}} emplacements sur {{max}}",
+      "empty": "Ton inventaire est vide.",
+      "clock": "{{season}}, jour {{day}}, {{time}}",
+      "energy": "Énergie",
+      "energyValue": "{{energy}} sur {{max}}",
+      "seasons": {
+        "spring": "Printemps",
+        "summer": "Été",
+        "autumn": "Automne",
+        "winter": "Hiver"
+      }
+    },
+    "refused": {
+      "disabled": "Les mondes personnels sont fermés pour le moment.",
+      "rate": "Trop d'actions à la fois. Attends un instant.",
+      "forbidden": "Tu n'as pas le droit de faire cela ici.",
+      "far": "Trop loin. Approche-toi de la cible.",
+      "invalid": "Cela ne peut pas se faire ici.",
+      "tool": "Il te faut le bon outil.",
+      "tier": "Ton outil n'est pas assez solide.",
+      "energy": "Tu es trop fatigué.",
+      "gone": "C'est déjà fait ou disparu.",
+      "missing": "Il te manque quelque chose.",
+      "full": "Ton inventaire est plein.",
+      "cap": "Ce monde ne peut plus enregistrer de changements.",
+      "key_taken": "Quelqu'un d'autre a déjà fait cette action.",
+      "conflict": "Le monde a changé pendant l'action. Rien n'a été fait : réessaie.",
+      "asleep": "Tu dors : tu te réveilleras demain matin."
+    },
     "tuning": {
       "open": "Réglages du monde",
       "title": "Réglages du monde (aperçu)",
@@ -1146,6 +1184,9 @@
       "sprinkler_1": "Arroseur automatique",
       "sprinkler_2": "Arroseur amélioré",
       "sprinkler_3": "Arroseur supérieur",
+      "fertilizer_1": "Engrais basique",
+      "fertilizer_2": "Engrais amélioré",
+      "fertilizer_3": "Engrais supérieur",
       "scarecrow": "Épouvantail",
       "workbench": "Établi",
       "lantern": "Lanterne",

@@ -3,13 +3,15 @@ import { DEFAULT_DAY_MS, MAX_SIM_DAYS, simulateDays, sprinklerCovers, worldTime 
 import { cellKey, loadGameData, type CropState, type PlotState, type WorldSimState } from './gamedata';
 
 const data = loadGameData();
-const plot = (over: Partial<PlotState> = {}): PlotState => ({ tilled: true, wateredOn: 0, crop: null, sprinkler: null, ...over });
+const plot = (over: Partial<PlotState> = {}): PlotState => ({ tilled: true, wateredOn: 0, crop: null, sprinkler: null, fertilizer: null, ...over });
 const crop = (id: string, over: Partial<CropState> = {}): CropState => ({
   crop: id,
   stage: 0,
   daysInStage: 0,
   ripe: false,
   regrowLeft: null,
+  stages: data.crops.find((c) => c.id === id)!.stages,
+  fertilizer: null,
   ...over,
 });
 const world = (day: number, plots: Record<string, PlotState> = {}, extra: Partial<WorldSimState> = {}): WorldSimState => ({
@@ -189,5 +191,27 @@ describe('simulateDays', () => {
 
   it('refuses a state that is not at fromDay', () => {
     expect(() => simulateDays(world(3), 0, 5, data)).toThrow(RangeError);
+  });
+});
+
+describe('simulateDays: fertilizer retention and catch-up (P17.22)', () => {
+  it('fertilizer retention keeps the water for the next night, so a crop grows again without new water', () => {
+    const kept = simulateDays(world(4, { '0,0': plot({ wateredOn: 5, crop: crop('dawn_radish', { fertilizer: 'fertilizer_3' }) }) }), 4, 6, data, 1);
+    expect(at(kept, 0, 0).crop?.daysInStage).toBe(2);
+    const dry = simulateDays(world(4, { '0,0': plot({ wateredOn: 5, crop: crop('dawn_radish') }) }), 4, 6, data, 1);
+    expect(at(dry, 0, 0).crop?.daysInStage).toBe(1);
+  });
+
+  it('a catch-up over many days equals the same days run one at a time, and is repeatable', () => {
+    const start = world(10, {
+      '0,0': plot({ wateredOn: 11, crop: crop('dawn_radish', { fertilizer: 'fertilizer_1' }) }),
+      '1,0': plot({ wateredOn: 12, crop: crop('clover_bulb', { fertilizer: 'fertilizer_2' }) }),
+      '2,0': plot({ wateredOn: 11, fertilizer: 'fertilizer_1', sprinkler: 'sprinkler_1' }),
+      '3,0': plot({ crop: crop('ember_pepper') }),
+    });
+    let step = start;
+    for (let d = 10; d < 30; d++) step = simulateDays(step, d, d + 1, data, 99);
+    expect(simulateDays(start, 10, 30, data, 99)).toEqual(step);
+    expect(simulateDays(start, 10, 30, data, 99)).toEqual(simulateDays(start, 10, 30, data, 99));
   });
 });

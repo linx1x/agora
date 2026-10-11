@@ -9,9 +9,13 @@ import biomesJson from '../../data/worlds/biomes.json';
 import blocksJson from '../../data/worlds/blocks.json';
 import { LEVEL_MAX } from './constants';
 
-/** Tool kinds a harvest can require. Tool stats live in tools.json (P17.18); the kinds are fixed. */
-export const TOOL_KINDS = ['hand', 'hoe', 'watering_can', 'axe', 'pickaxe', 'shovel'] as const;
-export type ToolKind = (typeof TOOL_KINDS)[number];
+/**
+ * Tool kinds a harvest can require. They are the kinds of tools.json (P17.18) plus `hand` and
+ * `shovel` (the shovel comes with terrain edits, P17.24). Renamed from `ToolKind` in P17.20, where
+ * gamedata/ gained a `ToolKind` of its own and the barrel export clashed.
+ */
+export const TOOL_KINDS = ['hand', 'hoe', 'can', 'axe', 'pick', 'shovel'] as const;
+export type HarvestToolKind = (typeof TOOL_KINDS)[number];
 
 /** Lower_snake content id such as `meadow_grass` or `oak_tree`. */
 export const CONTENT_ID = /^[a-z][a-z0-9_]{1,39}$/;
@@ -46,6 +50,8 @@ export const BlockSchema = z
     placeable: z.boolean().default(false),
     /** Stairs or a ramp: walking may change level by 2 onto or off it (walk.ts). */
     ramp: z.boolean().default(false),
+    /** A hoe can till this ground block into a plot (P17.21). Ground blocks only. */
+    tillable: z.boolean().default(false),
     light: z.number().int().min(0).max(15).default(0),
     states: z.array(z.string().regex(STATE_NAME)).max(8).default([]),
     /** Biome ids where this block may appear. Empty means every biome. */
@@ -58,6 +64,9 @@ export const BlockSchema = z
     }
     if (block.layer === 'ground' && block.height !== 0) {
       ctx.addIssue({ code: 'custom', path: ['height'], message: 'ground blocks have height 0' });
+    }
+    if (block.tillable && block.layer !== 'ground') {
+      ctx.addIssue({ code: 'custom', path: ['tillable'], message: 'only ground blocks can be tilled' });
     }
     if (block.ramp && (block.layer !== 'decor' || block.solid || block.liquid)) {
       ctx.addIssue({ code: 'custom', path: ['ramp'], message: 'a ramp is a walkable decor block' });

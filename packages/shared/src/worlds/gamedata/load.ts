@@ -5,6 +5,7 @@ import {
   FishFileSchema,
   GiftsFileSchema,
   ItemsFileSchema,
+  ProgressionFileSchema,
   RecipesFileSchema,
   ToolsFileSchema,
   type Animal,
@@ -12,6 +13,7 @@ import {
   type Fish,
   type Item,
   type ItemKind,
+  type Progression,
   type Recipe,
   type Tool,
   type ToolKind,
@@ -23,6 +25,7 @@ import recipesJson from '../../../data/worlds/recipes.json';
 import animalsJson from '../../../data/worlds/animals.json';
 import fishJson from '../../../data/worlds/fish.json';
 import giftsJson from '../../../data/worlds/npc-gifts.json';
+import progressionJson from '../../../data/worlds/progression.json';
 
 export interface GameData {
   readonly items: readonly Item[];
@@ -33,6 +36,7 @@ export interface GameData {
   readonly animals: readonly Animal[];
   readonly fish: readonly Fish[];
   readonly gifts: z.infer<typeof GiftsFileSchema>;
+  readonly progression: Progression;
 }
 
 /** The raw JSON of each data file, before validation. */
@@ -44,6 +48,7 @@ export interface RawGameData {
   readonly animals: unknown;
   readonly fish: unknown;
   readonly gifts: unknown;
+  readonly progression: unknown;
 }
 
 export class GameDataError extends Error {
@@ -159,6 +164,11 @@ export function checkCrossRefs(data: Omit<GameData, 'itemsById'>): string[] {
   }
   for (const id of fishItems) issues.push(`fish: item ${id} has no fish row`);
 
+  // The starter kit: every item exists.
+  for (const id of Object.keys(data.progression.starterKit.items)) {
+    if (!itemsById.has(id)) issues.push(`progression.starterKit.items: unknown item ${id}`);
+  }
+
   // Gifts: every item exists.
   for (const profile of data.gifts.npcs) {
     const refs = [...profile.love, ...profile.like, ...profile.dislike, ...profile.hate];
@@ -189,6 +199,7 @@ export function parseGameData(raw: RawGameData): GameData {
   const animals = take('animals', AnimalsFileSchema, raw.animals);
   const fish = take('fish', FishFileSchema, raw.fish);
   const gifts = take('gifts', GiftsFileSchema, raw.gifts);
+  const progression = take('progression', ProgressionFileSchema, raw.progression);
   if (
     issues.length > 0 ||
     items === undefined ||
@@ -197,7 +208,8 @@ export function parseGameData(raw: RawGameData): GameData {
     recipes === undefined ||
     animals === undefined ||
     fish === undefined ||
-    gifts === undefined
+    gifts === undefined ||
+    progression === undefined
   ) {
     throw new GameDataError(issues);
   }
@@ -209,6 +221,7 @@ export function parseGameData(raw: RawGameData): GameData {
     animals: animals.animals,
     fish: fish.fish,
     gifts,
+    progression: progression.progression,
   };
   const refIssues = checkCrossRefs(data);
   if (refIssues.length > 0) throw new GameDataError(refIssues);
@@ -227,6 +240,7 @@ export function loadGameData(): GameData {
     animals: animalsJson,
     fish: fishJson,
     gifts: giftsJson,
+    progression: progressionJson,
   });
   return cached;
 }
