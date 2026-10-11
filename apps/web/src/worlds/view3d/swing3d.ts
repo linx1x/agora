@@ -36,11 +36,17 @@ const SPARK_LIFT = 0.04;
 const SPARK_COLORS = [0xffe08a, 0xfff4c2] as const;
 /** The spark ring's radius at the start, in pixels, grows with the tier (the flat view's 6 + 2 a tier). */
 const SPARK_REACH_PX = 6;
+/** drawn after the people and the walls: a swing and its sparks are never hidden by the person swinging */
+const OVER_FIGURE = 20;
 const HAND = HAND_PX / TILE;
-const ARC = FRAME_PX / TILE;
+/** the arc is drawn 1.5 times the flat view's frame: the 2.5D camera is further from the figure */
+const ARC = (FRAME_PX * 1.5) / TILE;
 const MARK = OVERLAY_GRID / TILE;
-/** The mark sits this far right of and above the hand (the flat view's +6, -6 px). */
-const MARK_OFFSET = 6 / TILE;
+/**
+ * The mark sits this far right of the hand, clear of the head (the flat view has it up and right, at +6, -6 px).
+ * The swing is drawn over the figure (no depth test), so it reads when the target is behind the person.
+ */
+const MARK_OFFSET_X = 12 / TILE;
 
 /** One swing to play: where the person stands, what they swing at, and the settings. */
 export interface SwingPlay {
@@ -106,10 +112,12 @@ export class SwingFx {
     arc.center.set(0.5, 0.5);
     arc.scale.set(ARC, ARC, 1);
     arc.position.set(...hand);
+    arc.renderOrder = OVER_FIGURE;
     const mark = new THREE.Sprite(this.markMat(p.tier));
     mark.center.set(0.5, 0.5);
     mark.scale.set(MARK, MARK, 1);
-    mark.position.set(hand[0] + MARK_OFFSET, hand[1] + MARK_OFFSET, hand[2]);
+    mark.position.set(hand[0] + MARK_OFFSET_X, hand[1], hand[2]);
+    mark.renderOrder = OVER_FIGURE;
     this.scene.add(arc, mark);
     this.active.push({
       play: p,
@@ -204,13 +212,16 @@ export class SwingFx {
     geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     const mat = new THREE.PointsMaterial({
-      size: s.sparkPx,
+      // twice the flat view's squares: a 3 px dot is lost at the 2.5D zoom
+      size: s.sparkPx * 2,
       sizeAttenuation: false,
       vertexColors: true,
       transparent: true,
       depthWrite: false,
+      depthTest: false,
     });
     const points = new THREE.Points(geo, mat);
+    points.renderOrder = OVER_FIGURE;
     this.scene.add(points);
     this.bursts.push({
       points,
@@ -234,6 +245,7 @@ export class SwingFx {
         transparent: true,
         alphaTest: 0.5,
         depthWrite: false,
+        depthTest: false,
       });
       this.frameMats.set(key, m);
     }
@@ -248,6 +260,7 @@ export class SwingFx {
         transparent: true,
         alphaTest: 0.5,
         depthWrite: false,
+        depthTest: false,
       });
       this.markMats.set(tier, m);
     }

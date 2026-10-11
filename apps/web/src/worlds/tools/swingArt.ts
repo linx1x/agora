@@ -38,16 +38,20 @@ function drawFrame(facing: Facing, n: number): HTMLCanvasElement {
   const hx = mid + Math.cos(a) * HEAD_PX * 0.6;
   const hy = mid + Math.sin(a) * HEAD_PX * 0.6;
   g.lineCap = 'round';
-  g.strokeStyle = '#6b4a2b';
+  // a light wood handle and a steel head with a dark edge: the arc reads on the dirt and on clothes
+  g.strokeStyle = '#e8c48a';
   g.lineWidth = 2;
   g.beginPath();
   g.moveTo(mid + Math.cos(a) * 2, mid + Math.sin(a) * 2);
   g.lineTo(hx, hy);
   g.stroke();
   g.fillStyle = '#cfd6dd';
+  g.strokeStyle = '#3a4650';
+  g.lineWidth = 1;
   g.beginPath();
-  g.arc(hx, hy, 2.5, 0, Math.PI * 2);
+  g.arc(hx, hy, 3, 0, Math.PI * 2);
   g.fill();
+  g.stroke();
   return canvas;
 }
 
