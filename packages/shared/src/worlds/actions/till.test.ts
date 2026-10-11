@@ -14,7 +14,7 @@ describe('till: a hoe turns ground into a plot on the farm layer (P17.21)', () =
     const out = planTill(viewOf({ items: { hoe_1: 1 } }), { kind: 'till', item: 'hoe_1', at }, env);
     expect(out.ok).toBe(true);
     if (!out.ok) return;
-    expect(plotAt(out.plan.sim.plots, 4, 4)).toEqual({ tilled: true, wateredOn: 0, crop: null, sprinkler: null });
+    expect(plotAt(out.plan.sim.plots, 4, 4)).toEqual({ tilled: true, wateredOn: 0, crop: null, sprinkler: null, fertilizer: null });
     expect(out.plan.changes).toMatchObject({ energy: -2, money: 0, items: {}, xp: {} });
     expect(out.plan.edits).toEqual([]);
   });
@@ -31,7 +31,7 @@ describe('till: a hoe turns ground into a plot on the farm layer (P17.21)', () =
     const view = viewOf({
       items: { hoe_2: 1 },
       cells: { '3,4': { block: 'stone' }, '5,4': { decor: 'oak_tree', ...DECOR }, '4,3': { liquid: true } },
-      plots: { '4,4': { tilled: true, wateredOn: 9, crop: null, sprinkler: null } },
+      plots: { '4,4': { tilled: true, wateredOn: 9, crop: null, sprinkler: null, fertilizer: null } },
     });
     const out = planTill(view, { kind: 'till', item: 'hoe_2', at }, env);
     expect(out.ok).toBe(true);
@@ -46,7 +46,7 @@ describe('till: a hoe turns ground into a plot on the farm layer (P17.21)', () =
   it('refuses with invalid when no cell in the area can be tilled, and costs nothing', () => {
     const view = viewOf({ items: { hoe_1: 1 }, cells: { '4,4': { block: 'stone' } } });
     expect(planTill(view, { kind: 'till', item: 'hoe_1', at }, env)).toEqual({ ok: false, reason: 'invalid' });
-    const tilled = viewOf({ items: { hoe_1: 1 }, plots: { '4,4': { tilled: true, wateredOn: 0, crop: null, sprinkler: null } } });
+    const tilled = viewOf({ items: { hoe_1: 1 }, plots: { '4,4': { tilled: true, wateredOn: 0, crop: null, sprinkler: null, fertilizer: null } } });
     expect(planTill(tilled, { kind: 'till', item: 'hoe_1', at }, env)).toEqual({ ok: false, reason: 'invalid' });
   });
 

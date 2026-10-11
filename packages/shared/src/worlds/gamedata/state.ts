@@ -14,6 +14,10 @@ export interface CropState {
   readonly ripe: boolean;
   /** Watered days still needed after a harvest before the crop is ripe again; null when not regrowing. */
   readonly regrowLeft: number | null;
+  /** Days per stage after the fertilizer's speed bonus was taken off at planting (crops.json has the full list). */
+  readonly stages: readonly number[];
+  /** Fertilizer item the crop was planted with, kept until the crop is cleared (its quality and retention apply). */
+  readonly fertilizer: string | null;
 }
 
 export interface PlotState {
@@ -27,6 +31,8 @@ export interface PlotState {
   readonly crop: CropState | null;
   /** Sprinkler item id on this cell (an item with a sprinkler effect), or null. */
   readonly sprinkler: string | null;
+  /** Fertilizer item spread on the empty plot; it moves to the crop when one is planted. */
+  readonly fertilizer: string | null;
 }
 
 export interface AnimalState {

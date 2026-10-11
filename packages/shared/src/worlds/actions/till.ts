@@ -24,7 +24,7 @@ export const planTill: ActionPlanner = (view, req, env) => {
   for (const c of cellsAround(req.at, check.tool.radius)) {
     const key = cellKey(c.x, c.y);
     if (plots[key]?.tilled || !isTillable(view.cell(c.x, c.y))) continue;
-    plots[key] = { tilled: true, wateredOn: 0, crop: null, sprinkler: null };
+    plots[key] = { tilled: true, wateredOn: 0, crop: null, sprinkler: null, fertilizer: null };
     tilled++;
   }
   if (tilled === 0) return refuse('invalid');

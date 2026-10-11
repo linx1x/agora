@@ -6,7 +6,7 @@ import { planWater } from './water';
 
 const data = loadGameData();
 const env = envOf(data);
-const dry = (): PlotState => ({ tilled: true, wateredOn: 0, crop: null, sprinkler: null });
+const dry = (): PlotState => ({ tilled: true, wateredOn: 0, crop: null, sprinkler: null, fertilizer: null });
 const at = { x: 2, y: 2 };
 
 describe('water: a watering can wets tilled plots for tomorrow (P17.21)', () => {

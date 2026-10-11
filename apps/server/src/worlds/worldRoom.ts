@@ -15,9 +15,11 @@ import {
   WORLD_VIEW_CHUNKS,
   WorldTerrain,
   chunkKey,
+  chunkOfCell,
   chunkOfPoint,
   chunksInView,
   deltaOverlay,
+  emptySim,
   inPortal,
   mergeDeltas,
   returnTrigger,
@@ -25,6 +27,7 @@ import {
   validateWorldMove,
   worldCollides,
   worldGenParamsFor,
+  worldTime,
   type ActionPlanners,
   type Avatar,
   type C2SMsg,
@@ -34,15 +37,18 @@ import {
   type Dir,
   type GameData,
   type PortalRect,
+  type PlotState,
   type S2CMsg,
   type Starter,
   type WorldGenParams,
   type WorldPerson,
+  type WorldSimState,
 } from '@agora/shared';
 import type { SfuApi } from '../media/gate';
 import { defaultStarter } from './starter';
 import { accountView, grantStarterKit } from './inventory';
 import { runAction, type ActionResult } from './actions';
+import { catchUpFarm } from './farm';
 import type { StoredChunk, StoredWorld, WorldStore } from './worldStore';
 
 /** The world action request as the protocol carries it (P17.20). */
@@ -51,6 +57,10 @@ export type WorldActRequest = Extract<C2SMsg, { t: 'world:act' }>;
 /** What a world room needs from the server: the store for transactions, the rules, a logger. */
 export interface WorldRoomDeps {
   readonly store: WorldStore;
+  /** The world clock's source of time (default Date.now). */
+  readonly now?: () => number;
+  /** Whether the room runs its own one-second timer for new days (default true; tests turn it off). */
+  readonly autoTick?: boolean;
   /** the action rules; the default set when omitted (ADR-053, P17.21 onward) */
   readonly planners?: ActionPlanners;
   readonly log?: { warn: (o: object, m?: string) => void };
@@ -125,6 +135,16 @@ export function worldSpawn(terrain: WorldTerrain): { x: number; y: number } {
 
 const NO_LOG = { warn: () => undefined };
 
+/** Whether the farm cell key ("x,y") lies in a chunk this person is streaming. */
+function plotInView(m: WorldMember, key: string): boolean {
+  const [x, y] = key.split(',').map(Number) as [number, number];
+  const { cx, cy } = chunkOfCell(x, y);
+  return m.view.has(chunkKey(cx, cy));
+}
+
+/** Two plot records with the same content (a reload from the store makes new objects). */
+const samePlot = (a: PlotState | undefined, b: PlotState): boolean => a === b || (a !== undefined && JSON.stringify(a) === JSON.stringify(b));
+
 export class WorldRoom {
   readonly id: string;
   readonly seed: number;
@@ -149,6 +169,14 @@ export class WorldRoom {
   /** actions queued or running; the room stays open until they finish (their caches are this room's) */
   private pending = 0;
   disposed = false;
+  /** The farm as this room last sent it (null until the first catch-up is done). */
+  private farm: WorldSimState | null = null;
+  /** The world day the farm was last brought up to. */
+  private farmDay = 0;
+  /** Resolves once the catch-up on load is done. */
+  private readonly farmReady: Promise<void>;
+  private readonly clock: () => number;
+  private timer: ReturnType<typeof setInterval> | undefined;
 
   constructor(
     world: StoredWorld,
@@ -181,6 +209,59 @@ export class WorldRoom {
     this.terrain = new WorldTerrain(world.seed, params, {
       overlay: deltaOverlay((cx, cy) => this.effective.get(chunkKey(cx, cy))),
     });
+    this.clock = deps.now ?? Date.now;
+    // the farm is brought up to today on load; actions also catch up inside their own transaction
+    this.farmReady = this.enqueue(() => this.catchUp());
+    if (deps.autoTick !== false) {
+      this.timer = setInterval(() => this.tick(), 1000);
+      this.timer.unref?.();
+    }
+  }
+
+  /** Runs a task after everything queued before it on this world (actions and farm steps alike). */
+  private enqueue(task: () => Promise<void>): Promise<void> {
+    const run = this.chain.then(task).catch((err: unknown) => this.log.warn({ err: String(err), world: this.id }, 'world task failed'));
+    this.chain = run;
+    return run;
+  }
+
+  /** Brings the farm up to the world's day: at each new day, and once on load. */
+  private async catchUp(): Promise<void> {
+    if (this.disposed) return;
+    const day = worldTime(this.world.createdAt, this.clock()).day;
+    const next = await catchUpFarm(this.store, this.world.id, day, loadGameData(), this.world.seed);
+    this.farmDay = day;
+    if (next) this.applyFarm(next);
+  }
+
+  /** Checks the day once (the timer calls this every second; tests call it with a fake clock). */
+  tick(): void {
+    if (this.disposed) return;
+    const day = worldTime(this.world.createdAt, this.clock()).day;
+    if (day !== this.farmDay) void this.enqueue(() => this.catchUp());
+  }
+
+  /** The farm changed: this room's copy follows it, and each person in view gets the plots that changed. */
+  private applyFarm(next: WorldSimState): void {
+    const prev = this.farm ?? emptySim(next.day);
+    this.farm = next;
+    for (const m of this.members.values()) {
+      if (!m.conn) continue;
+      const plots: Record<string, PlotState | null> = {};
+      for (const [key, plot] of Object.entries(next.plots))
+        if (!samePlot(prev.plots[key], plot) && plotInView(m, key)) plots[key] = plot;
+      for (const key of Object.keys(prev.plots)) if (!(key in next.plots) && plotInView(m, key)) plots[key] = null;
+      if (Object.keys(plots).length > 0 || prev.day !== next.day) m.conn.send({ t: 'world:farm', day: next.day, plots });
+    }
+  }
+
+  /** Everything in the farm this person can see, once (on arrival and when their view moves into new chunks). */
+  private sendFarm(m: WorldMember): void {
+    const farm = this.farm;
+    if (!farm || !m.conn) return;
+    const plots: Record<string, PlotState> = {};
+    for (const [key, plot] of Object.entries(farm.plots)) if (plotInView(m, key)) plots[key] = plot;
+    m.conn.send({ t: 'world:farm', day: farm.day, plots });
   }
 
   get size(): number {
@@ -231,6 +312,9 @@ export class WorldRoom {
     this.sendPeers();
     void this.grant(m);
     this.sendInventory(m);
+    void this.farmReady.then(() => {
+      if (this.members.get(m.id) === m) this.sendFarm(m);
+    });
     return m;
   }
 
@@ -341,6 +425,7 @@ export class WorldRoom {
 
   dispose(): void {
     this.disposed = true;
+    if (this.timer) clearInterval(this.timer);
     this.members.clear();
     this.deltas.clear();
     this.effective.clear();
@@ -397,7 +482,7 @@ export class WorldRoom {
         actor: { uid: m.uid, x: m.x, y: m.y },
         req: { kind: req.kind, at: req.at, item: req.item, target: req.target },
         key: req.key,
-        now: Date.now(),
+        now: this.clock(),
         store: this.store,
         data: loadGameData(),
         planners: this.planners,
@@ -410,6 +495,7 @@ export class WorldRoom {
     if (result.replayed) return void m.conn?.send({ t: 'world:acted', op: req.op, changes: result.changes });
     // the store has the change; this room's caches follow it, even if the person left meanwhile
     for (const c of result.chunks) this.publishChunk(c.cx, c.cy, c.rev, c.delta);
+    if (result.sim) this.applyFarm(result.sim.state);
     m.conn?.send({ t: 'world:acted', op: req.op, changes: result.changes });
     m.conn?.send({
       t: 'world:inv',
@@ -435,7 +521,7 @@ export class WorldRoom {
     const data: GameData = loadGameData();
     this.store
       .withTxn(async (tx) => {
-        await grantStarterKit(tx, m.uid, data, Date.now());
+        await grantStarterKit(tx, m.uid, data, this.clock());
         return accountView(tx, m.uid, data, false);
       })
       .then((v) => {
@@ -471,6 +557,7 @@ export class WorldRoom {
     for (const [key, c] of m.view) if (!want.has(key)) drop.push(c);
     m.view = want;
     if (add.length > 0 || drop.length > 0) m.conn.send({ t: 'world:chunks', add, drop });
+    if (add.length > 0) this.sendFarm(m);
   }
 }
 
@@ -491,6 +578,7 @@ export class WorldHub {
     private readonly starter?: Starter,
     private readonly planners?: ActionPlanners,
     private readonly log?: { warn: (o: object, m?: string) => void },
+    private readonly clock?: { now?: () => number; autoTick?: boolean },
   ) {}
 
   /**
@@ -528,6 +616,8 @@ export class WorldHub {
       store: this.store,
       planners: this.planners,
       log: this.log,
+      now: this.clock?.now,
+      autoTick: this.clock?.autoTick,
     });
     this.rooms.set(worldId, room);
     return room;

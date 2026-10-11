@@ -19,6 +19,7 @@ export const ITEM_KINDS = [
   'building',
   'food',
   'fish',
+  'fertilizer',
 ] as const;
 export const ITEM_CATEGORIES = ['open', 'limited', 'restricted', 'account-bound'] as const;
 export const SEASONS = ['spring', 'summer', 'autumn', 'winter'] as const;
@@ -61,8 +62,19 @@ export const ItemSchema = z
     stack: int(1, 999).default(99),
     /** Food only: energy restore basis (research section 9). */
     edibility: int(1, 100).optional(),
-    /** Buildings only: what the building does each night. */
-    effect: z.object({ kind: z.literal('sprinkler'), radius: int(0, 2) }).optional(),
+    /** Buildings (sprinklers) and fertilizer: what the item does on the farm. */
+    effect: z.discriminatedUnion('kind', [
+      z.strictObject({ kind: z.literal('sprinkler'), radius: int(0, 2) }),
+      z.strictObject({
+        kind: z.literal('fertilizer'),
+        /** Harvest quality level the fertilizer gives (research section 6): 1, 2 or 3. */
+        quality: int(1, 3),
+        /** Growth speed bonus in percent: the crop loses this share of its days (research section 5). */
+        speedPct: int(0, 100),
+        /** Chance in percent that the water on the plot is kept for the next night (research section 4). */
+        retentionPct: int(0, 100),
+      }),
+    ]).optional(),
   })
   .superRefine((item, ctx) => {
     if (item.kind === 'food' && item.edibility === undefined) {
@@ -71,8 +83,14 @@ export const ItemSchema = z
     if (item.kind !== 'food' && item.edibility !== undefined) {
       ctx.addIssue({ code: 'custom', path: ['edibility'], message: 'only food has edibility' });
     }
-    if (item.effect !== undefined && item.kind !== 'building') {
+    if (item.effect?.kind === 'sprinkler' && item.kind !== 'building') {
       ctx.addIssue({ code: 'custom', path: ['effect'], message: 'only buildings have an effect' });
+    }
+    if (item.effect?.kind === 'fertilizer' && item.kind !== 'fertilizer') {
+      ctx.addIssue({ code: 'custom', path: ['effect'], message: 'only fertilizer has a fertilizer effect' });
+    }
+    if (item.kind === 'fertilizer' && item.effect?.kind !== 'fertilizer') {
+      ctx.addIssue({ code: 'custom', path: ['effect'], message: 'fertilizer needs a fertilizer effect' });
     }
   });
 export type Item = z.infer<typeof ItemSchema>;

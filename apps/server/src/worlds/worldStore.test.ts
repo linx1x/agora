@@ -199,7 +199,7 @@ function worldStoreContract(
     it('replaces the farm state only at the revision it was read at, and keeps its day', async () => {
       await user('tx-sim');
       await store.worlds.createWorld({ ...worldOf('tx-sim'), id: 'u:tx-sim' });
-      const sim = { day: 3, plots: { '1,1': { tilled: true, wateredOn: 0, crop: null, sprinkler: null } }, animals: [], machines: [] };
+      const sim = { day: 3, plots: { '1,1': { tilled: true, wateredOn: 0, crop: null, sprinkler: null, fertilizer: null } }, animals: [], machines: [] };
       await store.worlds.withTxn(async (tx) => {
         expect(await tx.simOf('u:tx-sim', true)).toBeNull();
         expect(await tx.saveSim('u:tx-sim', sim, 0)).toBe(1);

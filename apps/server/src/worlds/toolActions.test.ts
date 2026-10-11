@@ -1,16 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import {
-  WORLD_CELL_PX,
-  chunkOfCell,
-  localIndexOf,
-  randomAvatar,
-  worldTime,
-  type ChunkDelta,
-  type S2CMsg,
-} from '@agora/shared';
-import { opened, memory, postgres, PG_URL, type Backend } from './testStores';
+import { localIndexOf, randomAvatar, chunkOfCell, worldTime, type S2CMsg } from '@agora/shared';
+import { memory, postgres, PG_URL } from './testStores';
 import type { WorldStore } from './worldStore';
 import { WorldHub, type WorldActRequest, type WorldMember, type WorldRoom } from './worldRoom';
+import { FakeConn, OWNER, feetCell, grant, openWorld, setCells, setEnergy, waitFor } from './testWorld';
 
 /**
  * Tools through the room with the real rules (P17.21): till and water change the farm layer, axe and
@@ -19,84 +12,7 @@ import { WorldHub, type WorldActRequest, type WorldMember, type WorldRoom } from
  * are in (always within reach): the room reads chunks fresh inside each transaction.
  */
 
-const SEED = 3560865791;
-const OWNER = 'uid-owner';
 const ENERGY_MAX = 270;
-
-class FakeConn {
-  msgs: S2CMsg[] = [];
-  send(m: S2CMsg) {
-    this.msgs.push(m);
-  }
-  of<T extends S2CMsg['t']>(t: T) {
-    return this.msgs.filter((m): m is Extract<S2CMsg, { t: T }> => m.t === t);
-  }
-}
-
-async function waitFor(cond: () => boolean): Promise<void> {
-  for (let i = 0; i < 1000; i++) {
-    if (cond()) return;
-    await new Promise((resolve) => setTimeout(resolve, 2));
-  }
-  throw new Error('timed out waiting for the room');
-}
-
-async function world(backend: Backend): Promise<WorldStore> {
-  const h = await backend.open();
-  opened.push(h.close);
-  await h.users([OWNER]);
-  await h.worlds.createWorld({
-    id: 'w1',
-    ownerId: OWNER,
-    seed: SEED,
-    genVersion: 1,
-    createdAt: 0,
-    lastDay: 0,
-    settings: { grants: [] },
-  });
-  return h.worlds;
-}
-
-/** Sets cells' block and decor in the stored deltas, one transaction per chunk. */
-async function setCells(store: WorldStore, cells: Record<string, { block?: string; decor?: string }>): Promise<void> {
-  const byChunk = new Map<string, { cx: number; cy: number; cells: [number, number, object][] }>();
-  for (const [key, patch] of Object.entries(cells)) {
-    const [x, y] = key.split(',').map(Number) as [number, number];
-    const { cx, cy } = chunkOfCell(x, y);
-    const entry = byChunk.get(`${cx},${cy}`) ?? { cx, cy, cells: [] };
-    entry.cells.push([x, y, patch]);
-    byChunk.set(`${cx},${cy}`, entry);
-  }
-  for (const { cx, cy, cells: list } of byChunk.values()) {
-    await store.withTxn(async (tx) => {
-      const [cur] = await tx.chunksOf('w1', [{ cx, cy }]);
-      const delta: ChunkDelta = { ...(cur?.delta ?? {}) };
-      for (const [x, y, patch] of list) {
-        const index = localIndexOf(x, y);
-        delta[index] = { ...((delta[index] as object | undefined) ?? {}), ...patch };
-      }
-      const saved = await tx.saveChunk('w1', cx, cy, delta, cur?.rev ?? 0, 40_000);
-      expect(saved.ok).toBe(true);
-    });
-  }
-}
-
-/** Gives the account these items, on top of what it holds. */
-async function grant(store: WorldStore, uid: string, items: Record<string, number>): Promise<void> {
-  await store.withTxn(async (tx) => {
-    const acc = await tx.accountOf(uid, true);
-    const merged = { ...acc.inventory.items };
-    for (const [id, n] of Object.entries(items)) merged[id] = (merged[id] ?? 0) + n;
-    await tx.saveAccount(uid, { ...acc.inventory, items: merged }, acc.rev);
-  });
-}
-
-async function setEnergy(store: WorldStore, uid: string, energy: number): Promise<void> {
-  await store.withTxn((tx) => tx.saveProgress(uid, { skills: {}, energy }));
-}
-
-/** The cell the person stands on: always within reach of them. */
-const feetCell = (m: WorldMember) => ({ x: Math.floor(m.x / WORLD_CELL_PX), y: Math.floor(m.y / WORLD_CELL_PX) });
 
 function act(room: WorldRoom, m: WorldMember, op: number, key: string, kind: WorldActRequest['kind'], item: string, at: { x: number; y: number }) {
   room.act(m, { t: 'world:act', op, kind, item, at, key } as WorldActRequest);
@@ -124,7 +40,7 @@ for (const backend of [memory, postgres]) {
 const suite = backend === postgres && !PG_URL ? describe.skip : describe;
 suite(`tools through the room on the ${backend.name} (P17.21)`, () => {
   it('a hoe tills the farm layer, pays its energy and writes the ledger', async () => {
-    const store = await world(backend);
+    const store = await openWorld(backend);
     const { room, m, c } = await enter(store);
     const at = feetCell(m);
     await setCells(store, { [`${at.x},${at.y}`]: { block: 'meadow_grass', decor: '' } });
@@ -141,7 +57,7 @@ suite(`tools through the room on the ${backend.name} (P17.21)`, () => {
   });
 
   it('a can waters the tilled plot for tomorrow', async () => {
-    const store = await world(backend);
+    const store = await openWorld(backend);
     const { room, m, c } = await enter(store);
     const at = feetCell(m);
     await setCells(store, { [`${at.x},${at.y}`]: { block: 'meadow_grass', decor: '' } });
@@ -158,7 +74,7 @@ suite(`tools through the room on the ${backend.name} (P17.21)`, () => {
   });
 
   it('an axe fells a tree: the cell is cleared in its chunk, the drops reach the bag, energy and xp are paid', async () => {
-    const store = await world(backend);
+    const store = await openWorld(backend);
     const { room, m, c } = await enter(store);
     const at = feetCell(m);
     await setCells(store, { [`${at.x},${at.y}`]: { block: 'meadow_grass', decor: 'oak_tree' } });
@@ -183,7 +99,7 @@ suite(`tools through the room on the ${backend.name} (P17.21)`, () => {
   });
 
   it('a tier-1 axe is refused on a jungle tree, and a tier-2 axe fells it', async () => {
-    const store = await world(backend);
+    const store = await openWorld(backend);
     await grant(store, OWNER, { axe_2: 1 });
     const { room, m, c } = await enter(store);
     const at = feetCell(m);
@@ -200,7 +116,7 @@ suite(`tools through the room on the ${backend.name} (P17.21)`, () => {
   });
 
   it('a pick breaks a boulder into stone', async () => {
-    const store = await world(backend);
+    const store = await openWorld(backend);
     const { room, m, c } = await enter(store);
     const at = feetCell(m);
     await setCells(store, { [`${at.x},${at.y}`]: { block: 'meadow_grass', decor: 'boulder' } });
@@ -211,7 +127,7 @@ suite(`tools through the room on the ${backend.name} (P17.21)`, () => {
   });
 
   it('refuses a tool not in the bag as missing, and an empty energy bar as energy, with nothing written', async () => {
-    const store = await world(backend);
+    const store = await openWorld(backend);
     const { room, m, c } = await enter(store);
     const at = feetCell(m);
     await setCells(store, { [`${at.x},${at.y}`]: { block: 'meadow_grass', decor: '' } });

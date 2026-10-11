@@ -16,7 +16,7 @@ import {
   chunksCovering,
   createRng,
   deltaOverlay,
-  emptySim,
+  baseItemOf,
   hash32,
   inReach,
   localIndexOf,
@@ -37,6 +37,7 @@ import {
 } from '@agora/shared';
 import type { WorldStore } from './worldStore';
 import { ConflictError, grantStarterKit } from './inventory';
+import { readFarm, saveFarm } from './farm';
 import type { WorldTxn } from './worldTxn';
 
 /** What the rules may read about a world (a stored world, without its chunks). */
@@ -127,9 +128,9 @@ async function transact(tx: WorldTxn, input: ActionInput, planner: ActionPlanner
   const maxEnergy = data.progression.energy.max;
   const energy = progressRow?.energy ?? maxEnergy;
   const skills = progressRow?.skills ?? {};
-  const simRow = await tx.simOf(world.id, true);
-  const sim = simRow?.state ?? emptySim(day);
-  const simRev = simRow?.rev ?? 0;
+  // the farm, brought up to today first: a catch-up over the nights since it was last written
+  const farm = await readFarm(tx, world.id, day, data, world.seed, true);
+  const sim = farm.state;
 
   // the stored deltas around the target, so the rule reads what is there now
   const around = req.at ? cellsAround(req.at, READ_RADIUS) : [];
@@ -163,7 +164,8 @@ async function transact(tx: WorldTxn, input: ActionInput, planner: ActionPlanner
   }
   const { changes, edits, sim: nextSim } = outcome.plan;
 
-  const nextAccount = applyInventoryChanges(account.inventory, changes, (id) => data.itemsById.get(id)?.stack);
+  // a stack key may carry a quality (`id~q`): the limit is the base item's
+  const nextAccount = applyInventoryChanges(account.inventory, changes, (key) => data.itemsById.get(baseItemOf(key))?.stack);
   if (!nextAccount.ok) {
     tx.abort();
     return refused(nextAccount.reason);
@@ -200,12 +202,7 @@ async function transact(tx: WorldTxn, input: ActionInput, planner: ActionPlanner
   if (changes.energy !== 0 || Object.keys(changes.xp).length > 0) {
     await tx.saveProgress(actor.uid, { skills: nextSkills, energy: energyAfter });
   }
-  let savedSim: { state: WorldSimState; rev: number } | null = null;
-  if (nextSim !== sim) {
-    const rev = await tx.saveSim(world.id, nextSim, simRev);
-    if (rev === null) throw new ConflictError();
-    savedSim = { state: nextSim, rev };
-  }
+  const savedSim = await saveFarm(tx, world.id, farm, nextSim);
 
   const applied = await writeEdits(tx, world.id, edits, storedDelta, storedRev);
   if (applied === 'cap') {

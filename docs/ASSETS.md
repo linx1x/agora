@@ -135,3 +135,11 @@ Personal-world blocks are drawn as 32 px placeholder tiles in `apps/web/src/worl
 | `bed` | decor | `worlds/shared/bed` | yes | zen |
 | `shipping_bin` | decor | `worlds/shared/shipping_bin` | yes | zen |
 | `shop_board` | decor | `worlds/shared/shop_board` | yes | zen |
+
+Items for the farm (P17.22). Shown in the hotbar and the inventory as 32 px icons; the item's name is `worlds.item.<id>`.
+
+| Item | Kind | Icon style reference | Notes |
+|---|---|---|---|
+| `fertilizer_1` | fertilizer | a small sack of soil, tier 1 | speed 10 %, retention 33 % |
+| `fertilizer_2` | fertilizer | the same sack with a second band | speed 25 %, retention 66 % |
+| `fertilizer_3` | fertilizer | the same sack with a gold band | speed 33 %, retention 100 % |
