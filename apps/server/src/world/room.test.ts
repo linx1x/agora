@@ -666,7 +666,7 @@ describe('SpaceRoom: portals into worlds (P17.8, ADR-053)', () => {
     expect([cc.msgs.length, cb.msgs.length]).toEqual(seen);
   });
 
-  it('the owner steps through to their own world; the office sees them leave and no office link stays', async () => {
+  it('the owner steps through to their own world; the office lists them as in a world (never which) and no office link stays', async () => {
     await enter(owner);
     expect(co.of('portal:go')).toMatchObject([
       { t: 'portal:go', id: 'desk:jungle-1', worldId: WORLD },
@@ -675,12 +675,55 @@ describe('SpaceRoom: portals into worlds (P17.8, ADR-053)', () => {
     // FIX-1: the welcome names the owner for the card ("Monde de Alice"), never the user id
     expect(co.of('world:welcome')[0]).toMatchObject({ owner: 'Alice' });
     expect(co.of('peers').at(-1)?.peers).toEqual([]);
-    expect(cc.of('leave').at(-1)?.id).toBe(owner.id);
-    expect(cb.of('leave').at(-1)?.id).toBe(owner.id);
+    // P17.15b: the office keeps the person in its list with a neutral "in a world" flag, not a leave
+    for (const office of [cc, cb]) {
+      expect(office.of('leave').filter((m) => m.id === owner.id)).toEqual([]);
+      const seen = office
+        .of('profile')
+        .filter((m) => m.profile.id === owner.id)
+        .at(-1)?.profile;
+      expect(seen?.inWorld).toBe(true);
+      // privacy: nothing about which world, where in it, or the owner's user id
+      expect(JSON.stringify(office.msgs)).not.toContain(WORLD);
+      expect(JSON.stringify(office.msgs)).not.toContain(OWNER);
+    }
     expect(room.players.has(owner.id)).toBe(false);
     expect([...room.links].filter((key) => key.includes(owner.id))).toEqual([]);
     // the owner's user id never leaves the server
     expect(JSON.stringify([co.of('portal:go'), co.of('world:welcome')])).not.toContain(OWNER);
+  });
+
+  it('someone arriving while the owner is in a world sees them listed as in a world, with no position (P17.15b)', async () => {
+    await enter(owner);
+    const cn = new FakeConn();
+    await room.join(cn, { uid: 'un', name: 'Nadia' });
+    const welcome = cn.of('welcome')[0]!;
+    expect(welcome.profiles.find((p) => p.id === owner.id)?.inWorld).toBe(true);
+    expect(welcome.positions.find((q) => q.id === owner.id)).toBeUndefined();
+    expect(JSON.stringify(cn.msgs)).not.toContain(WORLD);
+  });
+
+  it('back from the world: the office sees the flag cleared, and the person gets the office roster as it is now (P17.15b)', async () => {
+    await enter(owner);
+    // while the owner is away, Benoît leaves and Nadia arrives
+    const cbPlayer = [...room.players.values()].find((q) => q.uid === 'ub')!;
+    room.remove(cbPlayer);
+    const cn = new FakeConn();
+    const nadia = (await room.join(cn, { uid: 'un', name: 'Nadia' }))!;
+    room.handle(owner, { t: 'world:leave' });
+    await settle();
+    expect(co.of('world:exit')).toHaveLength(1);
+    const roster = co.of('roster').at(-1)!;
+    const ids = roster.profiles.map((p) => p.id);
+    expect(ids).toContain(nadia.id);
+    expect(ids).not.toContain(cbPlayer.id);
+    expect(roster.profiles.find((p) => p.id === owner.id)?.inWorld).toBeUndefined();
+    expect(roster.desks.length).toBeGreaterThan(0);
+    const seenByNadia = cn
+      .of('profile')
+      .filter((m) => m.profile.id === owner.id)
+      .at(-1)?.profile;
+    expect(seenByNadia?.inWorld).toBeUndefined();
   });
 
   it('the owner with no world gets one on the first step through the desk (P17.14)', async () => {
@@ -688,7 +731,9 @@ describe('SpaceRoom: portals into worlds (P17.8, ADR-053)', () => {
     await enter(owner);
     const made = await store.worlds.worldOf(OWNER);
     expect(made).not.toBeNull();
-    expect(co.of('portal:go')).toMatchObject([{ t: 'portal:go', id: 'desk:jungle-1', worldId: made!.id }]);
+    expect(co.of('portal:go')).toMatchObject([
+      { t: 'portal:go', id: 'desk:jungle-1', worldId: made!.id },
+    ]);
   });
 
   it('a visitor never creates the owner world: refused with no_world until the owner has one', async () => {
@@ -801,8 +846,19 @@ describe('SpaceRoom: personal worlds (P17.9, ADR-053)', () => {
     expect(cc.of('world:welcome')).toHaveLength(1);
     const before = cb.msgs.length;
     // the world knows the person at its arrival point (the office position stays the office's)
-    const me = co.of('world:welcome').at(-1)!.people.find((q) => q.id === owner.id)!;
-    room.handle(owner, { t: 'move', x: me.x, y: me.y, dir: 'down', moving: false, pose: 'stand', seq: 1 });
+    const me = co
+      .of('world:welcome')
+      .at(-1)!
+      .people.find((q) => q.id === owner.id)!;
+    room.handle(owner, {
+      t: 'move',
+      x: me.x,
+      y: me.y,
+      dir: 'down',
+      moving: false,
+      pose: 'stand',
+      seq: 1,
+    });
     expect(cc.of('world:pos').at(-1)).toMatchObject({ id: owner.id });
     expect(co.of('world:pos').at(-1)).toMatchObject({ id: owner.id });
     expect(cb.msgs.slice(before).filter((m) => m.t.startsWith('world:'))).toEqual([]);
@@ -900,10 +956,18 @@ describe('SpaceRoom: personal worlds (P17.9, ADR-053)', () => {
   it('the return pad takes the person back to their desk; elsewhere in the world, or another id, is refused', async () => {
     await enter(owner);
     room.handle(owner, { t: 'portal:enter', id: 'return' });
-    expect(co.of('portal:refused').at(-1)).toEqual({ t: 'portal:refused', id: 'return', reason: 'outside' });
+    expect(co.of('portal:refused').at(-1)).toEqual({
+      t: 'portal:refused',
+      id: 'return',
+      reason: 'outside',
+    });
     expect(owner.world).toBeDefined();
     room.handle(owner, { t: 'portal:enter', id: 'desk:jungle-1' });
-    expect(co.of('portal:refused').at(-1)).toEqual({ t: 'portal:refused', id: 'desk:jungle-1', reason: 'unknown' });
+    expect(co.of('portal:refused').at(-1)).toEqual({
+      t: 'portal:refused',
+      id: 'desk:jungle-1',
+      reason: 'unknown',
+    });
     expect(owner.world).toBeDefined();
     // white-box: the walk to the pad is tested in worldRoom.test.ts; here only the room's rule
     // (the pad is the cell (-1, 3), and the feet point at (-16, 122) is inside it)
@@ -974,7 +1038,11 @@ describe('SpaceRoom: the SFU and a personal world (P17.11, ADR-053)', () => {
   });
 
   it('the office floor is left on entry; inside the world the person has the world room and no floor', async () => {
-    expect(co.of('media:grant').at(-1)).toMatchObject({ floor: { room: FLOOR }, zone: null, publish: 'floor' });
+    expect(co.of('media:grant').at(-1)).toMatchObject({
+      floor: { room: FLOOR },
+      zone: null,
+      publish: 'floor',
+    });
     const mark = sfu.calls.length;
     room.handle(owner, { t: 'portal:enter', id: 'desk:jungle-1' });
     await settle();
@@ -1040,7 +1108,12 @@ describe('SpaceRoom: world actions are routed to the world (P17.20)', () => {
     return { room, co, owner, flagged };
   }
 
-  const act = (op: number, key: string) => ({ t: 'world:act' as const, op, kind: 'eat' as const, key });
+  const act = (op: number, key: string) => ({
+    t: 'world:act' as const,
+    op,
+    kind: 'eat' as const,
+    key,
+  });
 
   it('reaches the world room: with no rule for the kind the person is refused as invalid', async () => {
     const { room, co, owner } = await inWorld({ worlds: true });
@@ -1054,7 +1127,11 @@ describe('SpaceRoom: world actions are routed to the world (P17.20)', () => {
     flagged.worlds = false;
     room.handle(owner, act(8, 'k-route-2'));
     await settle();
-    expect(co.of('world:refused').at(-1)).toEqual({ t: 'world:refused', op: 8, reason: 'disabled' });
+    expect(co.of('world:refused').at(-1)).toEqual({
+      t: 'world:refused',
+      op: 8,
+      reason: 'disabled',
+    });
   });
 
   it('rate-limits a burst of actions, refusing the excess as rate', async () => {
@@ -1062,7 +1139,10 @@ describe('SpaceRoom: world actions are routed to the world (P17.20)', () => {
     for (let i = 0; i < 20; i++) room.handle(owner, act(100 + i, `k-burst-${i}`));
     await settle();
     // the burst of 12 reaches the rules (refused as invalid here); the rest are refused as rate, at once
-    const rate = co.of('world:refused').filter((m) => m.reason === 'rate').map((m) => m.op);
+    const rate = co
+      .of('world:refused')
+      .filter((m) => m.reason === 'rate')
+      .map((m) => m.op);
     expect(rate.length).toBeGreaterThan(0);
     expect(rate.at(-1)).toBe(119);
     expect(rate).not.toContain(100);
@@ -1083,7 +1163,11 @@ describe('SpaceRoom: the badge on the card (P17.31)', () => {
     const cb = new FakeConn();
     const a = (await room.join(ca, { uid: 'ua', name: 'A' }))!;
     await room.join(cb, { uid: 'ub', name: 'B' });
-    const badgeSeenByB = () => cb.of('profile').filter((m) => m.profile.id === a.id).at(-1)?.profile.badge;
+    const badgeSeenByB = () =>
+      cb
+        .of('profile')
+        .filter((m) => m.profile.id === a.id)
+        .at(-1)?.profile.badge;
 
     room.handle(a, { t: 'badge', skill: 'mining' });
     await settle();
@@ -1109,7 +1193,10 @@ describe('SpaceRoom: the badge on the card (P17.31)', () => {
     const cc = new FakeConn();
     const c = (await room.join(cc, { uid: 'uc', name: 'C' }))!;
     const welcome = cc.of('welcome')[0]!;
-    expect(welcome.profiles.find((p) => p.id === c.id)?.badge).toEqual({ skill: 'mining', level: 2 });
+    expect(welcome.profiles.find((p) => p.id === c.id)?.badge).toEqual({
+      skill: 'mining',
+      level: 2,
+    });
   });
 });
 
@@ -1122,7 +1209,12 @@ describe('SpaceRoom: caves behind a mouth (P17.32, ADR-053)', () => {
   const MOUTH = { x: 20, y: 4 };
   const CAVE = caveIdOf(WORLD, MOUTH.x, MOUTH.y);
   const settle = () => new Promise((r) => setTimeout(r, 0));
-  const act = (op: number, key: string) => ({ t: 'world:act' as const, op, kind: 'eat' as const, key });
+  const act = (op: number, key: string) => ({
+    t: 'world:act' as const,
+    op,
+    kind: 'eat' as const,
+    key,
+  });
   let store: MemoryStore;
   let room: SpaceRoom;
   let co: FakeConn, cc: FakeConn, cb: FakeConn;
@@ -1155,7 +1247,15 @@ describe('SpaceRoom: caves behind a mouth (P17.32, ADR-053)', () => {
     await room.join(cb, { uid: 'ub', name: 'Benoît' });
     place(room, owner, cellPos(map, spot.chair), 'sit');
     room.handle(owner, { t: 'desk:claim', deskId: 'jungle-1' });
-    await store.worlds.createWorld({ id: WORLD, ownerId: OWNER, seed: SEED, genVersion: 1, createdAt: 0, lastDay: 0, settings: {} });
+    await store.worlds.createWorld({
+      id: WORLD,
+      ownerId: OWNER,
+      seed: SEED,
+      genVersion: 1,
+      createdAt: 0,
+      lastDay: 0,
+      settings: {},
+    });
     await setCells(store.worlds, { [`${MOUTH.x},${MOUTH.y}`]: { decor: 'cave_mouth' } }, WORLD);
   });
 
@@ -1164,7 +1264,12 @@ describe('SpaceRoom: caves behind a mouth (P17.32, ADR-053)', () => {
     stand(owner, MOUTH.x, MOUTH.y);
     await step(owner, CAVE);
     expect(owner.world?.room.id).toBe(CAVE);
-    expect(co.of('world:welcome').at(-1)).toMatchObject({ worldId: CAVE, you: owner.id, seed: SEED, genVersion: 1 });
+    expect(co.of('world:welcome').at(-1)).toMatchObject({
+      worldId: CAVE,
+      you: owner.id,
+      seed: SEED,
+      genVersion: 1,
+    });
     expect(room.players.has(owner.id)).toBe(false);
   });
 
@@ -1222,7 +1327,11 @@ describe('SpaceRoom: caves behind a mouth (P17.32, ADR-053)', () => {
     await step(owner, CAVE);
     room.handle(owner, act(9, 'k-cave-0001'));
     await settle();
-    expect(co.of('world:refused').at(-1)).toEqual({ t: 'world:refused', op: 9, reason: 'forbidden' });
+    expect(co.of('world:refused').at(-1)).toEqual({
+      t: 'world:refused',
+      op: 9,
+      reason: 'forbidden',
+    });
     expect(co.of('world:acted')).toEqual([]);
   });
 
@@ -1234,7 +1343,9 @@ describe('SpaceRoom: caves behind a mouth (P17.32, ADR-053)', () => {
     await step(owner, 'return');
     expect(owner.world?.room.id).toBe(WORLD);
     const m = owner.world!.member;
-    expect(Math.max(Math.abs(Math.floor(m.x / 32) - MOUTH.x), Math.abs(Math.floor(m.y / 32) - MOUTH.y))).toBe(1);
+    expect(
+      Math.max(Math.abs(Math.floor(m.x / 32) - MOUTH.x), Math.abs(Math.floor(m.y / 32) - MOUTH.y)),
+    ).toBe(1);
     expect(co.of('world:exit')).toEqual([]);
     expect(room.players.has(owner.id)).toBe(false);
   });
@@ -1242,7 +1353,11 @@ describe('SpaceRoom: caves behind a mouth (P17.32, ADR-053)', () => {
   it('the mouth opens only under the feet of the person: elsewhere, or another mouth, is refused as outside', async () => {
     await enter(owner);
     await step(owner, CAVE);
-    expect(co.of('portal:refused').at(-1)).toEqual({ t: 'portal:refused', id: CAVE, reason: 'outside' });
+    expect(co.of('portal:refused').at(-1)).toEqual({
+      t: 'portal:refused',
+      id: CAVE,
+      reason: 'outside',
+    });
     expect(owner.world?.room.id).toBe(WORLD);
     stand(owner, MOUTH.x, MOUTH.y);
     await step(owner, caveIdOf(WORLD, MOUTH.x + 1, MOUTH.y));
@@ -1260,7 +1375,11 @@ describe('SpaceRoom: caves behind a mouth (P17.32, ADR-053)', () => {
     await enter(owner);
     stand(c, MOUTH.x, MOUTH.y);
     await step(c, CAVE);
-    expect(cc.of('portal:refused').at(-1)).toEqual({ t: 'portal:refused', id: CAVE, reason: 'no_permission' });
+    expect(cc.of('portal:refused').at(-1)).toEqual({
+      t: 'portal:refused',
+      id: CAVE,
+      reason: 'no_permission',
+    });
     expect(c.world?.room.id).toBe(WORLD);
     stand(owner, MOUTH.x, MOUTH.y);
     await step(owner, CAVE);
@@ -1270,8 +1389,11 @@ describe('SpaceRoom: caves behind a mouth (P17.32, ADR-053)', () => {
   it('a person in the office cannot open a cave: the portal names no desk, so it is unknown', async () => {
     room.handle(c, { t: 'portal:enter', id: CAVE });
     await settle();
-    expect(cc.of('portal:refused').at(-1)).toEqual({ t: 'portal:refused', id: CAVE, reason: 'unknown' });
+    expect(cc.of('portal:refused').at(-1)).toEqual({
+      t: 'portal:refused',
+      id: CAVE,
+      reason: 'unknown',
+    });
     expect(c.world).toBeUndefined();
   });
 });
-

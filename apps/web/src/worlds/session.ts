@@ -43,6 +43,8 @@ export class WorldSession {
   /** base terrain from the seed plus the deltas in view; null outside a world */
   terrain: WorldTerrain | null = null;
   readonly people = new Map<string, WorldPerson>();
+  /** bumped whenever `people` changes (P17.15b: the People panel re-reads it) */
+  peopleVersion = 0;
   /** the effective delta (starter stamp under stored edits) of each chunk in view */
   readonly deltas = new Map<string, ChunkDelta>();
   /** the farm layer by world cell "x,y" (P17.22 fills it; the view draws what arrives) */
@@ -72,6 +74,7 @@ export class WorldSession {
   }
 
   private emit(change: WorldChange): void {
+    if (change === 'people' || change === 'welcome' || change === 'exit') this.peopleVersion++;
     for (const fn of this.listeners) fn(change);
   }
 

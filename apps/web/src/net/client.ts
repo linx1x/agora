@@ -294,8 +294,18 @@ export class WorldClient {
         });
         break;
       case 'profile':
+        // P17.15b: someone who stepped into a world stays listed but is no longer on the floor
+        if (m.profile.inWorld) this.samples.delete(m.profile.id);
         store.set((s) => ({ profiles: { ...s.profiles, [m.profile.id]: m.profile } }));
         break;
+      case 'roster': {
+        // back from a world: the office as it is now (who left, who arrived, the desks)
+        const profiles = Object.fromEntries(m.profiles.map((p) => [p.id, p]));
+        for (const id of [...this.samples.keys()])
+          if (!profiles[id] || profiles[id]!.inWorld) this.samples.delete(id);
+        store.set({ profiles, desks: m.desks });
+        break;
+      }
       case 'leave': {
         this.samples.delete(m.id);
         store.set((s) => {

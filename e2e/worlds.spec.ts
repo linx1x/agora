@@ -19,7 +19,11 @@ type AgoraWindow = {
 
 const opened: Page[] = [];
 test.afterEach(async () => {
-  for (const p of opened.splice(0)) await p.context().close().catch(() => {});
+  for (const p of opened.splice(0))
+    await p
+      .context()
+      .close()
+      .catch(() => {});
 });
 
 const T = 32;
@@ -62,11 +66,18 @@ async function toJungle(p: Page) {
   if ((await st(p)).myRegion !== 'hub') return;
   const pad = (await st(p)).map.zones.find((z: any) => z.id === 'portal-hub-jungle');
   await goTo(p, Math.floor(pad.x / T), Math.floor(pad.y / T));
-  await p.waitForFunction(() => (window as any).__agora.store.get().prompt?.kind === 'teleport', undefined, {
-    timeout: 30_000,
-    polling: 200,
-  });
-  await p.getByRole('group', { name: /Téléporteur/ }).getByRole('button', { name: /Jungle/ }).click();
+  await p.waitForFunction(
+    () => (window as any).__agora.store.get().prompt?.kind === 'teleport',
+    undefined,
+    {
+      timeout: 30_000,
+      polling: 200,
+    },
+  );
+  await p
+    .getByRole('group', { name: /Téléporteur/ })
+    .getByRole('button', { name: /Jungle/ })
+    .click();
   await p.waitForFunction(() => (window as any).__agora.store.get().myRegion !== 'hub', undefined, {
     timeout: 10_000,
     polling: 200,
@@ -77,7 +88,8 @@ async function toJungle(p: Page) {
 /** Walk to a cell (the same as a click on it). */
 const goTo = (p: Page, cx: number, cy: number) =>
   A(p)(
-    ([x, y]) => (window as unknown as AgoraWindow).__agora.store.set({ navRequest: { kind: 'point', x, y } }),
+    ([x, y]) =>
+      (window as unknown as AgoraWindow).__agora.store.set({ navRequest: { kind: 'point', x, y } }),
     [cx * T + 16, cy * T + 20] as const,
   );
 
@@ -96,11 +108,10 @@ const goWorld = (p: Page, cx: number, cy: number) =>
   );
 
 async function waitPrompt(p: Page, kind: string, timeout = 40_000) {
-  await p.waitForFunction(
-    (k) => (window as any).__agora.store.get().prompt?.kind === k,
-    kind,
-    { timeout, polling: 200 },
-  );
+  await p.waitForFunction((k) => (window as any).__agora.store.get().prompt?.kind === k, kind, {
+    timeout,
+    polling: 200,
+  });
 }
 
 /**
@@ -120,7 +131,10 @@ async function walkWorld(p: Page, cx: number, cy: number, timeout = 90_000) {
         [cx, cy],
         { timeout: 20_000, polling: 200 },
       )
-      .then(() => true, () => false);
+      .then(
+        () => true,
+        () => false,
+      );
     if (there) return;
     if (Date.now() > deadline) throw new Error(`the walker did not reach ${cx},${cy}`);
   }
@@ -147,10 +161,14 @@ async function claimJungle6(p: Page) {
     await goTo(p, spot.chair.cx, spot.chair.cy);
     await waitPrompt(p, 'claim');
     await p.getByRole('button', { name: 'Réclamer ce poste' }).click();
-    await p.waitForFunction(() => (window as any).__agora.store.get().myDesk === 'jungle-6', undefined, {
-      timeout: 30_000,
-      polling: 200,
-    });
+    await p.waitForFunction(
+      () => (window as any).__agora.store.get().myDesk === 'jungle-6',
+      undefined,
+      {
+        timeout: 30_000,
+        polling: 200,
+      },
+    );
     await p.keyboard.press('x'); // stand up
   }
   await goTo(p, spot.guest.cx, spot.guest.cy);
@@ -171,7 +189,9 @@ async function visitMyWorldOnce(p: Page) {
   });
 }
 
-test('my world: enter from my desk, walk, cross a level step, come back to the desk', async ({ browser }) => {
+test('my world: enter from my desk, walk, cross a level step, come back to the desk', async ({
+  browser,
+}) => {
   test.setTimeout(300_000);
   const a = await enter(browser, 0, 20);
   await claimJungle6(a);
@@ -192,14 +212,21 @@ test('my world: enter from my desk, walk, cross a level step, come back to the d
   expect(card).not.toMatch(/Poste|poste/);
   await expect(a.locator('.minimap-wrap')).toHaveCount(0);
 
+  // P17.15b: the People panel lists the people of this world only (me), not the office roster
+  await a.evaluate(() => (window as any).__agora.store.set({ panelOpen: true, panel: 'people' }));
+  const panel = a.getByRole('complementary');
+  await expect(panel.getByText('1 personne dans ce monde')).toBeVisible();
+  await expect(panel.getByText('Dans ce monde', { exact: true })).toBeVisible();
+  await expect(panel.getByText('Personnages')).toHaveCount(0);
+  await expect(panel.getByText(/Poste de|Reconnexion/)).toHaveCount(0);
+
   // the starter house is flat: holding right moves me east (polled: headless frames are slow)
   const before = w;
   await a.evaluate(() => (window as any).__agora.setHeld(['ArrowRight']));
-  await a.waitForFunction(
-    (x0) => (window as any).__agora.view.world().x > x0 + 40,
-    before.x,
-    { timeout: 30_000, polling: 100 },
-  );
+  await a.waitForFunction((x0) => (window as any).__agora.view.world().x > x0 + 40, before.x, {
+    timeout: 30_000,
+    polling: 100,
+  });
   await a.evaluate(() => (window as any).__agora.setHeld([]));
   await a.waitForTimeout(300);
   w = await world(a);
@@ -217,11 +244,17 @@ test('my world: enter from my desk, walk, cross a level step, come back to the d
       const [x, y] = q[i]!;
       const lv = v.levelAt(x, y);
       if (lv !== lv0 && Math.abs(lv - lv0) === 1) return { cx: x, cy: y, level: lv };
-      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+      for (const [dx, dy] of [
+        [1, 0],
+        [-1, 0],
+        [0, 1],
+        [0, -1],
+      ] as const) {
         const nx = x + dx;
         const ny = y + dy;
         const k = `${nx},${ny}`;
-        if (seen.has(k) || Math.max(Math.abs(nx - me.cell.cx), Math.abs(ny - me.cell.cy)) > 24) continue;
+        if (seen.has(k) || Math.max(Math.abs(nx - me.cell.cx), Math.abs(ny - me.cell.cy)) > 24)
+          continue;
         seen.add(k);
         if (!v.walkableAt(nx, ny) || Math.abs(v.levelAt(nx, ny) - lv) > 1) continue;
         q.push([nx, ny]);
@@ -249,11 +282,9 @@ test('my world: enter from my desk, walk, cross a level step, come back to the d
   await waitPrompt(a, 'world');
   expect((await st(a)).prompt).toMatchObject({ kind: 'world', deskId: 'jungle-6' });
   // the office is back and I am in it again (drawn where the office puts me)
-  await a.waitForFunction(
-    (me) => (window as any).__agora.rendered.has(me),
-    s.me,
-    { timeout: 20_000 },
-  );
+  await a.waitForFunction((me) => (window as any).__agora.rendered.has(me), s.me, {
+    timeout: 20_000,
+  });
   // back in the office the card is the desk again, and the minimap is back
   await expect(a.locator('.room-name')).toContainText('Poste de Alice Tremblay');
   await expect(a.locator('.minimap-wrap')).toHaveCount(1);
@@ -269,7 +300,9 @@ test('a visitor is held at the knock, then let into the owner world', async ({ b
   await a.getByText('Frapper', { exact: true }).click();
   await a.getByRole('dialog').getByRole('button', { name: 'Enregistrer' }).click();
   await a.waitForFunction(
-    () => (window as any).__agora.store.get().desks.find((d: any) => d.id === 'jungle-6')?.access === 'knock',
+    () =>
+      (window as any).__agora.store.get().desks.find((d: any) => d.id === 'jungle-6')?.access ===
+      'knock',
     undefined,
     { timeout: 30_000, polling: 200 },
   );
@@ -277,7 +310,8 @@ test('a visitor is held at the knock, then let into the owner world', async ({ b
   const b = await enter(browser, 1);
   await toJungle(b);
   await A(b)(
-    (id) => (window as unknown as AgoraWindow).__agora.store.set({ navRequest: { kind: 'person', id } }),
+    (id) =>
+      (window as unknown as AgoraWindow).__agora.store.set({ navRequest: { kind: 'person', id } }),
     (await st(a)).me,
   );
   // held at the pod's door: the knock prompt, never the world prompt, and no world for me
@@ -288,10 +322,14 @@ test('a visitor is held at the knock, then let into the owner world', async ({ b
   // Alice lets Benoît in; now the door opens into Alice's world
   await b.getByRole('button', { name: 'Frapper', exact: true }).click();
   await a.getByRole('button', { name: 'Faire entrer' }).click();
-  await b.waitForFunction(() => (window as any).__agora.store.get().admitted.includes('jungle-6'), undefined, {
-    timeout: 30_000,
-    polling: 200,
-  });
+  await b.waitForFunction(
+    () => (window as any).__agora.store.get().admitted.includes('jungle-6'),
+    undefined,
+    {
+      timeout: 30_000,
+      polling: 200,
+    },
+  );
   // admitted, Benoît steps through the door into the pod: the world prompt is inside it
   const podB = (await st(b)).map.desks.find((d: any) => d.id === 'jungle-6');
   await goTo(b, podB.guest.cx, podB.guest.cy);

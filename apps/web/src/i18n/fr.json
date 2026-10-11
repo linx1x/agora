@@ -78,7 +78,11 @@
     "reconnecting": "Reconnexion…",
     "goto": "Aller voir {{name}}",
     "callover": "Inviter {{name}} à venir",
-    "characters": "Personnages"
+    "characters": "Personnages",
+    "inWorld": "Dans son monde",
+    "inThisWorld": "Dans ce monde",
+    "worldCount_one": "{{count}} personne dans ce monde",
+    "worldCount_other": "{{count}} personnes dans ce monde"
   },
   "chat": {
     "channels": "Canaux",

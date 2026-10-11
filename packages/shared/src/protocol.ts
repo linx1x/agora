@@ -182,6 +182,11 @@ export interface PlayerProfile {
   online: boolean;
   /** P17.31: the skill this person shows, at the level they have earned (absent when none) */
   badge?: Badge;
+  /**
+   * P17.15b: in a personal world or cave, not on the office floor. Only this flag reaches the office:
+   * never which world, where in it, or who else is there (ADR-053 privacy).
+   */
+  inWorld?: boolean;
 }
 /** Compact dynamic state sent every tick. */
 export interface PlayerPos {
@@ -322,6 +327,8 @@ export type S2CMsg =
     }
   /** P17.9: you are back in the office, at your desk */
   | { t: 'world:exit' }
+  /** P17.15b: the office roster again, for someone back from a world (who missed its changes) */
+  | { t: 'roster'; profiles: PlayerProfile[]; desks: DeskState[] }
   /**
    * P17.20–22 (ADR-053 wave 2 contract): the farm layer for cells in your view. Plots are keyed by
    * world cell "cx,cy" (cells, not px) as in `WorldSimState.plots`; `null` removes a plot. Sent with

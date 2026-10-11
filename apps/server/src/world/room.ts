@@ -202,6 +202,8 @@ const CALLOVER_COOLDOWN_MS = 10_000;
  */
 export class SpaceRoom {
   readonly players = new Map<string, Player>();
+  /** P17.15b: people of this space inside a personal world or cave: listed as `inWorld`, never placed */
+  private readonly away = new Map<string, Player>();
   links = new Set<string>();
   /** desk id → ownership (persisted) */
   private desks = new Map<string, StoredDesk>();
@@ -538,7 +540,7 @@ export class SpaceRoom {
     conn.send({
       t: 'welcome',
       you: p.id,
-      profiles: [...this.players.values()].map((q) => q.profile),
+      profiles: this.roster(),
       positions: [...this.players.values()].map((q) => this.pos(q)),
       history: this.history,
       config: this.opts.clientConfig,
@@ -909,7 +911,10 @@ export class SpaceRoom {
     this.players.delete(p.id);
     this.opts.npcs?.talk?.engine.end(p.uid);
     void this.gate?.left(p.id, p.scope);
-    this.broadcast({ t: 'leave', id: p.id });
+    // P17.15b: the office keeps the person in its list as "in a world" (neutral), never where
+    p.profile.inWorld = true;
+    this.away.set(p.id, p);
+    this.broadcast({ t: 'profile', profile: p.profile });
     this.onZoneChange(p, from, undefined);
     p.zone = undefined;
     p.peers = '';
@@ -1013,7 +1018,14 @@ export class SpaceRoom {
     const w = p.world;
     if (!w) return;
     p.world = undefined;
+    this.away.delete(p.id);
+    delete p.profile.inWorld;
     w.room.leave(w.member);
+  }
+
+  /** Everyone this space lists: the people on the floor and those inside a world (P17.15b). */
+  private roster(): PlayerProfile[] {
+    return [...this.players.values(), ...this.away.values()].map((q) => q.profile);
   }
 
   /**
@@ -1037,6 +1049,8 @@ export class SpaceRoom {
     this.broadcast({ t: 'profile', profile: p.profile }, p.id);
     this.recomputeLinks();
     p.conn?.send({ t: 'world:exit' });
+    // what changed in the office while away (arrivals, departures, desks): the whole roster again
+    p.conn?.send({ t: 'roster', profiles: this.roster(), desks: this.deskStates() });
     // the xp earned in the world may have opened a level: the card shows it from now on (P17.31)
     void this.refreshBadge(p);
     this.log.info({ player: p.id }, 'left world');

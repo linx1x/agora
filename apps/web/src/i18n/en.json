@@ -78,7 +78,11 @@
     "reconnecting": "Reconnecting…",
     "goto": "Go to {{name}}",
     "callover": "Ask {{name}} to come over",
-    "characters": "Characters"
+    "characters": "Characters",
+    "inWorld": "In their world",
+    "inThisWorld": "In this world",
+    "worldCount_one": "{{count}} person in this world",
+    "worldCount_other": "{{count}} people in this world"
   },
   "chat": {
     "channels": "Channels",

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BellRing, Crosshair, Footprints, Mic, MicOff, Send, Video, X } from 'lucide-react';
 import { useCompactLayout } from './layout';
@@ -8,6 +8,8 @@ import { zoneName } from '../game/controller';
 import { world } from '../net/client';
 import { store, useStore } from '../state/store';
 import { ShowOffPicker, SkillBadge } from './SkillBadge';
+import { worldSession } from '../worlds/session';
+import { worldPeopleRows } from '../worlds/people';
 
 const NEEDS = ['energy', 'social', 'focus', 'caffeine'] as const;
 const hhmm = (m: number) =>
@@ -86,7 +88,57 @@ function NpcBrain({ mind, name }: { mind: NpcMindView; name: string }) {
   );
 }
 
+/** The people of the world I am in, kept fresh with the world session (P17.15b). */
+function useWorldPeople() {
+  const subscribe = (cb: () => void) =>
+    worldSession.on((change) => {
+      if (change === 'people' || change === 'welcome' || change === 'exit') cb();
+    });
+  // a new array only when the session changed: React compares snapshots
+  const version = useSyncExternalStore(
+    subscribe,
+    () => worldSession.peopleVersion,
+    () => 0,
+  );
+  return useMemo(() => [...worldSession.people.values()], [version]);
+}
+
+/** Inside a personal world: its people only; the office roster and its actions are not shown (P17.15b). */
+function WorldPeople() {
+  const { t } = useTranslation();
+  const people = useWorldPeople();
+  const me = useStore((s) => s.me);
+  const mine = useStore((s) => (s.me ? s.profiles[s.me] : undefined));
+  const rows = worldPeopleRows(people, worldSession.you || me || '', mine);
+  return (
+    <div className="panel-section">
+      <p className="muted small" aria-live="polite">
+        {t('people.worldCount', { count: rows.length })}
+      </p>
+      <ul className="people">
+        {rows.map((p) => (
+          <li key={p.id}>
+            <img src={avatarUrl(p.avatar)} alt="" width={32} height={40} className="pixel" />
+            <div className="person">
+              <div className="person-name">
+                {p.name}
+                {p.you && <span className="muted"> ({t('people.you')})</span>}
+              </div>
+              <div className="muted small">{t('people.inThisWorld')}</div>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function People() {
+  const inWorld = useStore((s) => s.worldId !== null);
+  return inWorld ? <WorldPeople /> : <OfficePeople />;
+}
+
+function OfficePeople() {
   const { t } = useTranslation();
   const profiles = useStore((s) => s.profiles);
   const areas = useStore((s) => s.areas);
@@ -136,7 +188,11 @@ function People() {
                 )}
               </div>
               <div className="muted small">
-                {p.online ? zoneName(areas[p.id]) : t('people.reconnecting')}
+                {!p.online
+                  ? t('people.reconnecting')
+                  : p.inWorld
+                    ? t('people.inWorld')
+                    : zoneName(areas[p.id])}
                 {p.statusMsg ? ` · ${p.statusMsg}` : ''}
               </div>
               {p.badge && (
@@ -154,7 +210,7 @@ function People() {
               )}
               {p.cam && <Video size={14} aria-label={t('people.camOn')} />}
             </span>
-            {p.id !== me && p.online && (
+            {p.id !== me && p.online && !p.inWorld && (
               <span className="person-actions">
                 <button
                   type="button"

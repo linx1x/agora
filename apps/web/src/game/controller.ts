@@ -364,6 +364,8 @@ export class WorldController {
     const out: AvatarState[] = [];
     const renderT = now - INTERP_MS;
     for (const id of Object.keys(s.profiles)) {
+      // P17.15b: someone inside a personal world is listed, but not on the floor
+      if (id !== s.me && s.profiles[id]!.inWorld) continue;
       let x: number, y: number, dir: Dir, moving: boolean, pose: Pose;
       if (id === s.me && this.me.ready) ({ x, y, dir, moving, pose } = this.me);
       else {
@@ -381,7 +383,7 @@ export class WorldController {
       out.push({ id, x, y, dir, moving, pose, poseAt: ps.at });
     }
     for (const id of [...rendered.keys()])
-      if (!s.profiles[id]) {
+      if (!s.profiles[id] || (id !== s.me && s.profiles[id]!.inWorld)) {
         rendered.delete(id);
         this.poses.delete(id);
       }
