@@ -16,7 +16,9 @@ export function GameView() {
   const engine = chooseEngine({ world25d }, location.search, readStoredView(), choice);
   // P17.14: inside a personal world the world view replaces the office view (a remount). P17.15: the
   // world has its own 2.5D view, the same engine choice as the office.
-  const inWorld = useStore((s) => s.worldId !== null);
+  // a cave (P17.32) is another world: a new id remounts the view, so its terrain and walker start fresh
+  const worldKey = useStore((s) => s.worldId);
+  const inWorld = worldKey !== null;
 
   useEffect(() => {
     installInput();
@@ -42,7 +44,7 @@ export function GameView() {
       cancelled = true;
       unmount?.();
     };
-  }, [engine, inWorld]);
+  }, [engine, inWorld, worldKey]);
 
   return <div ref={ref} className="world-canvas" aria-hidden="true" />;
 }

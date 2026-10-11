@@ -12,9 +12,7 @@
 import * as THREE from 'three';
 import {
   CHUNK_SIZE,
-  RETURN_PORTAL_ID,
   TILE,
-  inPortal,
   type Dir,
   type GridCell,
 } from '@agora/shared';
@@ -26,7 +24,7 @@ import { store, toast } from '../../state/store';
 import { COMPACT_QUERY, matches } from '../../ui/layout';
 import { worldSession } from '../session';
 import { WorldWalker } from '../walker';
-import { RETURN_RECT } from '../starter';
+import { portalOfPrompt, worldPromptAt } from '../prompts';
 import type { WorldTestApi } from '../view2d/WorldRoomScene';
 import { CELL, farmVisual, pickCell, type CellWindow } from '../view2d/math';
 import { cropFrameName } from '../view2d/art';
@@ -247,8 +245,8 @@ export class WorldRoom3DView {
 
   /** X (or the touch button): act on the current prompt. */
   private act(): void {
-    const p = store.get().prompt;
-    if (p?.kind === 'worldExit') link.send({ t: 'portal:enter', id: RETURN_PORTAL_ID });
+    const id = portalOfPrompt(store.get().prompt);
+    if (id !== null) link.send({ t: 'portal:enter', id });
   }
 
   private stepZoom(dir: number): void {
@@ -618,8 +616,7 @@ export class WorldRoom3DView {
   /** ~3 Hz: the prompt for the return pad. */
   private slowTick(): void {
     const at = this.walker;
-    const prompt =
-      at && inPortal(RETURN_RECT, at.x, at.y) ? ({ kind: 'worldExit' } as const) : null;
+    const prompt = at ? worldPromptAt(worldSession.worldId, worldSession.terrain, at) : null;
     const cur = store.get().prompt;
     if (JSON.stringify(prompt) !== JSON.stringify(cur ?? null)) store.set({ prompt });
   }

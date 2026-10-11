@@ -11,9 +11,7 @@ import { rendered } from '../../game/controller';
 import { inputVector, isTyping } from '../../game/input';
 import { exposeTestApi, type ViewTestApi } from '../../game/view';
 import {
-  RETURN_PORTAL_ID,
   avatarKey,
-  inPortal,
   type Avatar,
   type Dir,
   type GridCell,
@@ -23,7 +21,7 @@ import { store, toast } from '../../state/store';
 import { COMPACT_QUERY, matches } from '../../ui/layout';
 import { worldSession } from '../session';
 import { WorldWalker, cellFeet } from '../walker';
-import { RETURN_RECT } from '../starter';
+import { portalOfPrompt, worldPromptAt } from '../prompts';
 import { TEX, addWorldTextures } from './atlas';
 import { cropFrameName } from './art';
 import {
@@ -224,8 +222,8 @@ export class WorldRoomScene extends Phaser.Scene {
 
   /** X (or the touch button): act on the current prompt. */
   act(): void {
-    const p = store.get().prompt;
-    if (p?.kind === 'worldExit') link.send({ t: 'portal:enter', id: RETURN_PORTAL_ID });
+    const id = portalOfPrompt(store.get().prompt);
+    if (id !== null) link.send({ t: 'portal:enter', id });
   }
 
   private drawPath(): void {
@@ -460,7 +458,7 @@ export class WorldRoomScene extends Phaser.Scene {
   /** ~3 Hz: the prompt for the return pad. */
   private slowTick(): void {
     const at = this.walker;
-    const prompt = inPortal(RETURN_RECT, at.x, at.y) ? ({ kind: 'worldExit' } as const) : null;
+    const prompt = worldPromptAt(worldSession.worldId, worldSession.terrain, at);
     const cur = store.get().prompt;
     if (JSON.stringify(prompt) !== JSON.stringify(cur ?? null)) store.set({ prompt });
   }

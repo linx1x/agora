@@ -39,6 +39,8 @@ export interface WorldTerrainOptions {
   readonly overlay?: CellOverlay;
   /** Chunks kept in memory. Default 256 (about 1 MB of cell arrays). */
   readonly chunkCapacity?: number;
+  /** Where a base chunk comes from when it is not generated from the seed (a cave, P17.32). */
+  readonly source?: (cx: number, cy: number) => Chunk;
 }
 
 /** Derive the walking flags of a cell from its block ids. Pure. */
@@ -72,6 +74,7 @@ export class WorldTerrain {
   private readonly blocks: BlockRegistry;
   private readonly overlay: CellOverlay | undefined;
   private readonly capacity: number;
+  private readonly source: ((cx: number, cy: number) => Chunk) | undefined;
   private readonly chunks = new Map<string, Chunk>();
 
   constructor(seed: number, params: WorldGenParams, options: WorldTerrainOptions = {}) {
@@ -81,6 +84,7 @@ export class WorldTerrain {
     this.blocks = options.blocks ?? BLOCKS;
     this.overlay = options.overlay;
     this.capacity = Math.max(1, options.chunkCapacity ?? 256);
+    this.source = options.source;
   }
 
   /** Base chunk (cx, cy), generated once and kept while recently used. Never includes patches. */
@@ -92,7 +96,9 @@ export class WorldTerrain {
       this.chunks.set(key, hit);
       return hit;
     }
-    const chunk = generateChunk(this.seed, cx, cy, this.params, this.biomes);
+    const chunk = this.source
+      ? this.source(cx, cy)
+      : generateChunk(this.seed, cx, cy, this.params, this.biomes);
     this.chunks.set(key, chunk);
     if (this.chunks.size > this.capacity) {
       const oldest = this.chunks.keys().next().value;

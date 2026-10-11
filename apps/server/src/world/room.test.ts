@@ -10,8 +10,12 @@ import {
   worldGenParamsFor,
   type S2CMsg,
   type Tmj,
+  CAVE_EXIT,
+  caveIdOf,
+  cellFeet,
 } from '@agora/shared';
 import { MemoryStore, roomStore } from '../db/store';
+import { setCells } from '../worlds/testWorld';
 import { SpaceRoom, type Player, type RoomOptions } from './room';
 import type { SfuApi } from '../media/gate';
 
@@ -1063,3 +1067,166 @@ describe('SpaceRoom: world actions are routed to the world (P17.20)', () => {
     expect(rate).not.toContain(100);
   });
 });
+
+describe('SpaceRoom: caves behind a mouth (P17.32, ADR-053)', () => {
+  const spot = map.desks.find((d) => d.id === 'jungle-1')!;
+  const OWNER = 'owner-7731';
+  const WORLD = 'world-7f3k';
+  const SEED = 3560865791;
+  /** a mouth placed in the world's stored edits, outside the starter clearing */
+  const MOUTH = { x: 20, y: 4 };
+  const CAVE = caveIdOf(WORLD, MOUTH.x, MOUTH.y);
+  const settle = () => new Promise((r) => setTimeout(r, 0));
+  const act = (op: number, key: string) => ({ t: 'world:act' as const, op, kind: 'eat' as const, key });
+  let store: MemoryStore;
+  let room: SpaceRoom;
+  let co: FakeConn, cc: FakeConn, cb: FakeConn;
+  let owner: Player, c: Player;
+
+  /** The walk is tested in worldRoom.test.ts; here the person simply stands on the cell. */
+  const stand = (p: Player, cx: number, cy: number) => {
+    const at = cellFeet(cx, cy);
+    p.world!.member.x = at.x;
+    p.world!.member.y = at.y;
+  };
+  const enter = async (p: Player, id = 'desk:jungle-1') => {
+    room.handle(p, { t: 'portal:enter', id });
+    await settle();
+  };
+  const step = async (p: Player, id: string) => {
+    room.handle(p, { t: 'portal:enter', id });
+    await settle();
+  };
+
+  beforeEach(async () => {
+    store = new MemoryStore();
+    room = makeRoom(store);
+    await room.init();
+    co = new FakeConn();
+    cc = new FakeConn();
+    cb = new FakeConn();
+    owner = (await room.join(co, { uid: OWNER, name: 'Alice' }))!;
+    c = (await room.join(cc, { uid: 'uc', name: 'Chloé' }))!;
+    await room.join(cb, { uid: 'ub', name: 'Benoît' });
+    place(room, owner, cellPos(map, spot.chair), 'sit');
+    room.handle(owner, { t: 'desk:claim', deskId: 'jungle-1' });
+    await store.worlds.createWorld({ id: WORLD, ownerId: OWNER, seed: SEED, genVersion: 1, createdAt: 0, lastDay: 0, settings: {} });
+    await setCells(store.worlds, { [`${MOUTH.x},${MOUTH.y}`]: { decor: 'cave_mouth' } }, WORLD);
+  });
+
+  it('a mouth under the feet opens its cave: the cave welcomes the person, and the world sees them go', async () => {
+    await enter(owner);
+    stand(owner, MOUTH.x, MOUTH.y);
+    await step(owner, CAVE);
+    expect(owner.world?.room.id).toBe(CAVE);
+    expect(co.of('world:welcome').at(-1)).toMatchObject({ worldId: CAVE, you: owner.id, seed: SEED, genVersion: 1 });
+    expect(room.players.has(owner.id)).toBe(false);
+  });
+
+  it('isolation: the cave and the world it opens from hear nothing of each other, in either direction', async () => {
+    await enter(owner);
+    place(room, c, cellPos(map, spot.guest));
+    await enter(c);
+    stand(owner, MOUTH.x, MOUTH.y);
+    await step(owner, CAVE);
+    room.handle(owner, { t: 'chat', scope: 'nearby', body: 'from the cave' });
+    expect(co.of('chat').map((m) => m.msg.body)).toContain('from the cave');
+    expect(cc.of('chat').map((m) => m.msg.body)).not.toContain('from the cave');
+    expect(cb.of('chat').map((m) => m.msg.body)).not.toContain('from the cave');
+    room.handle(c, { t: 'chat', scope: 'nearby', body: 'from the world' });
+    expect(cc.of('chat').map((m) => m.msg.body)).toContain('from the world');
+    expect(co.of('chat').map((m) => m.msg.body)).not.toContain('from the world');
+  });
+
+  it('isolation: a visitor who goes into the cave too shares only the cave with the owner', async () => {
+    await enter(owner);
+    place(room, c, cellPos(map, spot.guest));
+    await enter(c);
+    stand(owner, MOUTH.x, MOUTH.y);
+    await step(owner, CAVE);
+    stand(c, MOUTH.x, MOUTH.y);
+    await step(c, CAVE);
+    expect(c.world?.room.id).toBe(CAVE);
+    expect(co.of('world:join').at(-1)?.person.id).toBe(c.id);
+    room.handle(owner, { t: 'chat', scope: 'nearby', body: 'inside together' });
+    expect(cc.of('chat').map((m) => m.msg.body)).toContain('inside together');
+    expect(co.of('chat').map((m) => m.msg.body)).toContain('inside together');
+    expect(cb.of('chat').map((m) => m.msg.body)).not.toContain('inside together');
+    expect(co.of('peers').at(-1)?.peers).toEqual([c.id]);
+    expect(cc.of('peers').at(-1)?.peers).toEqual([owner.id]);
+  });
+
+  it('isolation: a forged rtc between the world and its cave is refused, and nothing arrives', async () => {
+    await enter(owner);
+    place(room, c, cellPos(map, spot.guest));
+    await enter(c);
+    stand(owner, MOUTH.x, MOUTH.y);
+    await step(owner, CAVE);
+    const data = { kind: 'offer' as const, sdp: 'v=0' };
+    room.handle(c, { t: 'rtc', to: owner.id, data });
+    expect(cc.of('error').at(-1)).toEqual({ t: 'error', code: 'rtc_not_linked' });
+    room.handle(owner, { t: 'rtc', to: c.id, data });
+    expect(co.of('error').at(-1)).toEqual({ t: 'error', code: 'rtc_not_linked' });
+    expect(co.of('rtc')).toEqual([]);
+    expect(cc.of('rtc')).toEqual([]);
+  });
+
+  it('the cave refuses every world action as forbidden, and nothing changes', async () => {
+    await enter(owner);
+    stand(owner, MOUTH.x, MOUTH.y);
+    await step(owner, CAVE);
+    room.handle(owner, act(9, 'k-cave-0001'));
+    await settle();
+    expect(co.of('world:refused').at(-1)).toEqual({ t: 'world:refused', op: 9, reason: 'forbidden' });
+    expect(co.of('world:acted')).toEqual([]);
+  });
+
+  it('the cave pad takes the person back into the world beside the mouth, and not to the office', async () => {
+    await enter(owner);
+    stand(owner, MOUTH.x, MOUTH.y);
+    await step(owner, CAVE);
+    stand(owner, CAVE_EXIT.x, CAVE_EXIT.y);
+    await step(owner, 'return');
+    expect(owner.world?.room.id).toBe(WORLD);
+    const m = owner.world!.member;
+    expect(Math.max(Math.abs(Math.floor(m.x / 32) - MOUTH.x), Math.abs(Math.floor(m.y / 32) - MOUTH.y))).toBe(1);
+    expect(co.of('world:exit')).toEqual([]);
+    expect(room.players.has(owner.id)).toBe(false);
+  });
+
+  it('the mouth opens only under the feet of the person: elsewhere, or another mouth, is refused as outside', async () => {
+    await enter(owner);
+    await step(owner, CAVE);
+    expect(co.of('portal:refused').at(-1)).toEqual({ t: 'portal:refused', id: CAVE, reason: 'outside' });
+    expect(owner.world?.room.id).toBe(WORLD);
+    stand(owner, MOUTH.x, MOUTH.y);
+    await step(owner, caveIdOf(WORLD, MOUTH.x + 1, MOUTH.y));
+    expect(co.of('portal:refused').at(-1)).toMatchObject({ reason: 'outside' });
+    expect(owner.world?.room.id).toBe(WORLD);
+  });
+
+  it('visitors follow the desk rules: once the owner closes the desk, a visitor in the world cannot enter the cave', async () => {
+    await enter(owner);
+    place(room, c, cellPos(map, spot.guest));
+    await enter(c);
+    // the owner steps out to the desk, closes it, and goes back in
+    room.handle(owner, { t: 'world:leave' });
+    room.handle(owner, { t: 'desk:update', access: 'closed' });
+    await enter(owner);
+    stand(c, MOUTH.x, MOUTH.y);
+    await step(c, CAVE);
+    expect(cc.of('portal:refused').at(-1)).toEqual({ t: 'portal:refused', id: CAVE, reason: 'no_permission' });
+    expect(c.world?.room.id).toBe(WORLD);
+    stand(owner, MOUTH.x, MOUTH.y);
+    await step(owner, CAVE);
+    expect(owner.world?.room.id).toBe(CAVE);
+  });
+
+  it('a person in the office cannot open a cave: the portal names no desk, so it is unknown', async () => {
+    room.handle(c, { t: 'portal:enter', id: CAVE });
+    await settle();
+    expect(cc.of('portal:refused').at(-1)).toEqual({ t: 'portal:refused', id: CAVE, reason: 'unknown' });
+    expect(c.world).toBeUndefined();
+  });
+});
+

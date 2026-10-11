@@ -384,7 +384,11 @@
     "worldVisit": "Monde de {{name}} : X pour entrer",
     "worldBtn": "Entrer dans le monde",
     "worldExit": "X : retourner au bureau",
-    "worldExitBtn": "Retourner au bureau"
+    "worldExitBtn": "Retourner au bureau",
+    "cave": "X : entrer dans la grotte",
+    "caveBtn": "Entrer dans la grotte",
+    "caveExit": "X : sortir de la grotte",
+    "caveExitBtn": "Sortir de la grotte"
   },
   "nav": {
     "unreachable": "Impossible de s'y rendre"
@@ -1095,7 +1099,13 @@
       "bed": "Lit",
       "shipping_bin": "Caisse d'expédition",
       "shop_board": "Tableau de la boutique",
-      "door": "Porte"
+      "door": "Porte",
+      "cave_floor": "Sol de grotte",
+      "cave_rock": "Roche de grotte",
+      "cave_mouth": "Entrée de grotte",
+      "ore_copper": "Minerai de cuivre",
+      "ore_iron": "Minerai de fer",
+      "ore_gold": "Minerai d'or"
     },
     "biome": {
       "meadow": "Prairie",

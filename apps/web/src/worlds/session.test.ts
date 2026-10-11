@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { WORLDGEN, feetCell, randomAvatar, worldSeedFor, type S2CMsg } from '@agora/shared';
+import {
+  CAVE_ARRIVAL,
+  CAVE_EXIT,
+  WORLDGEN,
+  canStep,
+  caveIdOf,
+  feetCell,
+  randomAvatar,
+  worldGenParamsFor,
+  worldSeedFor,
+  type S2CMsg,
+} from '@agora/shared';
 import { store } from '../state/store';
 import { WorldSession, type WorldChange } from './session';
 import { vi } from 'vitest';
@@ -129,3 +140,26 @@ describe('WorldSession (P17.14): what the client knows about its world', () => {
     expect(feetCell(s.people.get('me')!.x, s.people.get('me')!.y)).toEqual({ cx: 0, cy: 0 });
   });
 });
+
+describe('WorldSession: a cave (P17.32)', () => {
+  it('a cave welcome builds the cave from its id and the world seed: the same for everyone in it', () => {
+    const session = new WorldSession();
+    const seed = worldSeedFor('cave-session');
+    session.handle({
+      t: 'world:welcome',
+      worldId: caveIdOf('w-cave', 20, 4),
+      owner: '',
+      you: 'p1',
+      seed,
+      genVersion: 1,
+      params: worldGenParamsFor(WORLDGEN, 1),
+      people: [],
+    } as S2CMsg);
+    expect(session.terrain!.cellAt(CAVE_EXIT.x, CAVE_EXIT.y).decor).toBe('cave_mouth');
+    expect(session.terrain!.cellAt(0, 0).block).toBe('cave_rock');
+    // the rock is three levels up: no step onto it from the floor, so the walker cannot pass it
+    const floor = session.terrain!.cellAt(CAVE_ARRIVAL.x, CAVE_ARRIVAL.y);
+    expect(canStep(floor, session.terrain!.cellAt(0, 0))).toBe(false);
+  });
+});
+

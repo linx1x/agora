@@ -20,6 +20,8 @@ export { levelOf } from './fields';
 
 export const WATER_BLOCK = 'water';
 export const BEACH_BLOCK = 'sand';
+/** The decor of a cave mouth: a walkable doorway onto a cave (caves.ts, P17.32). */
+export const CAVE_MOUTH_BLOCK = 'cave_mouth';
 
 /** Decor for a biome from one unit draw: the densities are cumulative thresholds. '' for none. */
 export function pickDecor(biome: WorldBiome, u: number): string {
@@ -64,8 +66,20 @@ function cellWith(
   if (elevation >= params.alpineElevation && biome.alpine) {
     return { level, block: biome.alpine, decor: '' };
   }
+  if (isCaveMouth(seeds, x, y, params)) return { level, block: biome.surface, decor: CAVE_MOUTH_BLOCK };
   const decor = pickDecor(biome, hashUnit(seeds.decor, x, y));
   return { level, block: biome.surface, decor };
+}
+
+/**
+ * A cave mouth: one hashed draw per land cell outside the starter clearing, against the chance in
+ * `params.caves`. Worlds with no `caves` params (genVersion 1) have none, so their terrain is the same.
+ */
+function isCaveMouth(seeds: TerrainSeeds, x: number, y: number, params: WorldGenParams): boolean {
+  const caves = params.caves;
+  if (!caves || caves.mouthChance <= 0) return false;
+  if (Math.max(Math.abs(x), Math.abs(y)) <= caves.clearRadius) return false;
+  return hashUnit(seeds.cave, x, y) < caves.mouthChance;
 }
 
 /** Base terrain of one world cell. For single queries; chunks use the same rule in bulk. */

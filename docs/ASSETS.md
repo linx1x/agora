@@ -136,6 +136,12 @@ Personal-world blocks are drawn as 32 px placeholder tiles in `apps/web/src/worl
 | `shipping_bin` | decor | `worlds/shared/shipping_bin` | yes | zen |
 | `shop_board` | decor | `worlds/shared/shop_board` | yes | zen |
 | `door` | decor | `worlds/shared/door` | no | zen |
+| `cave_floor` | ground | `worlds/shared/cave_floor` | no | cave (P17.32) |
+| `cave_rock` | ground | `worlds/shared/cave_rock` | no | cave (P17.32) |
+| `cave_mouth` | decor | `worlds/shared/cave_mouth` | no | cave mouth in every biome (P17.32) |
+| `ore_copper` | decor | `worlds/shared/ore_copper` | yes | cave, near the mouth (P17.32) |
+| `ore_iron` | decor | `worlds/shared/ore_iron` | yes | cave, middle depths (P17.32) |
+| `ore_gold` | decor | `worlds/shared/ore_gold` | yes | cave, deepest (P17.32) |
 
 Items for the farm (P17.22). Shown in the hotbar and the inventory as 32 px icons; the item's name is `worlds.item.<id>`.
 

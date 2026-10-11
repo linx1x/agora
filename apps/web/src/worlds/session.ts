@@ -7,9 +7,10 @@
  * state; `store.worldId` only says a world is open, and GameView mounts the world view for it.
  */
 import {
-  WorldTerrain,
   chunkKey,
   deltaOverlay,
+  worldTerrainFor,
+  type WorldTerrain,
   type ChunkDelta,
   type PlotState,
   type S2CMsg,
@@ -71,7 +72,8 @@ export class WorldSession {
         this.seed = m.seed;
         this.genVersion = m.genVersion;
         this.params = m.params;
-        this.terrain = new WorldTerrain(m.seed, m.params, {
+        // a cave (P17.32) is read from its id and the world's seed, so it is the same for everyone in it
+        this.terrain = worldTerrainFor(m.worldId, m.seed, m.params, {
           overlay: deltaOverlay((cx, cy) => this.deltas.get(chunkKey(cx, cy))),
         });
         this.deltas.clear();

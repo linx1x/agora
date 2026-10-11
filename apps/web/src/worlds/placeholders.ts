@@ -92,6 +92,12 @@ export const LOOKS: Readonly<Record<string, Look>> = {
   bed: { top: 'indigo2', side: 'wood1', shape: 'bed', accent: 'plaster2' },
   shipping_bin: { top: 'wood3', side: 'wood1', shape: 'crate', accent: 'wood0' },
   shop_board: { top: 'plaster2', side: 'wood0', shape: 'sign', accent: 'terra' },
+  cave_floor: { top: 'stone0', side: 'stone0', shape: 'ground' },
+  cave_rock: { top: 'stone1', side: 'stone2', shape: 'ground' },
+  cave_mouth: { top: 'stone1', side: 'stone0', shape: 'pad', accent: 'wood0' },
+  ore_copper: { top: 'stone2', side: 'stone1', shape: 'box', accent: 'terra' },
+  ore_iron: { top: 'stone2', side: 'stone1', shape: 'box', accent: 'stone3' },
+  ore_gold: { top: 'stone2', side: 'stone1', shape: 'box', accent: 'sand2' },
 };
 
 export interface Tile {

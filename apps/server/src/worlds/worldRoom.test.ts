@@ -10,8 +10,15 @@ import {
   worldGenParamsFor,
   type S2CMsg,
   type WorldGenParams,
+  CAVE_ARRIVAL,
+  WORLD_CELL_PX,
+  CAVE_EXIT,
+  caveIdOf,
+  cellFeet,
+  parseCaveId,
 } from '@agora/shared';
 import { MemoryWorldStore, type WorldStore } from './worldStore';
+import { setCells } from './testWorld';
 import { WorldHub, type WorldMember, type WorldRoom, worldSpawn } from './worldRoom';
 import { defaultStarter } from './starter';
 import type { SfuApi } from '../media/gate';
@@ -433,3 +440,102 @@ describe('WorldRoom: media and chat stay inside the world (P17.11, ADR-053)', ()
     expect(c2.of('rtc')).toEqual([]);
   });
 });
+
+describe('WorldRoom: a cave room (P17.32, ADR-053)', () => {
+  const MOUTH = { x: 20, y: 4 };
+  const CAVE = caveIdOf('w1', MOUTH.x, MOUTH.y);
+  const mouthFeet = cellFeet(MOUTH.x, MOUTH.y);
+
+  /** The world w1 with a cave mouth in its stored edits, its hub, and the cave opened from it. */
+  async function caveOf() {
+    const store = await storeWith('w1');
+    await setCells(store, { [`${MOUTH.x},${MOUTH.y}`]: { decor: 'cave_mouth' } });
+    const hub = new WorldHub(store);
+    const world = (await hub.enter('w1'))!;
+    const cave = (await hub.enter(CAVE))!;
+    return { store, hub, world, cave };
+  }
+
+  it('opens from its world under its own id, with the same seed and generator and no stored edits', async () => {
+    const { cave } = await caveOf();
+    expect(cave.id).toBe(CAVE);
+    expect(cave.cave).toEqual({ worldId: 'w1', mouthX: MOUTH.x, mouthY: MOUTH.y });
+    expect(cave.seed).toBe(SEED);
+    expect(cave.genVersion).toBe(1);
+    expect(parseCaveId(cave.id)?.worldId).toBe('w1');
+  });
+
+  it('a cave whose world does not exist opens nothing', async () => {
+    const hub = new WorldHub(await storeWith('w1'));
+    expect(await hub.enter(caveIdOf('nope', 1, 1))).toBeNull();
+  });
+
+  it('a visitor is welcomed on the cave floor, with the world seed, and the exit pad is its way out', async () => {
+    const { cave } = await caveOf();
+    const conn = new FakeConn();
+    const m = cave.join(conn, who('p1'));
+    expect(conn.of('world:welcome')[0]).toMatchObject({ worldId: CAVE, seed: SEED, genVersion: 1, you: 'p1' });
+    expect({ x: m.x, y: m.y }).toEqual(cellFeet(CAVE_ARRIVAL.x, CAVE_ARRIVAL.y));
+    expect(cave.atReturn(m)).toBe(false);
+    const exit = cellFeet(CAVE_EXIT.x, CAVE_EXIT.y);
+    m.x = exit.x;
+    m.y = exit.y;
+    expect(cave.atReturn(m)).toBe(true);
+  });
+
+  it('its terrain is the cave: rock around it, and the exit is a mouth; no farm reaches it', async () => {
+    const { cave } = await caveOf();
+    const conn = new FakeConn();
+    cave.join(conn, who('p1'));
+    await flush();
+    expect(cave.terrain.cellAt(0, 0).block).toBe('cave_rock');
+    expect(cave.terrain.cellAt(CAVE_EXIT.x, CAVE_EXIT.y).decor).toBe('cave_mouth');
+    expect(conn.of('world:farm')).toEqual([]);
+  });
+
+  it('a cave refuses every world action as forbidden', async () => {
+    const { cave } = await caveOf();
+    const conn = new FakeConn();
+    const m = cave.join(conn, who('p1'));
+    cave.act(m, { t: 'world:act', op: 4, kind: 'eat', key: 'k-cave-0001' });
+    await flush();
+    expect(conn.of('world:refused')).toEqual([{ t: 'world:refused', op: 4, reason: 'forbidden' }]);
+    expect(conn.of('world:acted')).toEqual([]);
+  });
+
+  it('the mouth is found under the feet of a person in the world, and only there', async () => {
+    const { world } = await caveOf();
+    const m = world.join(new FakeConn(), who('p1'));
+    m.x = mouthFeet.x;
+    m.y = mouthFeet.y;
+    expect(world.caveMouthAt(m)).toBe(CAVE);
+    m.x = mouthFeet.x + WORLD_CELL_PX;
+    expect(world.caveMouthAt(m)).toBeNull();
+    expect(world.cave).toBeNull();
+  });
+
+  it('coming back out lands on free ground beside the mouth, never on the mouth', async () => {
+    const { world } = await caveOf();
+    const at = world.arrivalNextTo(MOUTH.x, MOUTH.y);
+    const cx = Math.floor(at.x / WORLD_CELL_PX);
+    const cy = Math.floor(at.y / WORLD_CELL_PX);
+    expect(Math.max(Math.abs(cx - MOUTH.x), Math.abs(cy - MOUTH.y))).toBe(1);
+    expect(world.terrain.cellAt(cx, cy).decor).not.toBe('cave_mouth');
+    expect(worldCollides(world.terrain, at.x, at.y)).toBe(false);
+  });
+
+  it('media: a cave has its own SFU room, which the world it opens from does not share', async () => {
+    const { world, cave } = await caveOf();
+    const sfu = new RecordingSfu();
+    const outside = new FakeConn();
+    const inside = new FakeConn();
+    world.join(outside, who('p1'), mediaOf(sfu));
+    await flush();
+    cave.join(inside, who('p2'), mediaOf(sfu));
+    await flush();
+    expect(outside.of('media:grant').at(-1)?.zone?.room).toBe('agora:world:w1');
+    expect(inside.of('media:grant').at(-1)?.zone?.room).toBe(`agora:world:${CAVE}`);
+    expect(outside.of('media:grant')).toHaveLength(1);
+  });
+});
+

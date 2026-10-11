@@ -384,7 +384,11 @@
     "worldVisit": "{{name}}'s world: X to enter",
     "worldBtn": "Enter the world",
     "worldExit": "X: back to the office",
-    "worldExitBtn": "Back to the office"
+    "worldExitBtn": "Back to the office",
+    "cave": "X: enter the cave",
+    "caveBtn": "Enter the cave",
+    "caveExit": "X: leave the cave",
+    "caveExitBtn": "Leave the cave"
   },
   "nav": {
     "unreachable": "Can't get there"
@@ -1095,7 +1099,13 @@
       "bed": "Bed",
       "shipping_bin": "Shipping bin",
       "shop_board": "Shop board",
-      "door": "Door"
+      "door": "Door",
+      "cave_floor": "Cave floor",
+      "cave_rock": "Cave rock",
+      "cave_mouth": "Cave mouth",
+      "ore_copper": "Copper ore",
+      "ore_iron": "Iron ore",
+      "ore_gold": "Gold ore"
     },
     "biome": {
       "meadow": "Meadow",

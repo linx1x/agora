@@ -33,6 +33,8 @@ export const TUNING_FIELDS: readonly TuningField[] = [
   { key: 'seaElevation', group: 'shape', min: 0.05, max: 0.95, step: 0.01 },
   { key: 'beachWidth', group: 'shape', min: 0, max: 0.3, step: 0.01 },
   { key: 'alpineElevation', group: 'shape', min: 0.05, max: 1, step: 0.01 },
+  { key: 'caves.mouthChance', group: 'shape', min: 0, max: 0.2, step: 0.001 },
+  { key: 'caves.clearRadius', group: 'shape', min: 0, max: 64, step: 1 },
   { key: 'rivers.sourceGrid', group: 'rivers', min: 4, max: 64, step: 1 },
   { key: 'rivers.sourceChance', group: 'rivers', min: 0, max: 1, step: 0.01 },
   { key: 'rivers.sourceHeight', group: 'rivers', min: 0, max: 1, step: 0.01 },
