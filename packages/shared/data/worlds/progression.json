@@ -1,0 +1,22 @@
+{
+  "progression": {
+    "energy": { "max": 270 },
+    "starterKit": {
+      "money": 500,
+      "items": {
+        "hoe_1": 1,
+        "can_1": 1,
+        "axe_1": 1,
+        "pick_1": 1,
+        "rod_1": 1,
+        "dawn_radish_seed": 6,
+        "clover_bulb_seed": 4
+      }
+    },
+    "xp": {
+      "harvest": { "skill": "farming", "amount": 8 },
+      "chop": { "skill": "foraging", "amount": 4 },
+      "mine": { "skill": "mining", "amount": 4 }
+    }
+  }
+}

@@ -226,6 +226,26 @@ export const GiftProfileSchema = z
   });
 export type GiftProfile = z.infer<typeof GiftProfileSchema>;
 
+export const SKILLS = ['farming', 'foraging', 'mining'] as const;
+export type Skill = (typeof SKILLS)[number];
+
+const XpGrantSchema = z.object({ skill: z.enum(SKILLS), amount: int(1, 100) });
+export type XpGrant = z.infer<typeof XpGrantSchema>;
+
+/** Energy, the starter kit and the xp of each action (P17.20; costs of tools live in tools.json). */
+export const ProgressionSchema = z.object({
+  energy: z.object({ max: int(1, 999) }),
+  starterKit: z.object({
+    money: int(0, 1_000_000),
+    /** Item id to quantity. Granted once per account through the ledger. */
+    items: z.record(IdSchema, Qty),
+  }),
+  xp: z.object({ harvest: XpGrantSchema, chop: XpGrantSchema, mine: XpGrantSchema }),
+});
+export type Progression = z.infer<typeof ProgressionSchema>;
+
+export const ProgressionFileSchema = z.object({ progression: ProgressionSchema });
+
 export const ItemsFileSchema = z.object({ items: z.array(ItemSchema).min(1) });
 export const CropsFileSchema = z.object({ crops: z.array(CropSchema).min(1) });
 export const ToolsFileSchema = z.object({ tools: z.array(ToolSchema).min(1) });

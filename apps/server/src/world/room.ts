@@ -176,6 +176,8 @@ export interface Player {
     social: Bucket;
     edit: Bucket;
     talk: Bucket;
+    /** world actions (P17.20): a swing every 170 ms, a burst of 12 */
+    act: Bucket;
   };
 }
 
@@ -504,6 +506,7 @@ export class SpaceRoom {
           edit: new Bucket(8, 30),
           /** Talk-box messages to characters: one every 2 s, a burst of 4 */
           talk: new Bucket(0.5, 4),
+          act: new Bucket(6, 12),
         },
       };
       p.profile.id = p.id;
@@ -945,6 +948,12 @@ export class SpaceRoom {
       case 'world:leave':
         if (!p.buckets.misc.take()) return;
         return this.leaveWorld(p);
+      case 'world:act':
+        // P17.20: the server decides; a refusal says which request and why, and nothing changes
+        if (this.opts.clientConfig.flags.worlds !== true)
+          return p.conn?.send({ t: 'world:refused', op: m.op, reason: 'disabled' });
+        if (!p.buckets.act.take()) return p.conn?.send({ t: 'world:refused', op: m.op, reason: 'rate' });
+        return w.room.act(w.member, m);
       case 'chat':
         if (!p.buckets.chat.take()) return p.conn?.send({ t: 'error', code: 'rate_limited' });
         return w.room.chat(w.member, m.body);

@@ -967,6 +967,34 @@
     }
   },
   "worlds": {
+    "hud": {
+      "hotbar": "Hotbar",
+      "slot": "Slot {{n}}: {{item}}, {{count}}",
+      "slotEmpty": "Slot {{n}}: empty",
+      "money": "Money: {{amount}}",
+      "nothingInHand": "Nothing in hand",
+      "inHand": "In hand: {{item}}",
+      "inventory": "Inventory (I)",
+      "inventoryTitle": "Inventory",
+      "slotsUsed": "{{used}} of {{max}} slots",
+      "empty": "Your inventory is empty."
+    },
+    "refused": {
+      "disabled": "Personal worlds are closed for now.",
+      "rate": "Too many actions at once. Wait a moment.",
+      "forbidden": "You are not allowed to do that here.",
+      "far": "Too far. Move closer to the target.",
+      "invalid": "That cannot be done here.",
+      "tool": "You need the right tool.",
+      "tier": "Your tool is not strong enough.",
+      "energy": "You are too tired.",
+      "gone": "Already done, or gone.",
+      "missing": "Something you need is missing.",
+      "full": "Your inventory is full.",
+      "cap": "This world cannot store more changes.",
+      "key_taken": "Someone else already did that action.",
+      "conflict": "The world changed during the action. Nothing was done: try again."
+    },
     "tuning": {
       "open": "World tuning",
       "title": "World tuning (preview)",

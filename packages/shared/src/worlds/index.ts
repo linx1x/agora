@@ -13,3 +13,4 @@ export * from './starter';
 export * from './tuning';
 export * from './clock';
 export * from './gamedata/index';
+export * from './actions/index';

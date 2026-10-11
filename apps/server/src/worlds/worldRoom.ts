@@ -9,6 +9,7 @@ import { randomUUID } from 'node:crypto';
 import {
   ChunkDeltaSchema,
   WORLDGEN,
+  loadGameData,
   WORLD_CELL_PX,
   WORLD_SPAWN,
   WORLD_VIEW_CHUNKS,
@@ -24,11 +25,14 @@ import {
   validateWorldMove,
   worldCollides,
   worldGenParamsFor,
+  type ActionPlanners,
   type Avatar,
+  type C2SMsg,
   type ChatMsg,
   type ChunkCoord,
   type ChunkDelta,
   type Dir,
+  type GameData,
   type PortalRect,
   type S2CMsg,
   type Starter,
@@ -37,7 +41,20 @@ import {
 } from '@agora/shared';
 import type { SfuApi } from '../media/gate';
 import { defaultStarter } from './starter';
+import { accountView, grantStarterKit } from './inventory';
+import { runAction, type ActionResult } from './actions';
 import type { StoredChunk, StoredWorld, WorldStore } from './worldStore';
+
+/** The world action request as the protocol carries it (P17.20). */
+export type WorldActRequest = Extract<C2SMsg, { t: 'world:act' }>;
+
+/** What a world room needs from the server: the store for transactions, the rules, a logger. */
+export interface WorldRoomDeps {
+  readonly store: WorldStore;
+  /** the action rules; the default set when omitted (ADR-053, P17.21 onward) */
+  readonly planners?: ActionPlanners;
+  readonly log?: { warn: (o: object, m?: string) => void };
+}
 
 /** How far (in cells, each way) the spawn search looks for walkable ground. */
 const SPAWN_SEARCH_CELLS = 16;
@@ -106,6 +123,8 @@ export function worldSpawn(terrain: WorldTerrain): { x: number; y: number } {
   return { x: WORLD_SPAWN.x, y: WORLD_SPAWN.y };
 }
 
+const NO_LOG = { warn: () => undefined };
+
 export class WorldRoom {
   readonly id: string;
   readonly seed: number;
@@ -117,8 +136,18 @@ export class WorldRoom {
   private readonly deltas = new Map<string, { rev: number; delta: ChunkDelta }>();
   /** what the terrain and the client see per chunk: the starter stamp, stored edits over it */
   private readonly effective = new Map<string, ChunkDelta>();
+  /** the starter stamp per chunk key (P17.10): the base of every chunk before stored edits */
+  private readonly stamp: Map<string, ChunkDelta>;
+  private readonly world: StoredWorld;
+  private readonly store: WorldStore;
+  private readonly planners: ActionPlanners | undefined;
+  private readonly log: { warn: (o: object, m?: string) => void };
   private readonly returnRect: PortalRect;
   private readonly onEmpty: () => void;
+  /** actions in order: each one waits for the one before, so a person's actions apply in the order sent */
+  private chain: Promise<void> = Promise.resolve();
+  /** actions queued or running; the room stays open until they finish (their caches are this room's) */
+  private pending = 0;
   disposed = false;
 
   constructor(
@@ -127,11 +156,16 @@ export class WorldRoom {
     stored: readonly StoredChunk[],
     onEmpty: () => void,
     starter: Starter,
+    deps: WorldRoomDeps,
   ) {
     this.id = world.id;
     this.seed = world.seed;
     this.genVersion = world.genVersion;
     this.params = params;
+    this.world = world;
+    this.store = deps.store;
+    this.planners = deps.planners;
+    this.log = deps.log ?? NO_LOG;
     this.onEmpty = onEmpty;
     this.returnRect = returnTrigger(starter);
     for (const c of stored) {
@@ -140,6 +174,7 @@ export class WorldRoom {
       if (parsed.success) this.deltas.set(chunkKey(c.cx, c.cy), { rev: c.rev, delta: parsed.data });
     }
     const stamp = starterPatches(starter);
+    this.stamp = stamp;
     for (const key of new Set([...stamp.keys(), ...this.deltas.keys()]))
       this.effective.set(key, mergeDeltas(stamp.get(key), this.deltas.get(key)?.delta));
     // the terrain reads the effective layers, built once here, so a chunk costs no copy per cell
@@ -195,7 +230,24 @@ export class WorldRoom {
     for (const o of others) o.conn?.send({ t: 'world:join', person: personOf(m) });
     this.sendPeers();
     void this.grant(m);
+    this.sendInventory(m);
     return m;
+  }
+
+  /**
+   * A world action from a person in this world (P17.20). Runs after the actions before it and
+   * replies to them alone (`world:acted` or `world:refused`, then their inventory when it changed).
+   */
+  act(m: WorldMember, req: WorldActRequest): void {
+    if (this.disposed || this.members.get(m.id) !== m) return;
+    this.pending++;
+    this.chain = this.chain
+      .then(() => this.runAct(m, req))
+      .catch(() => undefined)
+      .finally(() => {
+        this.pending--;
+        this.closeIfIdle();
+      });
   }
 
   /** A fresh media token for someone who asked again (the SFU connection dropped for good). */
@@ -279,7 +331,12 @@ export class WorldRoom {
         .catch((err: unknown) => media.log.warn({ err: String(err) }, 'world media remove failed'));
     for (const o of this.members.values()) o.conn?.send({ t: 'world:depart', id: m.id });
     this.sendPeers();
-    if (this.members.size === 0) this.onEmpty();
+    this.closeIfIdle();
+  }
+
+  /** The room closes when nobody is in it and no action of its own is still running. */
+  private closeIfIdle(): void {
+    if (this.members.size === 0 && this.pending === 0 && !this.disposed) this.onEmpty();
   }
 
   dispose(): void {
@@ -323,6 +380,77 @@ export class WorldRoom {
       .catch((err: unknown) => media.log.warn({ err: String(err) }, 'world media grant failed'));
   }
 
+  private async runAct(m: WorldMember, req: WorldActRequest): Promise<void> {
+    if (this.disposed || this.members.get(m.id) !== m) return;
+    let result: ActionResult;
+    try {
+      result = await runAction({
+        world: {
+          id: this.world.id,
+          ownerId: this.world.ownerId,
+          seed: this.world.seed,
+          createdAt: this.world.createdAt,
+          settings: this.world.settings,
+        },
+        params: this.params,
+        stamp: this.stamp,
+        actor: { uid: m.uid, x: m.x, y: m.y },
+        req: { kind: req.kind, at: req.at, item: req.item, target: req.target },
+        key: req.key,
+        now: Date.now(),
+        store: this.store,
+        data: loadGameData(),
+        planners: this.planners,
+      });
+    } catch (err) {
+      this.log.warn({ err: String(err), world: this.id }, 'world action failed');
+      return void m.conn?.send({ t: 'world:refused', op: req.op, reason: 'conflict' });
+    }
+    if (!result.ok) return void m.conn?.send({ t: 'world:refused', op: req.op, reason: result.reason });
+    if (result.replayed) return void m.conn?.send({ t: 'world:acted', op: req.op, changes: result.changes });
+    // the store has the change; this room's caches follow it, even if the person left meanwhile
+    for (const c of result.chunks) this.publishChunk(c.cx, c.cy, c.rev, c.delta);
+    m.conn?.send({ t: 'world:acted', op: req.op, changes: result.changes });
+    m.conn?.send({
+      t: 'world:inv',
+      items: { ...result.inventory.items },
+      money: result.inventory.money,
+      energy: result.energy,
+      maxEnergy: result.maxEnergy,
+    });
+  }
+
+  /** A chunk's stored delta changed: this room's terrain follows it, and its viewers get it. */
+  private publishChunk(cx: number, cy: number, rev: number, delta: ChunkDelta): void {
+    const key = chunkKey(cx, cy);
+    this.deltas.set(key, { rev, delta });
+    this.effective.set(key, mergeDeltas(this.stamp.get(key), delta));
+    const effective = this.effective.get(key) ?? {};
+    for (const o of this.members.values())
+      if (o.view.has(key)) o.conn?.send({ t: 'world:chunks', add: [{ cx, cy, rev, delta: effective }], drop: [] });
+  }
+
+  /** The person's inventory, money and energy, after the starter kit is granted (once per account). */
+  private sendInventory(m: WorldMember): void {
+    const data: GameData = loadGameData();
+    this.store
+      .withTxn(async (tx) => {
+        await grantStarterKit(tx, m.uid, data, Date.now());
+        return accountView(tx, m.uid, data, false);
+      })
+      .then((v) => {
+        if (this.members.get(m.id) !== m) return;
+        m.conn?.send({
+          t: 'world:inv',
+          items: { ...v.inventory.items },
+          money: v.inventory.money,
+          energy: v.energy,
+          maxEnergy: v.maxEnergy,
+        });
+      })
+      .catch((err: unknown) => this.log.warn({ err: String(err), world: this.id }, 'world inventory failed'));
+  }
+
   /** Stream the chunks that came into this person's view, and tell them which left it. */
   private updateView(m: WorldMember): void {
     if (!m.conn) return;
@@ -354,10 +482,15 @@ export class WorldHub {
   private readonly rooms = new Map<string, WorldRoom>();
   private readonly opening = new Map<string, Promise<WorldRoom | null>>();
 
-  /** `starter` is read on the first world opened (a missing file refuses worlds, never the office) */
+  /**
+   * `starter` is read on the first world opened (a missing file refuses worlds, never the office).
+   * `planners` are the action rules (the default set when omitted).
+   */
   constructor(
     private readonly store: WorldStore,
     private readonly starter?: Starter,
+    private readonly planners?: ActionPlanners,
+    private readonly log?: { warn: (o: object, m?: string) => void },
   ) {}
 
   /**
@@ -391,7 +524,11 @@ export class WorldHub {
     }
     const stored = await this.store.loadAllChunks(worldId);
     const starter = this.starter ?? defaultStarter();
-    const room: WorldRoom = new WorldRoom(world, params, stored, () => this.close(room), starter);
+    const room: WorldRoom = new WorldRoom(world, params, stored, () => this.close(room), starter, {
+      store: this.store,
+      planners: this.planners,
+      log: this.log,
+    });
     this.rooms.set(worldId, room);
     return room;
   }

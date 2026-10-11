@@ -5,7 +5,15 @@
  * save locks the world row, so saves to one world are serial and the revision check cannot race.
  */
 import type { Pool } from 'pg';
-import { WORLD_DELTA_CELL_CAP, deltaCells, type ChunkDelta } from '@agora/shared';
+import { WORLD_DELTA_CELL_CAP, type ChunkDelta } from '@agora/shared';
+import {
+  MemoryWorldTxn,
+  PgWorldTxn,
+  cloneMemoryState,
+  emptyMemoryState,
+  type MemoryState,
+  type WorldTxn,
+} from './worldTxn';
 
 export interface StoredWorld {
   readonly id: string;
@@ -56,6 +64,11 @@ export interface WorldStore {
     cap?: number,
   ): Promise<ChunkSave>;
   deleteWorldOf(ownerId: string): Promise<void>;
+  /**
+   * One atomic unit of work over worlds, chunks, the farm, accounts, progress and the ledger
+   * (P17.20). Nothing is written when `fn` throws or calls `tx.abort()`.
+   */
+  withTxn<T>(fn: (tx: WorldTxn) => Promise<T>): Promise<T>;
 }
 
 /** Idempotent schema, run after the main schema (the users table must exist). */
@@ -78,13 +91,43 @@ CREATE TABLE IF NOT EXISTS world_chunks (
   rev INTEGER NOT NULL,
   PRIMARY KEY (world_id, cx, cy)
 );
+CREATE TABLE IF NOT EXISTS inventories (
+  user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  items JSONB NOT NULL DEFAULT '{}'::jsonb,
+  money INTEGER NOT NULL DEFAULT 0 CHECK (money >= 0),
+  rev INTEGER NOT NULL DEFAULT 1
+);
+CREATE TABLE IF NOT EXISTS progress (
+  user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  skills JSONB NOT NULL DEFAULT '{}'::jsonb,
+  unlocks JSONB NOT NULL DEFAULT '{}'::jsonb,
+  energy INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS ledger (
+  id BIGSERIAL PRIMARY KEY,
+  at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  actor TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  world_id TEXT REFERENCES worlds(id) ON DELETE SET NULL,
+  kind TEXT NOT NULL,
+  delta JSONB NOT NULL,
+  key TEXT NOT NULL UNIQUE
+);
+CREATE TABLE IF NOT EXISTS world_sim (
+  world_id TEXT PRIMARY KEY REFERENCES worlds(id) ON DELETE CASCADE,
+  day INTEGER NOT NULL,
+  state JSONB NOT NULL,
+  rev INTEGER NOT NULL
+);
 `;
 
 const chunkKey = (cx: number, cy: number) => `${cx},${cy}`;
 
 export class MemoryWorldStore implements WorldStore {
   private readonly worlds = new Map<string, StoredWorld>();
-  private readonly chunks = new Map<string, Map<string, StoredChunk>>();
+  /** committed state; a transaction works on a draft and publishes it on commit */
+  private state: MemoryState = emptyMemoryState();
+  /** transactions run one at a time, so a draft never races another (dev store, ADR-036) */
+  private queue: Promise<unknown> = Promise.resolve();
 
   async createWorld(w: StoredWorld): Promise<boolean> {
     for (const existing of this.worlds.values()) {
@@ -109,7 +152,7 @@ export class MemoryWorldStore implements WorldStore {
   }
 
   async loadChunks(worldId: string, keys: readonly { cx: number; cy: number }[]): Promise<StoredChunk[]> {
-    const chunks = this.chunks.get(worldId);
+    const chunks = this.state.chunks.get(worldId);
     if (!chunks) return [];
     const out: StoredChunk[] = [];
     for (const { cx, cy } of keys) {
@@ -120,7 +163,7 @@ export class MemoryWorldStore implements WorldStore {
   }
 
   async loadAllChunks(worldId: string): Promise<StoredChunk[]> {
-    return [...(this.chunks.get(worldId)?.values() ?? [])].map((c) => structuredClone(c));
+    return [...(this.state.chunks.get(worldId)?.values() ?? [])].map((c) => structuredClone(c));
   }
 
   async saveChunk(
@@ -131,26 +174,43 @@ export class MemoryWorldStore implements WorldStore {
     expectedRev: number,
     cap = WORLD_DELTA_CELL_CAP,
   ): Promise<ChunkSave> {
-    if (!this.worlds.has(worldId)) return { ok: false, reason: 'no_world' };
-    const chunks = this.chunks.get(worldId) ?? new Map<string, StoredChunk>();
-    const key = chunkKey(cx, cy);
-    const rev = chunks.get(key)?.rev ?? 0;
-    if (rev !== expectedRev) return { ok: false, reason: 'conflict' };
-    let others = 0;
-    for (const [k, c] of chunks) if (k !== key) others += c.cells;
-    const cells = deltaCells(delta);
-    if (others + cells > cap) return { ok: false, reason: 'cap' };
-    chunks.set(key, { cx, cy, delta: structuredClone(delta), cells, rev: rev + 1 });
-    this.chunks.set(worldId, chunks);
-    return { ok: true, rev: rev + 1 };
+    return this.withTxn((tx) => tx.saveChunk(worldId, cx, cy, delta, expectedRev, cap));
+  }
+
+  withTxn<T>(fn: (tx: WorldTxn) => Promise<T>): Promise<T> {
+    return this.exclusive(async (draft) => {
+      const tx = new MemoryWorldTxn(this.worlds, draft.state);
+      const value = await fn(tx);
+      return { value, commit: !tx.aborted };
+    }).then((r) => r.value);
+  }
+
+  /** Runs `fn` on a draft of the state, one at a time; the draft is published when `fn` says commit. */
+  private exclusive<T>(fn: (draft: { state: MemoryState }) => Promise<{ value: T; commit: boolean }>): Promise<{ value: T; commit: boolean }> {
+    const run = this.queue.then(async () => {
+      const draft = { state: cloneMemoryState(this.state) };
+      const result = await fn(draft);
+      if (result.commit) this.state = draft.state;
+      return result;
+    });
+    this.queue = run.catch(() => undefined);
+    return run;
   }
 
   async deleteWorldOf(ownerId: string): Promise<void> {
-    for (const w of [...this.worlds.values()]) {
-      if (w.ownerId !== ownerId) continue;
-      this.worlds.delete(w.id);
-      this.chunks.delete(w.id);
-    }
+    await this.exclusive(async (draft) => {
+      for (const w of [...this.worlds.values()]) {
+        if (w.ownerId !== ownerId) continue;
+        this.worlds.delete(w.id);
+        draft.state.chunks.delete(w.id);
+        draft.state.sims.delete(w.id);
+      }
+      // the account's own rows, as the users cascade does in Postgres
+      draft.state.accounts.delete(ownerId);
+      draft.state.progress.delete(ownerId);
+      for (const [key, row] of [...draft.state.ledger]) if (row.actor === ownerId) draft.state.ledger.delete(key);
+      return { value: undefined, commit: true };
+    });
   }
 }
 
@@ -235,40 +295,26 @@ export class PgWorldStore implements WorldStore {
     expectedRev: number,
     cap = WORLD_DELTA_CELL_CAP,
   ): Promise<ChunkSave> {
+    return this.withTxn(async (tx) => {
+      // the world row is locked first, so two saves to one world are serial (contract test)
+      if (!(await tx.lockWorld(worldId))) {
+        tx.abort();
+        return { ok: false, reason: 'no_world' } as const;
+      }
+      const saved = await tx.saveChunk(worldId, cx, cy, delta, expectedRev, cap);
+      if (!saved.ok) tx.abort();
+      return saved;
+    });
+  }
+
+  async withTxn<T>(fn: (tx: WorldTxn) => Promise<T>): Promise<T> {
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
-      const locked = await client.query('SELECT 1 FROM worlds WHERE id = $1 FOR UPDATE', [worldId]);
-      if ((locked.rowCount ?? 0) === 0) {
-        await client.query('ROLLBACK');
-        return { ok: false, reason: 'no_world' };
-      }
-      const current = await client.query<{ rev: number }>(
-        'SELECT rev FROM world_chunks WHERE world_id = $1 AND cx = $2 AND cy = $3',
-        [worldId, cx, cy],
-      );
-      const rev = current.rows[0]?.rev ?? 0;
-      if (rev !== expectedRev) {
-        await client.query('ROLLBACK');
-        return { ok: false, reason: 'conflict' };
-      }
-      const others = await client.query<{ total: string | number }>(
-        'SELECT COALESCE(SUM(cells), 0) AS total FROM world_chunks WHERE world_id = $1 AND NOT (cx = $2 AND cy = $3)',
-        [worldId, cx, cy],
-      );
-      const cells = deltaCells(delta);
-      if (Number(others.rows[0]?.total ?? 0) + cells > cap) {
-        await client.query('ROLLBACK');
-        return { ok: false, reason: 'cap' };
-      }
-      const saved = await client.query<{ rev: number }>(
-        `INSERT INTO world_chunks (world_id, cx, cy, delta, cells, rev) VALUES ($1, $2, $3, $4, $5, $6)
-         ON CONFLICT (world_id, cx, cy) DO UPDATE SET delta = EXCLUDED.delta, cells = EXCLUDED.cells, rev = EXCLUDED.rev
-         RETURNING rev`,
-        [worldId, cx, cy, JSON.stringify(delta), cells, rev + 1],
-      );
-      await client.query('COMMIT');
-      return { ok: true, rev: Number(saved.rows[0]?.rev ?? rev + 1) };
+      const tx = new PgWorldTxn(client);
+      const value = await fn(tx);
+      await client.query(tx.aborted ? 'ROLLBACK' : 'COMMIT');
+      return value;
     } catch (err) {
       await client.query('ROLLBACK').catch(() => {});
       throw err;
