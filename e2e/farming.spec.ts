@@ -56,9 +56,36 @@ async function giveBackDesk(p: Page): Promise<void> {
         timeout: 15_000,
       });
     }
+    // the office also remembers where you stood: go back to the hub, where the other specs start
+    await backToHub(p);
   } catch {
     // the page may already be gone; the next spec then shows the leak, which is what we want to see
   }
+}
+
+/** Teleport back to the hub from a wing (the reverse of `toJungle`). */
+async function backToHub(p: Page): Promise<void> {
+  const region: string = (await st(p)).myRegion;
+  if (region === 'hub') return;
+  const pad = (await st(p)).map.zones.find((z: any) => z.id === `portal-${region}-hub`);
+  if (!pad) return;
+  await goTo(p, Math.floor((pad.x + pad.w / 2) / T), Math.floor((pad.y + pad.h / 2) / T));
+  await p.waitForFunction(
+    () => (window as any).__agora.store.get().prompt?.kind === 'teleport',
+    null,
+    {
+      timeout: 30_000,
+      polling: 200,
+    },
+  );
+  await p
+    .getByRole('group', { name: /Téléporteur/ })
+    .getByRole('button', { name: /Accueil|Atrium/ })
+    .click();
+  await p.waitForFunction(() => (window as any).__agora.store.get().myRegion === 'hub', null, {
+    timeout: 10_000,
+    polling: 200,
+  });
 }
 
 const T = 32;
