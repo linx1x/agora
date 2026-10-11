@@ -977,7 +977,16 @@
       "inventory": "Inventory (I)",
       "inventoryTitle": "Inventory",
       "slotsUsed": "{{used}} of {{max}} slots",
-      "empty": "Your inventory is empty."
+      "empty": "Your inventory is empty.",
+      "clock": "{{season}}, day {{day}}, {{time}}",
+      "energy": "Energy",
+      "energyValue": "{{energy}} of {{max}}",
+      "seasons": {
+        "spring": "Spring",
+        "summer": "Summer",
+        "autumn": "Autumn",
+        "winter": "Winter"
+      }
     },
     "refused": {
       "disabled": "Personal worlds are closed for now.",
@@ -993,7 +1002,8 @@
       "full": "Your inventory is full.",
       "cap": "This world cannot store more changes.",
       "key_taken": "Someone else already did that action.",
-      "conflict": "The world changed during the action. Nothing was done: try again."
+      "conflict": "The world changed during the action. Nothing was done: try again.",
+      "asleep": "You are asleep: you wake up tomorrow morning."
     },
     "tuning": {
       "open": "World tuning",

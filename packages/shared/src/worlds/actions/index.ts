@@ -5,3 +5,4 @@ export * from './plan';
 export * from './tools';
 export * from './farm';
 export * from './planners';
+export * from './rest';

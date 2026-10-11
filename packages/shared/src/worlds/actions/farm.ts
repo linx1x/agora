@@ -30,6 +30,14 @@ export function baseItemOf(key: string): string {
   return at < 0 ? key : key.slice(0, at);
 }
 
+/** The quality level of a stack key: 0 for a normal item, and for any level that is not one of QUALITY_LEVELS. */
+export function qualityOfStack(key: string): number {
+  const at = key.indexOf(QUALITY_SEPARATOR);
+  if (at < 0) return 0;
+  const level = Number(key.slice(at + 1));
+  return (QUALITY_LEVELS as readonly number[]).includes(level) ? level : 0;
+}
+
 /**
  * The harvest quality of a crop (research section 6). `f` is the fertilizer's quality level (0 to 3),
  * `level` the farming level and `roll` a number in [0, 1). Best needs the top fertilizer and a roll

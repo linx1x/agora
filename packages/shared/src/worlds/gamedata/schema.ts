@@ -50,6 +50,9 @@ const int = (min: number, max: number) => z.number().int().min(min).max(max);
 
 const unique = (values: readonly string[]) => new Set(values).size === values.length;
 
+/** Kinds that can be eaten; food must carry an edibility, crops and forage may. */
+export const EDIBLE_KINDS: readonly ItemKind[] = ['food', 'crop', 'forage'];
+
 export const ItemSchema = z
   .object({
     id: IdSchema,
@@ -80,8 +83,8 @@ export const ItemSchema = z
     if (item.kind === 'food' && item.edibility === undefined) {
       ctx.addIssue({ code: 'custom', path: ['edibility'], message: 'food needs edibility' });
     }
-    if (item.kind !== 'food' && item.edibility !== undefined) {
-      ctx.addIssue({ code: 'custom', path: ['edibility'], message: 'only food has edibility' });
+    if (!EDIBLE_KINDS.includes(item.kind) && item.edibility !== undefined) {
+      ctx.addIssue({ code: 'custom', path: ['edibility'], message: 'only food, crops and forage have edibility' });
     }
     if (item.effect?.kind === 'sprinkler' && item.kind !== 'building') {
       ctx.addIssue({ code: 'custom', path: ['effect'], message: 'only buildings have an effect' });
@@ -261,6 +264,12 @@ export const ProgressionSchema = z.object({
     /** Item id to quantity. Granted once per account through the ledger. */
     items: z.record(IdSchema, Qty),
   }),
+  /** The starter house, in world cells (walls included): passing out at home costs no money. */
+  home: z
+    .strictObject({ x0: int(-1000, 1000), y0: int(-1000, 1000), x1: int(-1000, 1000), y1: int(-1000, 1000) })
+    .refine((h) => h.x0 <= h.x1 && h.y0 <= h.y1, { message: 'home rectangle must not be empty' }),
+  /** Passing out away from home: this share of the money is lost, up to the cap (research section 9). */
+  passOut: z.strictObject({ moneyPct: int(0, 100), moneyCap: int(0, 1_000_000) }),
   levelXp: z
     .array(int(1, 1_000_000))
     .length(SKILL_LEVEL_MAX)

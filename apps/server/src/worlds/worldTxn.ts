@@ -12,6 +12,7 @@ import {
   type ActionChanges,
   type ChunkDelta,
   type Inventory,
+  type RestState,
   type WorldSimState,
 } from '@agora/shared';
 import type { ChunkSave, StoredChunk, StoredWorld } from './worldStore';
@@ -37,6 +38,10 @@ export interface ProgressRow {
   /** total xp per skill */
   readonly skills: Readonly<Record<string, number>>;
   readonly energy: number;
+  /** the game day the energy was last settled on (P17.23) */
+  readonly day: number;
+  /** the rest a bed set, until the rollover; null when the person is up */
+  readonly rest: RestState | null;
 }
 
 export interface SimRow {
@@ -288,19 +293,26 @@ export class PgWorldTxn implements WorldTxn {
   }
 
   async progressOf(userId: string, lock: boolean): Promise<ProgressRow | null> {
-    const r = await this.client.query<{ skills: Record<string, number>; energy: number }>(
-      `SELECT skills, energy FROM progress WHERE user_id = $1${lock ? ' FOR UPDATE' : ''}`,
+    const r = await this.client.query<{ skills: Record<string, number>; energy: number; day: number; rest: RestState | null }>(
+      `SELECT skills, energy, day, rest FROM progress WHERE user_id = $1${lock ? ' FOR UPDATE' : ''}`,
       [userId],
     );
     const row = r.rows[0];
-    return row ? { skills: row.skills, energy: row.energy } : null;
+    return row ? { skills: row.skills, energy: row.energy, day: Number(row.day), rest: row.rest } : null;
   }
 
   async saveProgress(userId: string, progress: ProgressRow): Promise<void> {
     await this.client.query(
-      `INSERT INTO progress (user_id, skills, energy) VALUES ($1, $2, $3)
-       ON CONFLICT (user_id) DO UPDATE SET skills = EXCLUDED.skills, energy = EXCLUDED.energy`,
-      [userId, JSON.stringify(progress.skills), progress.energy],
+      `INSERT INTO progress (user_id, skills, energy, day, rest) VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (user_id) DO UPDATE SET skills = EXCLUDED.skills, energy = EXCLUDED.energy,
+         day = EXCLUDED.day, rest = EXCLUDED.rest`,
+      [
+        userId,
+        JSON.stringify(progress.skills),
+        progress.energy,
+        progress.day,
+        progress.rest === null ? null : JSON.stringify(progress.rest),
+      ],
     );
   }
 

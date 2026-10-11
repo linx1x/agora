@@ -81,8 +81,9 @@ for (const backend of [memory, postgres]) {
       expect(c.of('world:farm').at(-1)?.plots[k]).toMatchObject({ tilled: true, crop: null });
       const account = await store.withTxn((tx) => tx.accountOf(OWNER, false));
       expect(Object.values(account.inventory.items).reduce((a, n) => a + n, 0)).toBeGreaterThan(0);
-      // energy: the till and eight waterings, two each
-      expect(c.of('world:inv').at(-1)?.energy).toBe(270 - 2 - 2 * 8);
+      // energy: the player never sleeps, so each night's rollover passes them out to half of max
+      // (135) whatever they had left; the harvest costs no energy
+      expect(c.of('world:inv').at(-1)?.energy).toBe(135);
       room.leave(m);
     });
 

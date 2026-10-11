@@ -105,3 +105,42 @@
     width: 44px;
   }
 }
+
+/* The clock and the energy bar (P17.23): their own row above the money. No motion: the bar jumps. */
+.wh-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px 12px;
+  width: 100%;
+}
+.wh-clock {
+  margin: 0;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+.wh-energy {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+}
+.wh-energy-track {
+  width: min(120px, 40vw);
+  height: 10px;
+  border-radius: 5px;
+  overflow: hidden;
+  background: var(--track, #e5e7eb);
+}
+.wh-energy-fill {
+  display: block;
+  height: 100%;
+  background: var(--accent, #2563eb);
+}
+.wh-energy[data-low='true'] .wh-energy-fill {
+  background: var(--warn, #b45309);
+}
+.wh-energy-text {
+  font-variant-numeric: tabular-nums;
+}

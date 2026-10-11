@@ -6,6 +6,7 @@
 import {
   applyInventoryChanges,
   noChanges,
+  settleDay,
   type GameData,
   type Inventory,
 } from '@agora/shared';
@@ -52,10 +53,16 @@ export interface AccountView {
   readonly maxEnergy: number;
 }
 
-/** An account as the player sees it. Energy starts full for an account with no progress row yet. */
-export async function accountView(tx: WorldTxn, uid: string, data: GameData, lock: boolean): Promise<AccountView> {
+/**
+ * An account as the player sees it, on game day `day`. Energy starts full for an account with no
+ * progress row yet, and is read as settled to `day` (the rollover is written by energy.ts).
+ */
+export async function accountView(tx: WorldTxn, uid: string, data: GameData, lock: boolean, day: number): Promise<AccountView> {
   const maxEnergy = data.progression.energy.max;
   const account = await tx.accountOf(uid, lock);
   const progress = await tx.progressOf(uid, lock);
-  return { inventory: account.inventory, energy: progress?.energy ?? maxEnergy, maxEnergy };
+  const energy = progress
+    ? settleDay({ energy: progress.energy, day: progress.day, rest: progress.rest }, day, maxEnergy).energy
+    : maxEnergy;
+  return { inventory: account.inventory, energy, maxEnergy };
 }

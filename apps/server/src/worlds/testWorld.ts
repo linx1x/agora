@@ -1,5 +1,5 @@
 import { expect } from 'vitest';
-import { localIndexOf, chunkOfCell, WORLD_CELL_PX, type ChunkDelta, type S2CMsg } from '@agora/shared';
+import { localIndexOf, chunkOfCell, WORLD_CELL_PX, worldTime, type ChunkDelta, type S2CMsg } from '@agora/shared';
 import { opened, type Backend } from './testStores';
 import type { WorldStore } from './worldStore';
 import type { WorldMember } from './worldRoom';
@@ -77,8 +77,12 @@ export async function grant(store: WorldStore, uid: string, items: Record<string
   });
 }
 
-export async function setEnergy(store: WorldStore, uid: string, energy: number): Promise<void> {
-  await store.withTxn((tx) => tx.saveProgress(uid, { skills: {}, energy }));
+/**
+ * Sets a person's energy, settled to `day` (default: the day of the real clock, which the hubs
+ * in these tests read unless they are given a fake one), with no rest.
+ */
+export async function setEnergy(store: WorldStore, uid: string, energy: number, day = worldTime(0, Date.now()).day): Promise<void> {
+  await store.withTxn((tx) => tx.saveProgress(uid, { skills: {}, energy, day, rest: null }));
 }
 
 /** The cell the person stands on: always within reach of them. */

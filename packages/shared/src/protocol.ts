@@ -62,7 +62,7 @@ export const C2S = z.discriminatedUnion('t', [
       .string()
       .min(2)
       .max(40)
-      .regex(/^[a-z][a-z0-9_]+$/)
+      .regex(/^[a-z][a-z0-9_]+(~[124])?$/)
       .optional(),
     target: z.string().min(1).max(64).optional(),
     key: z.string().min(8).max(64),

@@ -14,7 +14,19 @@ describe('world HUD state (P17.20)', () => {
   it('shows the inventory, money and energy the server last sent, and ignores other messages', () => {
     const s1 = reduceHud(initialHud(), inv({ hoe_1: 1, dawn_radish_seed: 6 }, 500));
     expect(s1).toMatchObject({ items: { hoe_1: 1, dawn_radish_seed: 6 }, money: 500, energy: 270, maxEnergy: 270 });
-    expect(reduceHud(s1, { t: 'world:time', time: { day: 2, season: 'spring', year: 1, hour: 6, minute: 0, dayOfSeason: 2 } })).toBe(s1);
+    expect(reduceHud(s1, { t: 'world:refused', op: 1, reason: 'missing' }).items).toEqual(s1.items);
+  });
+
+  it('keeps the game clock the server last sent, without touching the account', () => {
+    const store = createHudStore();
+    store.dispatch(inv({ hoe_1: 1 }, 500));
+    expect(store.get().time).toBeNull();
+    const time = { day: 2, season: 'autumn' as const, year: 1, hour: 6, minute: 10, dayOfSeason: 2 };
+    expect(store.dispatch({ t: 'world:time', time })).toBe(true);
+    expect(store.get()).toMatchObject({ time, money: 500, items: { hoe_1: 1 } });
+    expect(store.dispatch({ t: 'world:time', time })).toBe(true);
+    store.dispatch({ t: 'world:time', time: { ...time, hour: 6, minute: 20 } });
+    expect(store.get().time).toMatchObject({ minute: 20 });
   });
 
   it('keeps the item in hand only while the server still has one', () => {

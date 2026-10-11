@@ -28,6 +28,7 @@ import {
   worldCollides,
   worldGenParamsFor,
   worldTime,
+  DAY_START_MINUTE,
   type ActionPlanners,
   type Avatar,
   type C2SMsg,
@@ -43,10 +44,12 @@ import {
   type WorldGenParams,
   type WorldPerson,
   type WorldSimState,
+  type WorldTime,
 } from '@agora/shared';
 import type { SfuApi } from '../media/gate';
 import { defaultStarter } from './starter';
 import { accountView, grantStarterKit } from './inventory';
+import { settleEnergy } from './energy';
 import { runAction, type ActionResult } from './actions';
 import { catchUpFarm } from './farm';
 import type { StoredChunk, StoredWorld, WorldStore } from './worldStore';
@@ -142,6 +145,15 @@ function plotInView(m: WorldMember, key: string): boolean {
   return m.view.has(chunkKey(cx, cy));
 }
 
+/** The world time goes to the people in a world every this many game minutes (one real second each). */
+const TIME_STEP_MINUTES = 10;
+
+/** A number that changes at each new day and every TIME_STEP_MINUTES of game time: when the clock is sent. */
+function timeSlotOf(t: WorldTime): number {
+  const sinceDawn = (t.hour * 60 + t.minute - DAY_START_MINUTE + 1440) % 1440;
+  return t.day * 1000 + Math.floor(sinceDawn / TIME_STEP_MINUTES);
+}
+
 /** Two plot records with the same content (a reload from the store makes new objects). */
 const samePlot = (a: PlotState | undefined, b: PlotState): boolean => a === b || (a !== undefined && JSON.stringify(a) === JSON.stringify(b));
 
@@ -176,6 +188,8 @@ export class WorldRoom {
   /** Resolves once the catch-up on load is done. */
   private readonly farmReady: Promise<void>;
   private readonly clock: () => number;
+  /** The time slot last sent to the people in this world (see timeSlotOf). */
+  private timeSlot: number;
   private timer: ReturnType<typeof setInterval> | undefined;
 
   constructor(
@@ -210,6 +224,7 @@ export class WorldRoom {
       overlay: deltaOverlay((cx, cy) => this.effective.get(chunkKey(cx, cy))),
     });
     this.clock = deps.now ?? Date.now;
+    this.timeSlot = timeSlotOf(worldTime(world.createdAt, this.clock()));
     // the farm is brought up to today on load; actions also catch up inside their own transaction
     this.farmReady = this.enqueue(() => this.catchUp());
     if (deps.autoTick !== false) {
@@ -225,20 +240,49 @@ export class WorldRoom {
     return run;
   }
 
-  /** Brings the farm up to the world's day: at each new day, and once on load. */
+  /**
+   * Brings the farm up to the world's day, at each new day and once on load. When a day has just
+   * ended with people in the world, they pass out where they stand (P17.23).
+   */
   private async catchUp(): Promise<void> {
     if (this.disposed) return;
-    const day = worldTime(this.world.createdAt, this.clock()).day;
+    const now = this.clock();
+    const day = worldTime(this.world.createdAt, now).day;
+    const previous = this.farmDay;
     const next = await catchUpFarm(this.store, this.world.id, day, loadGameData(), this.world.seed);
     this.farmDay = day;
     if (next) this.applyFarm(next);
+    if (previous > 0 && day > previous) await this.rollover(day, now);
   }
 
-  /** Checks the day once (the timer calls this every second; tests call it with a fake clock). */
+  /** The day ended while these people were in the world: each passes out where they stand, then sees it. */
+  private async rollover(day: number, now: number): Promise<void> {
+    const data = loadGameData();
+    const home = data.progression.home;
+    for (const m of [...this.members.values()]) {
+      const x = Math.floor(m.x / WORLD_CELL_PX);
+      const y = Math.floor(m.y / WORLD_CELL_PX);
+      const awayFromHome = x < home.x0 || x > home.x1 || y < home.y0 || y > home.y1;
+      try {
+        await this.store.withTxn((tx) => settleEnergy(tx, m.uid, data, day, now, { worldId: this.world.id, awayFromHome }));
+      } catch (err: unknown) {
+        this.log.warn({ err: String(err), world: this.id }, 'world rollover failed');
+        continue;
+      }
+      this.sendInventory(m);
+    }
+  }
+
+  /** Checks the day and the clock once (the timer calls this every second; tests call it with a fake clock). */
   tick(): void {
     if (this.disposed) return;
-    const day = worldTime(this.world.createdAt, this.clock()).day;
-    if (day !== this.farmDay) void this.enqueue(() => this.catchUp());
+    const time = worldTime(this.world.createdAt, this.clock());
+    if (time.day !== this.farmDay) void this.enqueue(() => this.catchUp());
+    const slot = timeSlotOf(time);
+    if (slot !== this.timeSlot) {
+      this.timeSlot = slot;
+      for (const m of this.members.values()) m.conn?.send({ t: 'world:time', time });
+    }
   }
 
   /** The farm changed: this room's copy follows it, and each person in view gets the plots that changed. */
@@ -307,6 +351,7 @@ export class WorldRoom {
       params: this.params,
       people: [...this.members.values()].map(personOf),
     });
+    conn.send({ t: 'world:time', time: worldTime(this.world.createdAt, this.clock()) });
     this.updateView(m);
     for (const o of others) o.conn?.send({ t: 'world:join', person: personOf(m) });
     this.sendPeers();
@@ -467,6 +512,9 @@ export class WorldRoom {
 
   private async runAct(m: WorldMember, req: WorldActRequest): Promise<void> {
     if (this.disposed || this.members.get(m.id) !== m) return;
+    // a day that ended before this action ran is settled first, so the people here pass out on time
+    if (worldTime(this.world.createdAt, this.clock()).day !== this.farmDay) await this.catchUp();
+    if (this.disposed || this.members.get(m.id) !== m) return;
     let result: ActionResult;
     try {
       result = await runAction({
@@ -519,10 +567,11 @@ export class WorldRoom {
   /** The person's inventory, money and energy, after the starter kit is granted (once per account). */
   private sendInventory(m: WorldMember): void {
     const data: GameData = loadGameData();
+    const day = worldTime(this.world.createdAt, this.clock()).day;
     this.store
       .withTxn(async (tx) => {
         await grantStarterKit(tx, m.uid, data, this.clock());
-        return accountView(tx, m.uid, data, false);
+        return accountView(tx, m.uid, data, false, day);
       })
       .then((v) => {
         if (this.members.get(m.id) !== m) return;

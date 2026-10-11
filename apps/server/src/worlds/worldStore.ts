@@ -103,6 +103,9 @@ CREATE TABLE IF NOT EXISTS progress (
   unlocks JSONB NOT NULL DEFAULT '{}'::jsonb,
   energy INTEGER NOT NULL DEFAULT 0
 );
+-- P17.23: the day the energy is settled on, and the bed's rest until the rollover (added to P17.20's table)
+ALTER TABLE progress ADD COLUMN IF NOT EXISTS day INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE progress ADD COLUMN IF NOT EXISTS rest JSONB;
 CREATE TABLE IF NOT EXISTS ledger (
   id BIGSERIAL PRIMARY KEY,
   at TIMESTAMPTZ NOT NULL DEFAULT now(),

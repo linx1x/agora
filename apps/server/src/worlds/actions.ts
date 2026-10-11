@@ -21,6 +21,7 @@ import {
   inReach,
   localIndexOf,
   mergeDeltas,
+  settleDay,
   worldTime,
   type ActionChanges,
   type ActionPlanner,
@@ -38,6 +39,7 @@ import {
 import type { WorldStore } from './worldStore';
 import { ConflictError, grantStarterKit } from './inventory';
 import { readFarm, saveFarm } from './farm';
+import { energyOf } from './energy';
 import type { WorldTxn } from './worldTxn';
 
 /** What the rules may read about a world (a stored world, without its chunks). */
@@ -122,11 +124,19 @@ async function transact(tx: WorldTxn, input: ActionInput, planner: ActionPlanner
   }
   await grantStarterKit(tx, actor.uid, data, now);
 
-  const day = worldTime(world.createdAt, now).day;
+  const clock = worldTime(world.createdAt, now);
+  const day = clock.day;
   const account = await tx.accountOf(actor.uid, true);
   const progressRow = await tx.progressOf(actor.uid, true);
   const maxEnergy = data.progression.energy.max;
-  const energy = progressRow?.energy ?? maxEnergy;
+  // energy settles to today first (no money: the room settles the people in the world at the rollover).
+  // A rest a bed set lasts until the rollover, and nothing can be done meanwhile.
+  const settled = settleDay(energyOf(progressRow, maxEnergy, day), day, maxEnergy);
+  if (settled.rest !== null) {
+    tx.abort();
+    return refused('asleep');
+  }
+  const energy = settled.energy;
   const skills = progressRow?.skills ?? {};
   // the farm, brought up to today first: a catch-up over the nights since it was last written
   const farm = await readFarm(tx, world.id, day, data, world.seed, true);
@@ -149,6 +159,7 @@ async function transact(tx: WorldTxn, input: ActionInput, planner: ActionPlanner
     actor: { x: actor.x, y: actor.y },
     inventory: account.inventory,
     energy,
+    time: { hour: clock.hour, minute: clock.minute },
     skills,
     sim,
     cell: (x, y) => terrain.cellAt(x, y),
@@ -162,7 +173,7 @@ async function transact(tx: WorldTxn, input: ActionInput, planner: ActionPlanner
     tx.abort();
     return refused(outcome.reason);
   }
-  const { changes, edits, sim: nextSim } = outcome.plan;
+  const { changes, edits, sim: nextSim, rest } = outcome.plan;
 
   // a stack key may carry a quality (`id~q`): the limit is the base item's
   const nextAccount = applyInventoryChanges(account.inventory, changes, (key) => data.itemsById.get(baseItemOf(key))?.stack);
@@ -199,9 +210,8 @@ async function transact(tx: WorldTxn, input: ActionInput, planner: ActionPlanner
   if (changes.money !== 0 || Object.keys(changes.items).length > 0) {
     if ((await tx.saveAccount(actor.uid, nextAccount.inventory, account.rev)) === null) throw new ConflictError();
   }
-  if (changes.energy !== 0 || Object.keys(changes.xp).length > 0) {
-    await tx.saveProgress(actor.uid, { skills: nextSkills, energy: energyAfter });
-  }
+  // every accepted action saves the energy state: its day, and the rest a bed just set
+  await tx.saveProgress(actor.uid, { skills: nextSkills, energy: energyAfter, day: settled.day, rest: rest ?? null });
   const savedSim = await saveFarm(tx, world.id, farm, nextSim);
 
   const applied = await writeEdits(tx, world.id, edits, storedDelta, storedRev);

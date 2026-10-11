@@ -977,7 +977,16 @@
       "inventory": "Inventaire (I)",
       "inventoryTitle": "Inventaire",
       "slotsUsed": "{{used}} emplacements sur {{max}}",
-      "empty": "Ton inventaire est vide."
+      "empty": "Ton inventaire est vide.",
+      "clock": "{{season}}, jour {{day}}, {{time}}",
+      "energy": "Énergie",
+      "energyValue": "{{energy}} sur {{max}}",
+      "seasons": {
+        "spring": "Printemps",
+        "summer": "Été",
+        "autumn": "Automne",
+        "winter": "Hiver"
+      }
     },
     "refused": {
       "disabled": "Les mondes personnels sont fermés pour le moment.",
@@ -993,7 +1002,8 @@
       "full": "Ton inventaire est plein.",
       "cap": "Ce monde ne peut plus enregistrer de changements.",
       "key_taken": "Quelqu'un d'autre a déjà fait cette action.",
-      "conflict": "Le monde a changé pendant l'action. Rien n'a été fait : réessaie."
+      "conflict": "Le monde a changé pendant l'action. Rien n'a été fait : réessaie.",
+      "asleep": "Tu dors : tu te réveilleras demain matin."
     },
     "tuning": {
       "open": "Réglages du monde",

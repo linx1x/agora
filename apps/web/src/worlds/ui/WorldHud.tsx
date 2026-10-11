@@ -1,15 +1,16 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
-import { INVENTORY_SLOTS } from '@agora/shared';
+import { INVENTORY_SLOTS, type WorldTime } from '@agora/shared';
 import { Dialog } from '../../ui/common';
 import { HOTBAR_SLOTS, hotbarItems, slotForKey, worldHud, type HudState, type HudStore } from './hudState';
 import './worldHud.css';
 
 /**
- * The world HUD (ADR-053, P17.20): money, a nine-slot hotbar (keys 1 to 9 pick the item in hand),
- * the inventory (key I), and the reason of the last refused action. Everything is a labelled button
- * or a live status line. Mount it inside the world screen, only while the person is in a world:
- * `<WorldHud />`, fed by `applyWorldHudMessage` from the world client's message handler.
+ * The world HUD (ADR-053, P17.20, P17.23): the clock (time, day, season), the energy bar, money, a
+ * nine-slot hotbar (keys 1 to 9 pick the item in hand), the inventory (key I), and the reason of the
+ * last refused action. Everything is a labelled button, a meter or a live status line. Mount it inside
+ * the world screen, only while the person is in a world: `<WorldHud />`, fed by `applyWorldHudMessage`
+ * from the world client's message handler.
  */
 export function WorldHud({ store = worldHud }: { store?: HudStore }) {
   const { t } = useTranslation();
@@ -36,6 +37,20 @@ export function WorldHud({ store = worldHud }: { store?: HudStore }) {
   const slots = hotbarItems(state.items);
   return (
     <nav className="wh-hud" aria-label={t('worlds.hud.hotbar')}>
+      {(state.time !== null || state.maxEnergy > 0) && (
+        <div className="wh-status">
+          {state.time !== null && (
+            <p className="wh-clock">
+              {t('worlds.hud.clock', {
+                time: clockText(state.time),
+                day: state.time.day,
+                season: t(`worlds.hud.seasons.${state.time.season}`),
+              })}
+            </p>
+          )}
+          {state.maxEnergy > 0 && <EnergyBar energy={state.energy} max={state.maxEnergy} />}
+        </div>
+      )}
       <p className="wh-money">{t('worlds.hud.money', { amount: state.money })}</p>
       <ol className="wh-slots">
         {Array.from({ length: HOTBAR_SLOTS }, (_, i) => {
@@ -83,6 +98,40 @@ export function WorldHud({ store = worldHud }: { store?: HudStore }) {
       {inventoryOpen && <InventoryPanel state={state} onPick={(item) => store.pick(item)} onClose={() => setInventoryOpen(false)} />}
     </nav>
   );
+}
+
+/** The energy bar: a progress bar for screen readers, the numbers beside it. Low energy is marked by colour and by the label. */
+function EnergyBar({ energy, max }: { energy: number; max: number }) {
+  const { t } = useTranslation();
+  const share = Math.max(0, Math.min(1, energy / max));
+  const text = t('worlds.hud.energyValue', { energy, max });
+  return (
+    <div className="wh-energy" data-low={share < 0.2 ? 'true' : 'false'}>
+      <span className="wh-energy-label" aria-hidden="true">
+        {t('worlds.hud.energy')}
+      </span>
+      <div
+        className="wh-energy-track"
+        role="progressbar"
+        aria-label={t('worlds.hud.energy')}
+        aria-valuemin={0}
+        aria-valuemax={max}
+        aria-valuenow={energy}
+        aria-valuetext={text}
+      >
+        <span className="wh-energy-fill" style={{ width: `${Math.round(share * 100)}%` }} />
+      </div>
+      <span className="wh-energy-text" aria-hidden="true">
+        {text}
+      </span>
+    </div>
+  );
+}
+
+/** The game clock as 24-hour digits (the day runs 06:00 to 02:00, so the hours go 6 to 23, then 0 to 2). */
+export function clockText(time: WorldTime): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${pad(time.hour)}:${pad(time.minute)}`;
 }
 
 function InventoryPanel({

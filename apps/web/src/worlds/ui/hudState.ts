@@ -3,7 +3,7 @@
  * last said them, and the item in hand. The server owns every number; this module only keeps the
  * last `world:inv` and the player's hand choice. Pure reducer plus a small store that React reads.
  */
-import type { S2CMsg, WorldRefusal } from '@agora/shared';
+import type { S2CMsg, WorldRefusal, WorldTime } from '@agora/shared';
 
 /** Hotbar slots, selected with keys 1 to 9. */
 export const HOTBAR_SLOTS = 9;
@@ -18,9 +18,11 @@ export interface HudState {
   readonly inHand: string | null;
   /** why the last action was refused, until the next action is approved; announced to screen readers */
   readonly notice: WorldRefusal | null;
+  /** the game clock as the server last sent it (every 10 game minutes); null until the first `world:time` */
+  readonly time: WorldTime | null;
 }
 
-export const initialHud = (): HudState => ({ items: {}, money: 0, energy: 0, maxEnergy: 0, inHand: null, notice: null });
+export const initialHud = (): HudState => ({ items: {}, money: 0, energy: 0, maxEnergy: 0, inHand: null, notice: null, time: null });
 
 /** The stacks in the hotbar: the first nine, in the order the server listed them. */
 export function hotbarItems(items: Readonly<Record<string, number>>): string[] {
@@ -33,19 +35,20 @@ export function slotForKey(key: string): number | null {
   return Number(key) - 1;
 }
 
-/** Applies one server message to the HUD. Only `world:inv` changes what is shown. */
+/** Applies one server message to the HUD: the clock (`world:time`), the account (`world:inv`) and notices. */
 export function reduceHud(state: HudState, msg: S2CMsg): HudState {
   if (msg.t === 'world:refused') return { ...state, notice: msg.reason };
   if (msg.t === 'world:acted') return state.notice === null ? state : { ...state, notice: null };
+  if (msg.t === 'world:time') return { ...state, time: msg.time };
   if (msg.t !== 'world:inv') return state;
   const inHand = state.inHand !== null && (msg.items[state.inHand] ?? 0) > 0 ? state.inHand : null;
-  return { items: { ...msg.items }, money: msg.money, energy: msg.energy, maxEnergy: msg.maxEnergy, inHand, notice: state.notice };
+  return { ...state, items: { ...msg.items }, money: msg.money, energy: msg.energy, maxEnergy: msg.maxEnergy, inHand };
 }
 
 export interface HudStore {
   get(): HudState;
   subscribe(listener: () => void): () => void;
-  /** Feed a server message. Returns true when it changed the HUD (an inventory, money, energy or notice change). */
+  /** Feed a server message. Returns true when it changed the HUD (the clock, an inventory, money, energy or notice). */
   dispatch(msg: S2CMsg): boolean;
   /** Put an item in hand (null empties the hand). Only items the player holds can be picked. */
   pick(item: string | null): void;

@@ -11,6 +11,8 @@ import type { ActionEnv, ActionView } from './plan';
 export interface ViewOptions {
   readonly day?: number;
   readonly energy?: number;
+  /** the clock hour and minute; 06:00 when not given */
+  readonly time?: { readonly hour: number; readonly minute: number };
   /** total xp per skill */
   readonly skills?: Readonly<Record<string, number>>;
   /** stack key to quantity */
@@ -35,6 +37,7 @@ export function viewOf(o: ViewOptions = {}): ActionView {
     actor: { x: 0, y: 0 },
     inventory: { items: { ...(o.items ?? {}) }, money: o.money ?? 0 },
     energy: o.energy ?? 270,
+    time: o.time ?? { hour: 6, minute: 0 },
     skills: { ...(o.skills ?? {}) },
     sim,
     cell: (x, y) => ({ ...GROUND, ...(cells[cellKey(x, y)] ?? {}) }),

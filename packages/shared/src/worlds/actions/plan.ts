@@ -12,6 +12,7 @@ import type { WorldSimState } from '../gamedata/state';
 import { chunkIndex } from '../terrain';
 import type { ActionChanges, ActionKind, ActionRequest, WorldRefusal } from './kinds';
 import type { Inventory } from './inventory';
+import type { RestState } from './rest';
 
 /** How far the actor's feet may be from the target cell's centre, in cells (skill: reach 1.5). */
 export const REACH_CELLS = 1.5;
@@ -64,6 +65,8 @@ export interface ActionView {
   readonly actor: { readonly x: number; readonly y: number };
   readonly inventory: Inventory;
   readonly energy: number;
+  /** the game clock now (clock.ts worldTime): the bed's restore depends on it */
+  readonly time: { readonly hour: number; readonly minute: number };
   /** total xp per skill */
   readonly skills: Readonly<Record<string, number>>;
   readonly sim: WorldSimState;
@@ -87,6 +90,8 @@ export interface ActionPlan {
   readonly edits: readonly CellEdit[];
   /** the farm state after the action (the same object when the farm did not change) */
   readonly sim: WorldSimState;
+  /** a bed: the rest the person is in until the rollover (the server stores it with the energy) */
+  readonly rest?: RestState;
 }
 
 export type ActionOutcome = { readonly ok: true; readonly plan: ActionPlan } | { readonly ok: false; readonly reason: WorldRefusal };

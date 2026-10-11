@@ -3,6 +3,16 @@
     "energy": {
       "max": 270
     },
+    "home": {
+      "x0": -6,
+      "y0": -6,
+      "x1": -2,
+      "y1": -2
+    },
+    "passOut": {
+      "moneyPct": 10,
+      "moneyCap": 1000
+    },
     "starterKit": {
       "money": 500,
       "items": {
