@@ -6,6 +6,7 @@
  */
 import {
   ACTION_PLANNERS,
+  WORLD_CELL_PX,
   WORLD_DELTA_CELL_CAP,
   WorldTerrain,
   applyInventoryChanges,
@@ -27,6 +28,7 @@ import {
   type ActionChanges,
   type ActionPlanner,
   type ActionPlanners,
+  type ActionReply,
   type ActionRequest,
   type ActionView,
   type CellEdit,
@@ -39,7 +41,7 @@ import {
 } from '@agora/shared';
 import type { WorldStore } from './worldStore';
 import { ConflictError, grantStarterKit } from './inventory';
-import { readFarm, saveFarm } from './farm';
+import { paySale, readFarm, saveFarm } from './farm';
 import { energyOf } from './energy';
 import type { WorldTxn } from './worldTxn';
 
@@ -58,6 +60,8 @@ export interface ActionInput {
   /** the starter stamp per chunk key: what a world looks like before any stored edit */
   readonly stamp: ReadonlyMap<string, ChunkDelta>;
   readonly actor: { readonly uid: string; readonly x: number; readonly y: number };
+  /** where everyone in the world stands (feet, world pixels): nothing is built under them (P17.24) */
+  readonly people: readonly { readonly x: number; readonly y: number }[];
   readonly req: ActionRequest;
   readonly key: string;
   readonly now: number;
@@ -86,6 +90,8 @@ export type ActionResult =
       readonly chunks: readonly AppliedChunk[];
       /** the farm state this action wrote, or null when the farm did not change */
       readonly sim: { readonly state: WorldSimState; readonly rev: number } | null;
+      /** for the actor alone: a chest's contents after an open, stash or take */
+      readonly reply?: ActionReply;
     }
   | { readonly ok: false; readonly reason: WorldRefusal };
 
@@ -127,6 +133,10 @@ async function transact(tx: WorldTxn, input: ActionInput, planner: ActionPlanner
 
   const clock = worldTime(world.createdAt, now);
   const day = clock.day;
+  // the farm, brought up to today first: a catch-up over the nights since it was last written. A shipping
+  // bin sold at this rollover pays its owner before the actor's account is read (P17.26)
+  const farm = await readFarm(tx, world.id, day, data, world.seed, true);
+  if (farm.sale !== null) await paySale(tx, world, day, farm.sale, now);
   const account = await tx.accountOf(actor.uid, true);
   const progressRow = await tx.progressOf(actor.uid, true);
   const maxEnergy = data.progression.energy.max;
@@ -139,8 +149,6 @@ async function transact(tx: WorldTxn, input: ActionInput, planner: ActionPlanner
   }
   const energy = settled.energy;
   const skills = progressRow?.skills ?? {};
-  // the farm, brought up to today first: a catch-up over the nights since it was last written
-  const farm = await readFarm(tx, world.id, day, data, world.seed, true);
   const sim = farm.state;
 
   // the stored deltas around the target, so the rule reads what is there now
@@ -164,6 +172,7 @@ async function transact(tx: WorldTxn, input: ActionInput, planner: ActionPlanner
     skills,
     sim,
     cell: (x, y) => terrain.cellAt(x, y),
+    occupied: (x, y) => input.people.some((p) => Math.floor(p.x / WORLD_CELL_PX) === x && Math.floor(p.y / WORLD_CELL_PX) === y),
   };
 
   const outcome = planner(view, req, {
@@ -236,6 +245,7 @@ async function transact(tx: WorldTxn, input: ActionInput, planner: ActionPlanner
     maxEnergy,
     chunks: applied,
     sim: savedSim,
+    reply: outcome.plan.reply,
   };
 }
 

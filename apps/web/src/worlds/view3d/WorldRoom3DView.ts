@@ -10,12 +10,8 @@
  * the solid decor (walls, trees) fades over a person behind it (`occlusion.ts`, as the office).
  */
 import * as THREE from 'three';
-import {
-  CHUNK_SIZE,
-  TILE,
-  type Dir,
-  type GridCell,
-} from '@agora/shared';
+import { worldHud } from '../ui/hudState';
+import { CHUNK_SIZE, TILE, type Dir, type GridCell } from '@agora/shared';
 import { world as link } from '../../net/client';
 import { rendered } from '../../game/controller';
 import { inputVector, isTyping } from '../../game/input';
@@ -626,8 +622,11 @@ export class WorldRoom3DView {
    * swing frames, sparks and shake are not drawn yet.
    */
   playSwing(_personId: string, _dir: Dir, _tier: number): void {
-    // TODO(P17.21b): paper swing frames per direction, sparks and the shake (off under reduced motion)
+    // TODO(P17.21c): paper swing frames per direction, sparks and the shake (off under reduced motion)
+    this.swings++;
   }
+  /** swings asked of this view (test hook, as in the flat view) */
+  private swings = 0;
 
   private levelAtPx(x: number, y: number): number {
     return worldSession.terrain?.cellAt(Math.floor(x / CELL), Math.floor(y / CELL)).level ?? 0;
@@ -677,10 +676,24 @@ export class WorldRoom3DView {
           plots: worldSession.plots.size,
           farmDay: worldSession.farmDay,
           path: w?.path.length ?? 0,
+          swings: this.swings,
         };
       },
       levelAt: (cx, cy) => worldSession.terrain?.cellAt(cx, cy).level ?? -1,
       walkableAt: (cx, cy) => worldSession.terrain?.cellAt(cx, cy).walkable ?? false,
+      // view-neutral, as in the flat view: the HUD's bag and the session's cells
+      inventory: () => ({ ...worldHud.get().items }),
+      cellInfo: (cx, cy) => {
+        const c = worldSession.terrain?.cellAt(cx, cy);
+        if (!c) return null;
+        return {
+          level: c.level,
+          block: c.block,
+          decor: c.decor,
+          plot: worldSession.plots.get(`${cx},${cy}`) ?? null,
+          farmDay: worldSession.farmDay,
+        };
+      },
     };
   }
 }

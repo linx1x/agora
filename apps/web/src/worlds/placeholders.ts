@@ -98,6 +98,13 @@ export const LOOKS: Readonly<Record<string, Look>> = {
   ore_copper: { top: 'stone2', side: 'stone1', shape: 'box', accent: 'terra' },
   ore_iron: { top: 'stone2', side: 'stone1', shape: 'box', accent: 'stone3' },
   ore_gold: { top: 'stone2', side: 'stone1', shape: 'box', accent: 'sand2' },
+  chest: { top: 'wood1', side: 'wood0', shape: 'box' },
+  fence: { top: 'wood2', side: 'wood0', shape: 'post' },
+  coop: { top: 'wood2', side: 'wood1', shape: 'box' },
+  barn: { top: 'terra', side: 'wood0', shape: 'box' },
+  workbench: { top: 'wood2', side: 'wood0', shape: 'box' },
+  stove: { top: 'stone2', side: 'stone0', shape: 'box' },
+  furnace: { top: 'stone1', side: 'terra', shape: 'box' },
 };
 
 export interface Tile {
@@ -123,7 +130,11 @@ export function paletteOf(block: Block): string {
 }
 
 function rgbOf(hex: string): Rgb {
-  return [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
+  return [
+    parseInt(hex.slice(1, 3), 16),
+    parseInt(hex.slice(3, 5), 16),
+    parseInt(hex.slice(5, 7), 16),
+  ];
 }
 
 /** `c` moved toward `to` by `t` (0..1). */
@@ -267,10 +278,18 @@ export function renderTile(block: Block): Tile {
       for (let x = 0; x < TILE_PX; x++) {
         if (inEllipse(x, y, 16, 30, 14, 2)) put(x, y, [0, 0, 0], 70);
         // the wooden frame, then the blanket with a fold, and the pillow at the head
-        const frame = (y >= 5 && y <= 6 && x >= 2 && x <= 29) || ((x <= 3 || x >= 28) && y >= 5 && y <= 29) || (y >= 28 && y <= 29 && x >= 2 && x <= 29);
+        const frame =
+          (y >= 5 && y <= 6 && x >= 2 && x <= 29) ||
+          ((x <= 3 || x >= 28) && y >= 5 && y <= 29) ||
+          (y >= 28 && y <= 29 && x >= 2 && x <= 29);
         if (frame) put(x, y, mix(side, 0, (y - 5) * 0.03));
         else if (x >= 4 && x <= 27 && y >= 7 && y <= 27) {
-          const pillow = y >= 7 && y <= 11 && x >= 6 && x <= 25 && !((x === 6 || x === 25) && (y === 7 || y === 11));
+          const pillow =
+            y >= 7 &&
+            y <= 11 &&
+            x >= 6 &&
+            x <= 25 &&
+            !((x === 6 || x === 25) && (y === 7 || y === 11));
           if (pillow) put(x, y, speckled(x, y, accent));
           else put(x, y, y === 13 ? mix(top, 255, 0.2) : speckled(x, y, top));
         }
@@ -325,7 +344,8 @@ export function placeholderTiles(): Map<string, Tile> {
 }
 
 /** The tile of a block's sprite: a registry file when one exists for its key, else the placeholder. */
-export type TileSource = { readonly kind: 'file'; readonly url: string } | { readonly kind: 'placeholder' };
+export type TileSource =
+  { readonly kind: 'file'; readonly url: string } | { readonly kind: 'placeholder' };
 
 export function resolveTile(sprite: string, files: ReadonlyMap<string, string>): TileSource {
   const url = files.get(sprite);

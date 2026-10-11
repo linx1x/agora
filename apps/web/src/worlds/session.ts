@@ -12,6 +12,7 @@ import {
   worldTerrainFor,
   type WorldTerrain,
   type ChunkDelta,
+  type Dir,
   type PlotState,
   type S2CMsg,
   type WorldGenParams,
@@ -20,9 +21,17 @@ import {
 } from '@agora/shared';
 import { world as link } from '../net/client';
 import { store, toast } from '../state/store';
+import { applyWorldHudMessage } from './ui/hudState';
 
 /** What changed, so the view redraws only what moved. */
 export type WorldChange = 'welcome' | 'chunks' | 'people' | 'farm' | 'time' | 'correction' | 'exit';
+
+/** Someone in my view swung a tool (P17.21b). Cosmetic: the views draw it, nothing else reads it. */
+export interface WorldSwing {
+  readonly id: string;
+  readonly dir: Dir;
+  readonly tier: number;
+}
 
 export class WorldSession {
   worldId: string | null = null;
@@ -44,6 +53,7 @@ export class WorldSession {
   correction: { x: number; y: number; seq: number; serial: number } | null = null;
   private serial = 0;
   private readonly listeners = new Set<(change: WorldChange) => void>();
+  private readonly swingListeners = new Set<(swing: WorldSwing) => void>();
 
   get active(): boolean {
     return this.worldId !== null;
@@ -53,6 +63,12 @@ export class WorldSession {
   on(fn: (change: WorldChange) => void): () => void {
     this.listeners.add(fn);
     return () => this.listeners.delete(fn);
+  }
+
+  /** Tell me when someone in view swings a tool (P17.21b). Returns the unsubscribe. */
+  onSwing(fn: (swing: WorldSwing) => void): () => void {
+    this.swingListeners.add(fn);
+    return () => this.swingListeners.delete(fn);
   }
 
   private emit(change: WorldChange): void {
@@ -125,6 +141,9 @@ export class WorldSession {
         this.time = m.time;
         this.emit('time');
         return;
+      case 'world:swing':
+        for (const fn of this.swingListeners) fn({ id: m.id, dir: m.dir, tier: m.tier });
+        return;
       case 'portal:refused':
         toast(`worlds.refused.${m.reason}`);
         return;
@@ -154,4 +173,8 @@ export class WorldSession {
 
 /** The one session of this browser tab. Created at import, fed by the one realtime connection. */
 export const worldSession = new WorldSession();
-link.on((m) => worldSession.handle(m));
+// every server message reaches the session, and the world HUD (P17.21b: the inventory, clock, refusals)
+link.on((m) => {
+  worldSession.handle(m);
+  applyWorldHudMessage(m);
+});

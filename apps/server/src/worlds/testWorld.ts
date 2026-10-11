@@ -5,6 +5,7 @@ import {
   loadGameData,
   WORLD_CELL_PX,
   worldTime,
+  type CellPatch,
   type ChunkDelta,
   type S2CMsg,
 } from '@agora/shared';
@@ -43,11 +44,22 @@ export async function waitFor(cond: () => boolean): Promise<void> {
 }
 
 /** Opens a store on the backend and creates world w1 for the owner, with no edits. */
-export async function openWorld(backend: Backend, settings: Record<string, unknown> = { grants: [] }): Promise<WorldStore> {
+export async function openWorld(
+  backend: Backend,
+  settings: Record<string, unknown> = { grants: [] },
+): Promise<WorldStore> {
   const h = await backend.open();
   opened.push(h.close);
   await h.users([OWNER, GUEST, NEIGHBOUR]);
-  await h.worlds.createWorld({ id: 'w1', ownerId: OWNER, seed: SEED, genVersion: 1, createdAt: 0, lastDay: 0, settings });
+  await h.worlds.createWorld({
+    id: 'w1',
+    ownerId: OWNER,
+    seed: SEED,
+    genVersion: 1,
+    createdAt: 0,
+    lastDay: 0,
+    settings,
+  });
   return h.worlds;
 }
 
@@ -79,8 +91,54 @@ export async function setCells(
   }
 }
 
+/**
+ * Paints cells (keyed "x,y") in the stored deltas of w1, level, block and decor, one transaction per
+ * chunk. Call it before the room opens: a room reads its terrain when it loads.
+ */
+export async function paintCells(
+  store: WorldStore,
+  cells: Record<string, CellPatch>,
+): Promise<void> {
+  const byChunk = new Map<
+    string,
+    { cx: number; cy: number; list: [number, number, CellPatch][] }
+  >();
+  for (const [key, patch] of Object.entries(cells)) {
+    const [x, y] = key.split(',').map(Number) as [number, number];
+    const { cx, cy } = chunkOfCell(x, y);
+    const entry = byChunk.get(`${cx},${cy}`) ?? { cx, cy, list: [] };
+    entry.list.push([x, y, patch]);
+    byChunk.set(`${cx},${cy}`, entry);
+  }
+  for (const { cx, cy, list } of byChunk.values()) {
+    await store.withTxn(async (tx) => {
+      const [cur] = await tx.chunksOf('w1', [{ cx, cy }]);
+      const delta: ChunkDelta = { ...(cur?.delta ?? {}) };
+      for (const [x, y, patch] of list) {
+        const index = localIndexOf(x, y);
+        delta[index] = { ...(delta[index] ?? {}), ...patch };
+      }
+      const saved = await tx.saveChunk('w1', cx, cy, delta, cur?.rev ?? 0, 40_000);
+      expect(saved.ok).toBe(true);
+    });
+  }
+}
+
+/** A flat, clear yard of 7 by 7 cells around the origin, where every test's spawn stands. */
+export async function flatYard(store: WorldStore): Promise<void> {
+  const cells: Record<string, CellPatch> = {};
+  for (let x = -3; x <= 3; x++)
+    for (let y = -3; y <= 3; y++)
+      cells[`${x},${y}`] = { level: 0, block: 'meadow_grass', decor: '' };
+  await paintCells(store, cells);
+}
+
 /** Gives the account these items, on top of what it holds. */
-export async function grant(store: WorldStore, uid: string, items: Record<string, number>): Promise<void> {
+export async function grant(
+  store: WorldStore,
+  uid: string,
+  items: Record<string, number>,
+): Promise<void> {
   await store.withTxn(async (tx) => {
     const acc = await tx.accountOf(uid, true);
     const merged = { ...acc.inventory.items };
@@ -93,7 +151,12 @@ export async function grant(store: WorldStore, uid: string, items: Record<string
  * Sets a person's energy, settled to `day` (default: the day of the real clock, which the hubs
  * in these tests read unless they are given a fake one), with no rest.
  */
-export async function setEnergy(store: WorldStore, uid: string, energy: number, day = worldTime(0, Date.now()).day): Promise<void> {
+export async function setEnergy(
+  store: WorldStore,
+  uid: string,
+  energy: number,
+  day = worldTime(0, Date.now()).day,
+): Promise<void> {
   await store.withTxn((tx) => tx.saveProgress(uid, { skills: {}, energy, day, rest: null }));
 }
 
@@ -101,7 +164,11 @@ export async function setEnergy(store: WorldStore, uid: string, energy: number, 
  * Sets a person's total xp per skill (P17.31), keeping their energy and day. A person with no row
  * yet starts with full energy.
  */
-export async function setSkills(store: WorldStore, uid: string, skills: Record<string, number>): Promise<void> {
+export async function setSkills(
+  store: WorldStore,
+  uid: string,
+  skills: Record<string, number>,
+): Promise<void> {
   await store.withTxn(async (tx) => {
     const row = await tx.progressOf(uid, true);
     const energy = row?.energy ?? loadGameData().progression.energy.max;
@@ -111,4 +178,7 @@ export async function setSkills(store: WorldStore, uid: string, skills: Record<s
 }
 
 /** The cell the person stands on: always within reach of them. */
-export const feetCell = (m: WorldMember) => ({ x: Math.floor(m.x / WORLD_CELL_PX), y: Math.floor(m.y / WORLD_CELL_PX) });
+export const feetCell = (m: WorldMember) => ({
+  x: Math.floor(m.x / WORLD_CELL_PX),
+  y: Math.floor(m.y / WORLD_CELL_PX),
+});

@@ -395,3 +395,6 @@ Shown in the hotbar and the inventory as 32 px icons; the item's name is `worlds
 | `fertilizer_1` | fertilizer | a small sack of soil, tier 1 | speed 10 %, retention 33 % |
 | `fertilizer_2` | fertilizer | the same sack with a second band | speed 25 %, retention 66 % |
 | `fertilizer_3` | fertilizer | the same sack with a gold band | speed 33 %, retention 100 % |
+| `shovel_1` | tool | a flat iron blade on a short handle, tier 1 | raises or lowers ground one level, energy 3 |
+
+The building items (`wood_wall`, `wood_floor`, `torch`, `stone_stairs`, `bed`, `chest`, `fence`, `coop`, `barn`, `workbench`, `stove`) and the machine `furnace` show the sprite of their block above. Stored chest contents are never drawn in the world.

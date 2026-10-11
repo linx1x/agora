@@ -4,7 +4,7 @@
  */
 import type { WorldCell } from '../cells';
 import type { GameData } from '../gamedata/load';
-import { cellKey, emptySim, type PlotState, type WorldSimState } from '../gamedata/state';
+import { cellKey, emptySim, type AnimalState, type MachineState, type PlotState, type WorldSimState } from '../gamedata/state';
 import { createRng } from '../noise';
 import type { ActionEnv, ActionView } from './plan';
 
@@ -21,6 +21,11 @@ export interface ViewOptions {
   readonly plots?: Readonly<Record<string, PlotState>>;
   /** overrides per cell, keyed "x,y"; every other cell is dry meadow ground with nothing on it */
   readonly cells?: Readonly<Record<string, Partial<WorldCell>>>;
+  /** cells where a person stands ("x,y"); nobody by default */
+  readonly occupied?: readonly { readonly x: number; readonly y: number }[];
+  /** the farm layer beyond plots: animals and machines (P17.25) */
+  readonly animals?: readonly AnimalState[];
+  readonly machines?: readonly MachineState[];
 }
 
 const GROUND: WorldCell = { level: 0, block: 'meadow_grass', decor: '', solid: false, liquid: false, ramp: false, walkable: true };
@@ -31,7 +36,13 @@ export const DECOR: Partial<WorldCell> = { solid: true, walkable: false };
 export function viewOf(o: ViewOptions = {}): ActionView {
   const day = o.day ?? 3;
   const cells = o.cells ?? {};
-  const sim: WorldSimState = { ...emptySim(day), plots: { ...(o.plots ?? {}) } };
+  const people = new Set((o.occupied ?? []).map((c) => cellKey(c.x, c.y)));
+  const sim: WorldSimState = {
+    ...emptySim(day),
+    plots: { ...(o.plots ?? {}) },
+    animals: [...(o.animals ?? [])],
+    machines: [...(o.machines ?? [])],
+  };
   return {
     day,
     actor: { x: 0, y: 0 },
@@ -41,6 +52,7 @@ export function viewOf(o: ViewOptions = {}): ActionView {
     skills: { ...(o.skills ?? {}) },
     sim,
     cell: (x, y) => ({ ...GROUND, ...(cells[cellKey(x, y)] ?? {}) }),
+    occupied: (x, y) => people.has(cellKey(x, y)),
   };
 }
 

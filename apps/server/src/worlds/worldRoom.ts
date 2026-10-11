@@ -32,6 +32,7 @@ import {
   mergeDeltas,
   returnTrigger,
   starterPatches,
+  toolOf,
   validateWorldMove,
   worldCollides,
   worldGenParamsFor,
@@ -164,6 +165,8 @@ function timeSlotOf(t: WorldTime): number {
 
 /** Two plot records with the same content (a reload from the store makes new objects). */
 const samePlot = (a: PlotState | undefined, b: PlotState): boolean => a === b || (a !== undefined && JSON.stringify(a) === JSON.stringify(b));
+/** Two farm lists (animals, machines) with the same entries in the same order. */
+const sameList = (a: readonly unknown[], b: readonly unknown[]): boolean => a === b || JSON.stringify(a) === JSON.stringify(b);
 
 export class WorldRoom {
   readonly id: string;
@@ -261,7 +264,7 @@ export class WorldRoom {
     const now = this.clock();
     const day = worldTime(this.world.createdAt, now).day;
     const previous = this.farmDay;
-    const next = await catchUpFarm(this.store, this.world.id, day, loadGameData(), this.world.seed);
+    const next = await catchUpFarm(this.store, this.world, day, loadGameData(), this.world.seed, now);
     this.farmDay = day;
     if (next) this.applyFarm(next);
     if (previous > 0 && day > previous) await this.rollover(day, now);
@@ -301,13 +304,16 @@ export class WorldRoom {
   private applyFarm(next: WorldSimState): void {
     const prev = this.farm ?? emptySim(next.day);
     this.farm = next;
+    // animals and machines are whole lists, sent to everyone in the world when either changed (P17.25)
+    const livestock = !sameList(prev.animals, next.animals) || !sameList(prev.machines, next.machines);
     for (const m of this.members.values()) {
       if (!m.conn) continue;
       const plots: Record<string, PlotState | null> = {};
       for (const [key, plot] of Object.entries(next.plots))
         if (!samePlot(prev.plots[key], plot) && plotInView(m, key)) plots[key] = plot;
       for (const key of Object.keys(prev.plots)) if (!(key in next.plots) && plotInView(m, key)) plots[key] = null;
-      if (Object.keys(plots).length > 0 || prev.day !== next.day) m.conn.send({ t: 'world:farm', day: next.day, plots });
+      if (Object.keys(plots).length > 0 || prev.day !== next.day || livestock)
+        m.conn.send({ t: 'world:farm', day: next.day, plots, animals: next.animals, machines: next.machines });
     }
   }
 
@@ -317,7 +323,7 @@ export class WorldRoom {
     if (!farm || !m.conn) return;
     const plots: Record<string, PlotState> = {};
     for (const [key, plot] of Object.entries(farm.plots)) if (plotInView(m, key)) plots[key] = plot;
-    m.conn.send({ t: 'world:farm', day: farm.day, plots });
+    m.conn.send({ t: 'world:farm', day: farm.day, plots, animals: farm.animals, machines: farm.machines });
   }
 
   get size(): number {
@@ -558,6 +564,7 @@ export class WorldRoom {
     if (worldTime(this.world.createdAt, this.clock()).day !== this.farmDay) await this.catchUp();
     if (this.disposed || this.members.get(m.id) !== m) return;
     let result: ActionResult;
+    const data = loadGameData();
     try {
       result = await runAction({
         world: {
@@ -570,11 +577,12 @@ export class WorldRoom {
         params: this.params,
         stamp: this.stamp,
         actor: { uid: m.uid, x: m.x, y: m.y },
+        people: [...this.members.values()].map((o) => ({ x: o.x, y: o.y })),
         req: { kind: req.kind, at: req.at, item: req.item, target: req.target },
         key: req.key,
         now: this.clock(),
         store: this.store,
-        data: loadGameData(),
+        data,
         planners: this.planners,
       });
     } catch (err) {
@@ -594,6 +602,21 @@ export class WorldRoom {
       energy: result.energy,
       maxEnergy: result.maxEnergy,
     });
+    if (result.reply?.chest) m.conn?.send({ t: 'world:chest', at: result.reply.chest.at, items: { ...result.reply.chest.items } });
+    this.swing(m, req, data);
+  }
+
+  /**
+   * P17.21b: an accepted action with a tool is seen as a swing by the others whose view holds the
+   * actor's chunk. Cosmetic: nothing is stored, and the actor draws their own swing from the click.
+   */
+  private swing(m: WorldMember, req: WorldActRequest, data: GameData): void {
+    const tool = req.item ? toolOf(data, req.item) : undefined;
+    if (!tool) return;
+    const at = chunkOfPoint(m.x, m.y);
+    const key = chunkKey(at.cx, at.cy);
+    for (const o of this.members.values())
+      if (o !== m && o.view.has(key)) o.conn?.send({ t: 'world:swing', id: m.id, dir: m.d, tier: tool.tier });
   }
 
   /** A chunk's stored delta changed: this room's terrain follows it, and its viewers get it. */

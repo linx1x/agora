@@ -26,7 +26,7 @@ export const SEASONS = ['spring', 'summer', 'autumn', 'winter'] as const;
 export const HABITATS = ['river', 'lake', 'ocean'] as const;
 export const STATIONS = ['bench', 'kitchen', 'furnace'] as const;
 export const HOUSING = ['coop', 'barn'] as const;
-export const TOOLS = ['hoe', 'can', 'axe', 'pick', 'rod'] as const;
+export const TOOLS = ['hoe', 'can', 'axe', 'pick', 'rod', 'shovel'] as const;
 export const GIFT_NPCS = ['zoe', 'felix', 'theo'] as const;
 
 /** A season has 28 game days; a crop's stages must fit in one season. */
@@ -65,35 +65,58 @@ export const ItemSchema = z
     stack: int(1, 999).default(99),
     /** Food only: energy restore basis (research section 9). */
     edibility: int(1, 100).optional(),
+    /** Buildings only: the block placed on the ground or as decor (P17.24); a block id of blocks.json. */
+    block: IdSchema.optional(),
     /** Buildings (sprinklers) and fertilizer: what the item does on the farm. */
-    effect: z.discriminatedUnion('kind', [
-      z.strictObject({ kind: z.literal('sprinkler'), radius: int(0, 2) }),
-      z.strictObject({
-        kind: z.literal('fertilizer'),
-        /** Harvest quality level the fertilizer gives (research section 6): 1, 2 or 3. */
-        quality: int(1, 3),
-        /** Growth speed bonus in percent: the crop loses this share of its days (research section 5). */
-        speedPct: int(0, 100),
-        /** Chance in percent that the water on the plot is kept for the next night (research section 4). */
-        retentionPct: int(0, 100),
-      }),
-    ]).optional(),
+    effect: z
+      .discriminatedUnion('kind', [
+        z.strictObject({ kind: z.literal('sprinkler'), radius: int(0, 2) }),
+        z.strictObject({
+          kind: z.literal('fertilizer'),
+          /** Harvest quality level the fertilizer gives (research section 6): 1, 2 or 3. */
+          quality: int(1, 3),
+          /** Growth speed bonus in percent: the crop loses this share of its days (research section 5). */
+          speedPct: int(0, 100),
+          /** Chance in percent that the water on the plot is kept for the next night (research section 4). */
+          retentionPct: int(0, 100),
+        }),
+      ])
+      .optional(),
   })
   .superRefine((item, ctx) => {
     if (item.kind === 'food' && item.edibility === undefined) {
       ctx.addIssue({ code: 'custom', path: ['edibility'], message: 'food needs edibility' });
     }
     if (!EDIBLE_KINDS.includes(item.kind) && item.edibility !== undefined) {
-      ctx.addIssue({ code: 'custom', path: ['edibility'], message: 'only food, crops and forage have edibility' });
+      ctx.addIssue({
+        code: 'custom',
+        path: ['edibility'],
+        message: 'only food, crops and forage have edibility',
+      });
+    }
+    if (item.block !== undefined && item.kind !== 'building' && item.kind !== 'machine') {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['block'],
+        message: 'only buildings and machines are placed as blocks',
+      });
     }
     if (item.effect?.kind === 'sprinkler' && item.kind !== 'building') {
       ctx.addIssue({ code: 'custom', path: ['effect'], message: 'only buildings have an effect' });
     }
     if (item.effect?.kind === 'fertilizer' && item.kind !== 'fertilizer') {
-      ctx.addIssue({ code: 'custom', path: ['effect'], message: 'only fertilizer has a fertilizer effect' });
+      ctx.addIssue({
+        code: 'custom',
+        path: ['effect'],
+        message: 'only fertilizer has a fertilizer effect',
+      });
     }
     if (item.kind === 'fertilizer' && item.effect?.kind !== 'fertilizer') {
-      ctx.addIssue({ code: 'custom', path: ['effect'], message: 'fertilizer needs a fertilizer effect' });
+      ctx.addIssue({
+        code: 'custom',
+        path: ['effect'],
+        message: 'fertilizer needs a fertilizer effect',
+      });
     }
   });
 export type Item = z.infer<typeof ItemSchema>;
@@ -160,7 +183,12 @@ export const RecipeSchema = z
     id: IdSchema,
     station: z.enum(STATIONS),
     output: z.object({ item: IdSchema, qty: Qty }),
-    inputs: z.array(z.object({ item: IdSchema, qty: Qty })).min(1).max(6),
+    inputs: z
+      .array(z.object({ item: IdSchema, qty: Qty }))
+      .min(1)
+      .max(6),
+    /** Days in a machine before the output is ready (P17.25); 0 is instant, at a bench or stove. */
+    days: int(0, 7).default(0),
   })
   .superRefine((recipe, ctx) => {
     const ids = recipe.inputs.map((input) => input.item);
@@ -258,6 +286,8 @@ export const TOOL_SKILL: Readonly<Record<ToolKind, Skill>> = {
   axe: 'foraging',
   pick: 'mining',
   rod: 'fishing',
+  // P17.24: the shovel reshapes the owner's land, so it trains farming
+  shovel: 'farming',
 };
 
 const XpGrantSchema = z.object({ skill: z.enum(SKILLS), amount: int(1, 100) });
@@ -268,7 +298,11 @@ export type XpGrant = z.infer<typeof XpGrantSchema>;
 export const SKILL_LEVEL_MAX = 10;
 
 /** A level that opens an item (P17.31): the held item may be used once the skill is at `level`. */
-const UnlockSchema = z.strictObject({ item: IdSchema, skill: z.enum(SKILLS), level: int(1, SKILL_LEVEL_MAX) });
+const UnlockSchema = z.strictObject({
+  item: IdSchema,
+  skill: z.enum(SKILLS),
+  level: int(1, SKILL_LEVEL_MAX),
+});
 export type Unlock = z.infer<typeof UnlockSchema>;
 
 export const ProgressionSchema = z.object({
@@ -280,14 +314,21 @@ export const ProgressionSchema = z.object({
   }),
   /** The starter house, in world cells (walls included): passing out at home costs no money. */
   home: z
-    .strictObject({ x0: int(-1000, 1000), y0: int(-1000, 1000), x1: int(-1000, 1000), y1: int(-1000, 1000) })
+    .strictObject({
+      x0: int(-1000, 1000),
+      y0: int(-1000, 1000),
+      x1: int(-1000, 1000),
+      y1: int(-1000, 1000),
+    })
     .refine((h) => h.x0 <= h.x1 && h.y0 <= h.y1, { message: 'home rectangle must not be empty' }),
   /** Passing out away from home: this share of the money is lost, up to the cap (research section 9). */
   passOut: z.strictObject({ moneyPct: int(0, 100), moneyCap: int(0, 1_000_000) }),
   levelXp: z
     .array(int(1, 1_000_000))
     .length(SKILL_LEVEL_MAX)
-    .refine((xp) => xp.every((need, i) => i === 0 || need > xp[i - 1]!), { message: 'levelXp must rise' }),
+    .refine((xp) => xp.every((need, i) => i === 0 || need > xp[i - 1]!), {
+      message: 'levelXp must rise',
+    }),
   /** The xp each action earns (the skill and the amount); the server reads it, never the rule's own figure. */
   xp: z.object({
     harvest: XpGrantSchema,

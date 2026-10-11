@@ -1008,7 +1008,9 @@
         "summer": "Summer",
         "autumn": "Autumn",
         "winter": "Winter"
-      }
+      },
+      "keys": "Keys 1 to 9: pick · Space or click: use · Shift: lower the ground · I: inventory",
+      "nothingToDo": "Nothing to do with that here."
     },
     "refused": {
       "disabled": "Personal worlds are closed for now.",
@@ -1030,7 +1032,12 @@
       "outside": "Stand in the doorway to enter.",
       "no_permission": "This world is not open to you.",
       "no_world": "This world is not ready yet.",
-      "locked": "You have not reached the level this tool needs yet."
+      "locked": "You have not reached the level this tool needs yet.",
+      "occupied": "Someone is standing there.",
+      "trap": "This would trap someone: leave a way through.",
+      "money": "You don't have enough money.",
+      "busy": "It's still busy. Come back later.",
+      "capacity": "There's no room left here."
     },
     "tuning": {
       "open": "World tuning",
@@ -1119,7 +1126,14 @@
       "cave_mouth": "Cave mouth",
       "ore_copper": "Copper ore",
       "ore_iron": "Iron ore",
-      "ore_gold": "Gold ore"
+      "ore_gold": "Gold ore",
+      "chest": "Chest",
+      "fence": "Fence",
+      "coop": "Coop",
+      "barn": "Barn",
+      "workbench": "Workbench",
+      "stove": "Stove",
+      "furnace": "Furnace"
     },
     "biome": {
       "meadow": "Meadow",
@@ -1250,7 +1264,16 @@
       "dune_tuna": "Dune tuna",
       "salt_snapper": "Salt snapper",
       "pearl_anchovy": "Pearl anchovy",
-      "deep_ray": "Deep ray"
+      "deep_ray": "Deep ray",
+      "shovel_1": "Plain shovel",
+      "wood_wall": "Wood wall",
+      "wood_floor": "Wood floor",
+      "torch": "Torch",
+      "stone_stairs": "Stone stairs",
+      "bed": "Bed",
+      "coop": "Coop",
+      "barn": "Barn",
+      "stove": "Stove"
     },
     "noRoute": "No route there.",
     "card": {
@@ -1260,6 +1283,33 @@
       "caveTitle": "Cave of {{owner}}",
       "caveUntitled": "Cave",
       "caveHint": "Only the people in this cave can hear you"
+    },
+    "chest": {
+      "title": "Chest",
+      "slotsUsed": "{{used}} of {{max}} slots",
+      "empty": "The chest is empty.",
+      "takeLabel": "Take {{item}}, {{count}}",
+      "take": "Take",
+      "stash": "Put {{item}} in the chest",
+      "stashNone": "Nothing in hand to put away",
+      "close": "Close the chest"
+    },
+    "shop": {
+      "title": "Shop board",
+      "price": "Price: {{price}}",
+      "buy": "Buy",
+      "buyLabel": "Buy {{item}}, {{price}}",
+      "empty": "Nothing for sale here yet."
+    },
+    "craft": {
+      "inputs": "Ingredients",
+      "output": "Result",
+      "craft": "Craft",
+      "collect": "Collect",
+      "inProgress_one": "In progress: {{item}}, {{count}} day left",
+      "inProgress_other": "In progress: {{item}}, {{count}} days left",
+      "ready": "Ready: {{item}}, {{count}}",
+      "nothing": "Nothing to craft here."
     }
   }
 }

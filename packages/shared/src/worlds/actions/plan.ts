@@ -72,6 +72,8 @@ export interface ActionView {
   readonly sim: WorldSimState;
   /** the cell as it is now: base terrain with the stored edits over it */
   cell(x: number, y: number): WorldCell;
+  /** A person stands on this cell (their feet are in it): nothing is raised or built under them (P17.24). */
+  occupied(x: number, y: number): boolean;
 }
 
 export interface ActionEnv {
@@ -92,6 +94,13 @@ export interface ActionPlan {
   readonly sim: WorldSimState;
   /** a bed: the rest the person is in until the rollover (the server stores it with the energy) */
   readonly rest?: RestState;
+  /** What the actor may see after the action (the contents of a chest they opened or changed). */
+  readonly reply?: ActionReply;
+}
+
+/** Information for the actor alone (never broadcast): a chest's contents (P17.24). */
+export interface ActionReply {
+  readonly chest?: { readonly at: CellRef; readonly items: Readonly<Record<string, number>> };
 }
 
 export type ActionOutcome = { readonly ok: true; readonly plan: ActionPlan } | { readonly ok: false; readonly reason: WorldRefusal };

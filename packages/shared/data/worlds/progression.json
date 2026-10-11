@@ -17,12 +17,16 @@
       "money": 500,
       "items": {
         "hoe_1": 1,
+        "shovel_1": 1,
+        "chest": 1,
+        "wood_wall": 4,
         "can_1": 1,
         "axe_1": 1,
         "pick_1": 1,
         "rod_1": 1,
         "dawn_radish_seed": 6,
-        "clover_bulb_seed": 4
+        "clover_bulb_seed": 4,
+        "workbench": 1
       }
     },
     "levelXp": [

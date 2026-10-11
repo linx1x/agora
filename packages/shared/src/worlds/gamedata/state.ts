@@ -40,6 +40,8 @@ export interface AnimalState {
   readonly id: string;
   /** Animal id in animals.json. */
   readonly animal: string;
+  /** The housing cell ("x,y") it lives in: a coop or a barn (P17.25). */
+  readonly cell: string;
   /** Day the animal was last fed. */
   readonly fedOn: number;
   /** Fed days toward the next product. */
@@ -52,10 +54,12 @@ export interface MachineState {
   readonly id: string;
   /** Cell key of the machine. */
   readonly cell: string;
-  /** Machine item id (kind machine). */
+  /** Machine block id (blocks.json, a machine block). */
   readonly machine: string;
   /** Item the machine will hold when done. */
   readonly output: string;
+  /** How many of the output it holds (the recipe's quantity). */
+  readonly qty: number;
   /** Days left until the output is ready; 0 means ready. */
   readonly daysLeft: number;
 }
@@ -67,6 +71,10 @@ export interface WorldSimState {
   readonly plots: Readonly<Record<string, PlotState>>;
   readonly animals: readonly AnimalState[];
   readonly machines: readonly MachineState[];
+  /** Chests by cell key ("x,y"): stack key to quantity. Owner-only contents, so never in a chunk delta (P17.24). */
+  readonly chests?: Readonly<Record<string, Readonly<Record<string, number>>>>;
+  /** The shipping bin's stacks (stack key to quantity), sold at the next day change (P17.26). Owner-only, like chests. */
+  readonly shipping?: Readonly<Record<string, number>>;
 }
 
 /** Our rule: an animal stops producing when this many products wait. */

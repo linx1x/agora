@@ -12,9 +12,15 @@ import { inputVector, isTyping } from '../../game/input';
 import { exposeTestApi, type ViewTestApi } from '../../game/view';
 import {
   avatarKey,
+  baseItemOf,
+  inReach,
+  loadGameData,
+  toolOf,
   type Avatar,
+  type CellRef,
   type Dir,
   type GridCell,
+  type PlotState,
 } from '@agora/shared';
 import { world as link } from '../../net/client';
 import { store, toast } from '../../state/store';
@@ -24,6 +30,10 @@ import { WorldWalker, cellFeet } from '../walker';
 import { portalOfPrompt, worldPromptAt } from '../prompts';
 import { TEX, addWorldTextures } from './atlas';
 import { cropFrameName } from './art';
+import { worldActs } from '../actLink';
+import { NO_FACTS, actionFor, factsOf, faceCell } from '../inputActs';
+import { worldHud } from '../ui/hudState';
+import { playSwing2d, speedOfTier } from './swing2d';
 import {
   CELL,
   RANK,
@@ -65,11 +75,26 @@ export interface WorldTestApi {
     plots: number;
     farmDay: number;
     path: number;
+    /** tool swings played in this view (mine and the people I see) */
+    swings: number;
   };
   /** the level of a cell (with stored edits) */
   levelAt(cx: number, cy: number): number;
   /** whether a cell can be walked on */
   walkableAt(cx: number, cy: number): boolean;
+  /** the items I hold, as the HUD has them (stack key to quantity) */
+  inventory(): Record<string, number>;
+  /** a cell as the view has it: its level, block, decor and farm plot (null when none) */
+  cellInfo(
+    cx: number,
+    cy: number,
+  ): {
+    level: number;
+    block: string;
+    decor: string;
+    plot: PlotState | null;
+    farmDay: number;
+  } | null;
 }
 
 interface AvatarView {
@@ -97,6 +122,7 @@ export class WorldRoomScene extends Phaser.Scene {
   private lastSlow = 0;
   private followed: string | null = null;
   private pathLen = 0;
+  private swings = 0;
 
   constructor() {
     super('worldroom');
@@ -123,15 +149,29 @@ export class WorldRoomScene extends Phaser.Scene {
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       if (p.button !== 0) return;
       (document.activeElement as HTMLElement | null)?.blur?.();
-      this.clickTo(p.worldX, p.worldY);
+      const shift = (p.event as { shiftKey?: boolean } | undefined)?.shiftKey === true;
+      if (!this.useAt(p.worldX, p.worldY, shift)) this.clickTo(p.worldX, p.worldY);
     });
     this.input.on('wheel', (_p: unknown, _o: unknown, _dx: number, dy: number) =>
       this.stepZoom(dy > 0 ? -1 : 1),
     );
 
     this.onKey = (e: KeyboardEvent) => {
-      if (isTyping() || e.metaKey || e.ctrlKey || e.altKey || store.get().dialog) return;
+      if (
+        isTyping() ||
+        e.metaKey ||
+        e.ctrlKey ||
+        e.altKey ||
+        store.get().dialog ||
+        worldHud.get().chest !== null ||
+        worldHud.get().panel !== null
+      )
+        return;
       if (e.key === 'x' || e.key === 'X') this.act();
+      else if (e.key === ' ') {
+        e.preventDefault();
+        if (!e.repeat) this.useFaced(e.shiftKey);
+      }
     };
     window.addEventListener('keydown', this.onKey);
 
@@ -141,6 +181,7 @@ export class WorldRoomScene extends Phaser.Scene {
           this.cellsDirty = true;
       }),
     );
+    this.unsub.push(worldSession.onSwing((s) => this.playSwing(s.id, s.dir, s.tier)));
     let lastZoom = store.get().zoom;
     this.unsub.push(
       store.subscribe(() => {
@@ -224,6 +265,69 @@ export class WorldRoomScene extends Phaser.Scene {
   act(): void {
     const id = portalOfPrompt(store.get().prompt);
     if (id !== null) link.send({ t: 'portal:enter', id });
+  }
+
+  // ───────────────────────────────────────────── tools (P17.21b)
+  /** Space: the held item acts on the cell in front of me. Nothing to do there says so. */
+  private useFaced(shift: boolean): void {
+    const focused = document.activeElement;
+    if (focused instanceof HTMLElement && focused.closest('.wh-hud')) focused.blur();
+    const w = this.walker;
+    if (!this.useOn(faceCell(w.x, w.y, w.d), shift)) toast('worlds.hud.nothingToDo');
+  }
+
+  /** A click on a cell within reach: the held item acts on it (true). Otherwise the click walks (false). */
+  private useAt(wx: number, wy: number, shift: boolean): boolean {
+    const t = worldSession.terrain;
+    if (!t) return false;
+    const cell = pickCell(wx, wy, (cx, cy) => t.cellAt(cx, cy).level);
+    const at: CellRef = { x: cell.cx, y: cell.cy };
+    return inReach(this.walker.x, this.walker.y, at) && this.useOn(at, shift);
+  }
+
+  /** Asks the server for the held item's action on a cell (it decides), and swings for a tool. */
+  private useOn(at: CellRef, shift = false): boolean {
+    const world = worldSession.worldId;
+    const hand = worldHud.get().inHand;
+    const data = loadGameData();
+    const cell = worldSession.terrain?.cellAt(at.x, at.y);
+    const facts = cell ? factsOf(cell, data) : NO_FACTS;
+    if (world === null) return false;
+    // an empty hand on a shop board or a station opens its panel; the server decides each action in it
+    if (hand === null && cell && (facts.shop || facts.station)) {
+      const panelAt = { x: at.x, y: at.y };
+      worldHud.openPanel(
+        facts.shop
+          ? { kind: 'shop', at: panelAt }
+          : { kind: 'craft', at: panelAt, block: cell.decor },
+      );
+      return true;
+    }
+    const kind = actionFor(hand, data, facts, shift);
+    if (kind === null) return false;
+    worldActs.submit(world, { kind, at, ...(hand !== null ? { item: hand } : {}) });
+    const tool = hand === null ? undefined : toolOf(data, baseItemOf(hand));
+    if (tool) this.playSwing(worldSession.you, this.walker.d, tool.tier, true, tool.speed);
+    return true;
+  }
+
+  /**
+   * A tool swing by a person in view (P17.21b): the 2D hook of the world view. `own` is my swing
+   * (it shakes the screen); another person's plays at the speed of their tool's tier.
+   */
+  playSwing(id: string, dir: Dir, tier: number, own = false, speed = speedOfTier(tier)): void {
+    const t = worldSession.terrain;
+    const at = id === worldSession.you ? { x: this.walker.x, y: this.walker.y } : rendered.get(id);
+    if (!t || !at) return;
+    const level = t.cellAt(Math.floor(at.x / CELL), Math.floor(at.y / CELL)).level;
+    this.swings++;
+    playSwing2d(
+      this,
+      { x: at.x, y: at.y - LEVEL_PX * level, depth: depthOf(at.y, level, RANK.avatar) + 1 },
+      dir,
+      tier,
+      { speed, shake: own, reduced: reducedMotion(), sounds: store.get().settings.sounds },
+    );
   }
 
   private drawPath(): void {
@@ -463,14 +567,6 @@ export class WorldRoomScene extends Phaser.Scene {
     if (JSON.stringify(prompt) !== JSON.stringify(cur ?? null)) store.set({ prompt });
   }
 
-  /**
-   * A tool swing by a person (P17.21b): the same hook as the 2.5D view (WorldRoom3DView). The swing
-   * frames per direction, sparks and the shake are not drawn yet.
-   */
-  playSwing(_personId: string, _dir: Dir, _tier: number): void {
-    // TODO(P17.21b): swing frames per direction from worlds/tools/swing.ts, sparks, the shake (off under reduced motion)
-  }
-
   // ───────────────────────────────────────────── e2e handles
   private testApi(): ViewTestApi & WorldTestApi {
     const cam = () => this.cameras.main;
@@ -514,10 +610,23 @@ export class WorldRoomScene extends Phaser.Scene {
           plots: worldSession.plots.size,
           farmDay: worldSession.farmDay,
           path: this.walker.path.length,
+          swings: this.swings,
         };
       },
       levelAt: (cx, cy) => worldSession.terrain?.cellAt(cx, cy).level ?? -1,
       walkableAt: (cx, cy) => worldSession.terrain?.cellAt(cx, cy).walkable ?? false,
+      inventory: () => ({ ...worldHud.get().items }),
+      cellInfo: (cx, cy) => {
+        const c = worldSession.terrain?.cellAt(cx, cy);
+        if (!c) return null;
+        return {
+          level: c.level,
+          block: c.block,
+          decor: c.decor,
+          plot: worldSession.plots.get(`${cx},${cy}`) ?? null,
+          farmDay: worldSession.farmDay,
+        };
+      },
     };
   }
 }

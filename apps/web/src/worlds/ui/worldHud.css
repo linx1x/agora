@@ -144,3 +144,40 @@
 .wh-energy-text {
   font-variant-numeric: tabular-nums;
 }
+
+/* P17.21b: the key hint under the hand line */
+.wh-hint {
+  margin: 0.2em 0;
+  font-size: 0.8em;
+  opacity: 0.85;
+}
+
+/* P17.24: the chest panel's actions: a take is the row's button, the stash and close sit below */
+.wh-take {
+  margin-left: auto;
+  text-decoration: underline;
+}
+.wh-chest-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.wh-chest-actions button {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid currentColor;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.wh-chest-actions button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.wh-chest-actions button:focus-visible {
+  outline: 3px solid #1a6cff;
+  outline-offset: 2px;
+}

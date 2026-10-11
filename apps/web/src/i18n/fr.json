@@ -1008,7 +1008,9 @@
         "summer": "Été",
         "autumn": "Automne",
         "winter": "Hiver"
-      }
+      },
+      "keys": "Chiffres 1 à 9 : choisir · Espace ou clic : utiliser · Maj : abaisser le sol · I : inventaire",
+      "nothingToDo": "Rien à faire avec cela ici."
     },
     "refused": {
       "disabled": "Les mondes personnels sont fermés pour le moment.",
@@ -1030,7 +1032,12 @@
       "outside": "Approchez-vous de la porte pour entrer.",
       "no_permission": "Ce monde n'est pas ouvert pour vous.",
       "no_world": "Ce monde n'est pas prêt pour l'instant.",
-      "locked": "Tu n'as pas encore le niveau qu'il faut pour cet outil."
+      "locked": "Tu n'as pas encore le niveau qu'il faut pour cet outil.",
+      "occupied": "Quelqu’un se tient là.",
+      "trap": "Cela enfermerait quelqu’un : laisse un passage.",
+      "money": "Il te manque de l'argent.",
+      "busy": "Ça tourne encore : reviens plus tard.",
+      "capacity": "Il n'y a plus de place ici."
     },
     "tuning": {
       "open": "Réglages du monde",
@@ -1119,7 +1126,14 @@
       "cave_mouth": "Entrée de grotte",
       "ore_copper": "Minerai de cuivre",
       "ore_iron": "Minerai de fer",
-      "ore_gold": "Minerai d'or"
+      "ore_gold": "Minerai d'or",
+      "chest": "Coffre",
+      "fence": "Clôture",
+      "coop": "Poulailler",
+      "barn": "Grange",
+      "workbench": "Établi",
+      "stove": "Cuisinière",
+      "furnace": "Fourneau"
     },
     "biome": {
       "meadow": "Prairie",
@@ -1250,7 +1264,16 @@
       "dune_tuna": "Thon des dunes",
       "salt_snapper": "Vivaneau salé",
       "pearl_anchovy": "Anchois perlé",
-      "deep_ray": "Raie des abysses"
+      "deep_ray": "Raie des abysses",
+      "shovel_1": "Pelle simple",
+      "wood_wall": "Mur de bois",
+      "wood_floor": "Plancher de bois",
+      "torch": "Torche",
+      "stone_stairs": "Escalier de pierre",
+      "bed": "Lit",
+      "coop": "Poulailler",
+      "barn": "Grange",
+      "stove": "Cuisinière"
     },
     "noRoute": "Pas de chemin jusque-là.",
     "card": {
@@ -1260,6 +1283,33 @@
       "caveTitle": "Grotte de {{owner}}",
       "caveUntitled": "Grotte",
       "caveHint": "Seules les personnes dans cette grotte vous entendent"
+    },
+    "chest": {
+      "title": "Coffre",
+      "slotsUsed": "{{used}} emplacements sur {{max}}",
+      "empty": "Le coffre est vide.",
+      "takeLabel": "Prendre {{item}}, {{count}}",
+      "take": "Prendre",
+      "stash": "Ranger {{item}} dans le coffre",
+      "stashNone": "Rien en main à ranger",
+      "close": "Fermer le coffre"
+    },
+    "shop": {
+      "title": "Tableau de la boutique",
+      "price": "Prix : {{price}}",
+      "buy": "Acheter",
+      "buyLabel": "Acheter {{item}}, {{price}}",
+      "empty": "Rien à vendre ici pour l'instant."
+    },
+    "craft": {
+      "inputs": "Ingrédients",
+      "output": "Résultat",
+      "craft": "Fabriquer",
+      "collect": "Récolter",
+      "inProgress_one": "En cours : {{item}}, encore {{count}} jour",
+      "inProgress_other": "En cours : {{item}}, encore {{count}} jours",
+      "ready": "Prêt : {{item}}, {{count}}",
+      "nothing": "Rien à fabriquer ici."
     }
   }
 }

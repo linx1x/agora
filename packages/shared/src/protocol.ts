@@ -21,7 +21,7 @@ import { PORTAL_ID, type PortalRefusal } from './portals';
 import type { WorldGenParams } from './worlds/gen';
 import type { ChunkDelta } from './worlds/delta';
 import type { WorldTime } from './worlds/clock';
-import type { PlotState } from './worlds/gamedata/state';
+import type { AnimalState, MachineState, PlotState } from './worlds/gamedata/state';
 import { ACTION_KINDS, type ActionChanges, type WorldRefusal } from './worlds/actions/kinds';
 import { WORLD_COORD_LIMIT } from './worlds/constants';
 import { SKILLS } from './worlds/gamedata/schema';
@@ -67,7 +67,8 @@ export const C2S = z.discriminatedUnion('t', [
       .regex(/^[a-z][a-z0-9_]+(~[124])?$/)
       .optional(),
     target: z.string().min(1).max(64).optional(),
-    key: z.string().min(8).max(64),
+    /** the idempotency key: letters, digits, `_` and `-` only, so no key can name a settlement row (`ship:`, P17.26) */
+    key: z.string().min(8).max(64).regex(/^[A-Za-z0-9_-]+$/),
   }),
   /** P17.31: the skill to show on the card (null shows none). The server shows only a level that is earned. */
   z.object({ t: z.literal('badge'), skill: z.enum(SKILLS).nullable() }),
@@ -328,7 +329,14 @@ export type S2CMsg =
    * layer is the authority for tilled / watered / crop / sprinkler; chunk deltas keep terrain, blocks
    * and decor only.
    */
-  | { t: 'world:farm'; day: number; plots: Record<string, PlotState | null> }
+  | {
+      t: 'world:farm';
+      day: number;
+      plots: Record<string, PlotState | null>;
+      /** P17.25: the animals and the machine batches of the world, whole lists, when they changed (everyone in the world). */
+      animals?: readonly AnimalState[];
+      machines?: readonly MachineState[];
+    }
   /** P17.19/P17.23: the world clock, sent on welcome and every 10 game minutes */
   | { t: 'world:time'; time: WorldTime }
   /** P17.20: an approved action (or a resend of one) and what it changed for you. Only you get it. */
@@ -343,6 +351,17 @@ export type S2CMsg =
       energy: number;
       maxEnergy: number;
     }
+  /**
+   * P17.24 (ADR-053): the contents of a chest I opened or changed (stack key to quantity). Only
+   * I get it: a chest is the owner's, and its contents never go in a chunk delta.
+   */
+  | { t: 'world:chest'; at: { x: number; y: number }; items: Record<string, number> }
+  /**
+   * P17.21b (ADR-053): someone in my view swung a tool (sent when an action with a tool is
+   * accepted, to the others in view, never to the actor). Cosmetic only: no state. `dir` is the
+   * way they faced, `tier` the tool's tier (1 to 3).
+   */
+  | { t: 'world:swing'; id: string; dir: Dir; tier: number }
   /**
    * SFU backend (ADR-031): the media rooms the server places me in, with fresh
    * tokens (used when (re)connecting; a live connection is kept). `zone` null =

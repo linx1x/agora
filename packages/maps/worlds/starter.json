@@ -10,7 +10,8 @@
     "f": { "block": "tilled_soil" },
     "S": { "block": "meadow_dirt", "decor": "shipping_bin" },
     "K": { "block": "meadow_dirt", "decor": "shop_board" },
-    "r": { "block": "return_pad" }
+    "r": { "block": "return_pad" },
+    "T": { "block": "meadow_dirt", "decor": "oak_tree" }
   },
   "rows": [
     ".........................",
@@ -30,7 +31,7 @@
     "...............ffffffff..",
     "...........r...ffffffff..",
     ".........................",
-    ".........................",
+    ".........T...............",
     ".........................",
     ".........................",
     ".........................",
