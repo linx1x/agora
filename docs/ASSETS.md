@@ -97,6 +97,19 @@ The Jungle wing uses all of it (ADR-023): paths, pond, waterfall, hammock, arcad
 board game and VR are tile types now. Pond, waterfall, Hub water, portals and fireplaces animate.
 The Oasis wing uses its sheet the same way (ADR-024): fountain pool, cabanas, sandstone paths, pool table, ping-pong. The Boreal wing follows (ADR-025): fire pit, frozen pond, slate paths, TV and console. The Zen wing is done too (ADR-026): koi pond, flagstone paths, water basin, tea, go and jigsaw tables. The Hub floors, walls, windows, plants, tree, rugs, lamp, table and sofa are drawn too (ADR-027, `art-src/hub/atrium.py`), so the Atrium no longer needs Kenney art for those tiles (Kenney stays as a fallback for any tile without a sprite).
 
+## Current state (2026-10-11, ADR-052, ADR-053)
+
+- **Office art is unchanged.** The 2.5D view (ADR-052, flag `world25d`, off until checkpoint K)
+  draws the same tiles on 3D shapes (`packages/shared/src/shape3d.ts`). Jungle, Atrium, Oasis,
+  Boreal and Zen needed no new art to get their shapes (P16.12, P16.16, P16.17).
+- **Paper avatars** for the 2.5D view are drawn in code: `generated:characters/agora-paper-avatars`
+  (CC0, P16.7), listed on the Credits page.
+- **Personal worlds** (ADR-053, flag `worlds`, off) show placeholders only: each block is a 32 px
+  tile drawn in code from its biome palette (`apps/web/src/worlds/placeholders.ts`). No world sprite
+  file is in the registry yet. The art manifest (P17.38) is in § Worlds below.
+- **3D rules** for new art (shape kinds, the split rows of boxes, cards, what needs new art) are in
+  `art-src/style-guide.md`, § 3D rules.
+
 ## Worlds: block sprites (ADR-053, P17.13)
 
 Personal-world blocks are drawn as 32 px placeholder tiles in `apps/web/src/worlds/placeholders.ts`, from the biome palette (`art-src/palettes.json`) named in `packages/shared/data/worlds/biomes.json`. A real file for a sprite key (`worlds/<biome>/<name>`), once it is in the registry, is preferred automatically (`resolveTile`). Art for each block: 32 px wide, a top face of 24 rows and a side face of 8 rows for ground and solid blocks; decor blocks are transparent around the object. Style reference: the office palettes named below.
