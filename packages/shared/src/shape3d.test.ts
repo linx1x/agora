@@ -47,3 +47,53 @@ describe('shape3d (P16.4, ADR-052)', () => {
     );
   });
 });
+
+/** The Atrium (the Hub region of HQ) in 2.5D: its fixtures stand as the flat view draws them (P16.16). */
+describe('the Atrium in 2.5D (P16.16, ADR-027 fixtures)', () => {
+  const k = (n: string) => shape3d(TILE_DEFS.find((d) => d.name === n)!);
+  const ATRIUM = { x: 36, y: 0, w: 30, h: 54 };
+
+  it('lays the plaza, the rugs, the mats and the water basin flat on the floor', () => {
+    for (const n of ['hub.floor', 'hub.floorAlt', 'hub.rug', 'mat', 'water']) {
+      expect(k(n).kind, n).toBe('flat');
+    }
+  });
+  it('stands the plants, the fixtures and the portals up as cards', () => {
+    for (const n of [
+      'hub.plantA',
+      'hub.lamp',
+      'hub.sofa',
+      'stool',
+      'portal',
+      'fireplace',
+      'fridge',
+      'waterCooler',
+      'whiteboard',
+      'bookshelf',
+    ]) {
+      expect(k(n).kind, n).toBe('card');
+    }
+  });
+  it('extrudes the tables, the reception desk and the counter as boxes', () => {
+    for (const n of ['hub.table', 'coffeeTable', 'reception', 'counter']) {
+      expect(k(n).kind, n).toBe('box');
+    }
+  });
+  it('makes the walls, the windows and the glass doors walls, the wall tops flat', () => {
+    for (const n of ['hub.wallFront', 'hub.window', 'glassDoor']) expect(k(n).kind, n).toBe('wall');
+    expect(k('hub.wallTop')).toEqual({ kind: 'wall', wallTop: true });
+  });
+  it('gives every tile placed in the Atrium a drawn shape (none only for blockers)', () => {
+    const seen = new Set<string>();
+    for (const layer of ['floor', 'walls', 'furniture', 'above']) {
+      const arr = map.layers[layer] ?? [];
+      for (let cy = ATRIUM.y; cy < ATRIUM.y + ATRIUM.h; cy++)
+        for (let cx = ATRIUM.x; cx < ATRIUM.x + ATRIUM.w; cx++) {
+          const g = arr[cy * map.width + cx] ?? 0;
+          if (g) seen.add(TILE_DEFS[g - 1]!.name);
+        }
+    }
+    expect(seen.size).toBeGreaterThan(20);
+    for (const n of seen) expect(k(n).kind, n).not.toBe('none');
+  });
+});
