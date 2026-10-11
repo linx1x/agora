@@ -1,5 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
 
+// walking to a character may cross a teleporter and the characters keep moving (see walkToCharacter)
+test.describe.configure({ timeout: 240_000 });
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 async function enter(page: Page) {
@@ -105,7 +108,8 @@ async function walkToCharacter(page: Page, want?: string) {
         }, want);
         return r;
       },
-      { timeout: 45_000, intervals: [1000] },
+      // a route may go through a teleporter (nav.ts), and the characters keep walking
+      { timeout: 90_000, intervals: [1000] },
     )
     .toBe('near');
 }
