@@ -8,5 +8,6 @@ export * from './planners';
 export * from './build';
 export * from './rest';
 export * from './shop';
+export * from './ship';
 export * from './livestock';
 export * from './crafting';

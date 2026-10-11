@@ -204,6 +204,19 @@ describe('actionFor for housings, machines, stations and shops (P17.25)', () => 
   });
 });
 
+describe('the shipping bin (P17.26)', () => {
+  const BIN = facts({ shipping: true });
+  it('a held item goes into the bin, and an empty hand does nothing there (the server decides what ships)', () => {
+    expect(actionFor('dawn_radish', data, BIN)).toBe('ship');
+    expect(actionFor('softwood', data, BIN)).toBe('ship');
+    expect(actionFor(null, data, BIN)).toBeNull();
+  });
+  it('a shipping bin is a fact of its block, and nothing else is', () => {
+    expect(factsOf({ decor: 'shipping_bin' }, data)).toMatchObject({ shipping: true, container: false });
+    expect(factsOf({ decor: 'chest' }, data).shipping).toBe(false);
+  });
+});
+
 describe('factsOf for housings, machines, stations and shops (P17.25)', () => {
   it('a coop or a barn is a housing; a furnace is a machine and a station; a bench or a stove is a station only', () => {
     expect(factsOf({ decor: 'coop' }, data)).toMatchObject({ housing: true, machine: false, station: false });

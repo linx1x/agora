@@ -65,7 +65,8 @@ export const C2S = z.discriminatedUnion('t', [
       .regex(/^[a-z][a-z0-9_]+(~[124])?$/)
       .optional(),
     target: z.string().min(1).max(64).optional(),
-    key: z.string().min(8).max(64),
+    /** the idempotency key: letters, digits, `_` and `-` only, so no key can name a settlement row (`ship:`, P17.26) */
+    key: z.string().min(8).max(64).regex(/^[A-Za-z0-9_-]+$/),
   }),
   z.object({ t: z.literal('desk:claim'), deskId: z.string().min(1).max(32) }),
   z.object({ t: z.literal('desk:release') }),

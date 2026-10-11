@@ -1,9 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { loadGameData, localIndexOf, randomAvatar, chunkOfCell, cellKey, type S2CMsg } from '@agora/shared';
+import { loadGameData, localIndexOf, chunkOfCell } from '@agora/shared';
 import { PG_URL, memory, postgres } from './testStores';
-import { WorldHub, type WorldActRequest, type WorldMember, type WorldRoom } from './worldRoom';
-import type { WorldStore } from './worldStore';
-import { FakeConn, GUEST, OWNER, flatYard, grant, openWorld, paintCells, waitFor } from './testWorld';
+import { hubOn, join, act, reply, account, ledger, sim, EAST, EAST_KEY } from './testRoom';
+import { GUEST, OWNER, flatYard, grant, openWorld, paintCells } from './testWorld';
 
 /**
  * P17.25 (ADR-053, skill agora-world-action): the shop board, livestock, crafting at a bench and in a
@@ -16,40 +15,6 @@ const DAY_MS = 20 * 60 * 1000;
 const data = loadGameData();
 const KIT = data.progression.starterKit.items;
 /** the cell east of the spawn, where each test builds, buys and farms */
-const EAST = { x: 1, y: 0 };
-const EAST_KEY = cellKey(EAST.x, EAST.y);
-
-function hubOn(store: WorldStore, clock: { t: number }): WorldHub {
-  return new WorldHub(store, undefined, undefined, undefined, { now: () => clock.t, autoTick: false });
-}
-
-class Who {
-  constructor(
-    readonly c: FakeConn,
-    readonly m: WorldMember,
-  ) {}
-}
-
-async function join(room: WorldRoom, id: string, uid: string): Promise<Who> {
-  const c = new FakeConn();
-  const m = room.join(c, { id, uid, name: id, avatar: randomAvatar() });
-  await waitFor(() => c.of('world:inv').length > 0);
-  return new Who(c, m);
-}
-
-function act(room: WorldRoom, who: Who, op: number, key: string, kind: WorldActRequest['kind'], item?: string, at = EAST, target?: string) {
-  room.act(who.m, { t: 'world:act', op, kind, item, at, target, key } as WorldActRequest);
-}
-
-async function reply(c: FakeConn, op: number): Promise<S2CMsg> {
-  const answer = (m: S2CMsg) => (m.t === 'world:acted' || m.t === 'world:refused') && m.op === op;
-  await waitFor(() => c.msgs.some(answer));
-  return c.msgs.find(answer)!;
-}
-
-const account = (store: WorldStore, uid: string) => store.withTxn((tx) => tx.accountOf(uid, false));
-const ledger = (store: WorldStore, key: string) => store.withTxn((tx) => tx.ledgerOf(key));
-const sim = async (store: WorldStore) => (await store.withTxn((tx) => tx.simOf('w1', false)))!.state;
 
 /** The shop board on the east cell (the starter has one further off). */
 const SHOP = { [EAST_KEY]: { decor: 'shop_board' } };

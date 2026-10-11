@@ -57,6 +57,8 @@ export interface CellFacts {
   readonly station: boolean;
   /** the shop board: an empty hand opens the stock (a panel, not a server action) */
   readonly shop: boolean;
+  /** the shipping bin: a held item is put in it to be sold at the day change (P17.26) */
+  readonly shipping: boolean;
 }
 
 export const NO_FACTS: CellFacts = {
@@ -66,6 +68,7 @@ export const NO_FACTS: CellFacts = {
   machine: false,
   station: false,
   shop: false,
+  shipping: false,
 };
 
 /** The facts of a terrain cell: its decor block, read from the block registry. */
@@ -79,6 +82,7 @@ export function factsOf(cell: Pick<WorldCell, 'decor'>, data: GameData): CellFac
     machine: block.machine === true,
     station: block.station !== undefined,
     shop: block.shop === true,
+    shipping: block.shipping === true,
   };
 }
 
@@ -86,18 +90,20 @@ export function factsOf(cell: Pick<WorldCell, 'decor'>, data: GameData): CellFac
  * The action the held item asks for on the cell: empty hand harvests, opens a chest, or collects a
  * housing's or a machine's output; a shovel raises the ground (Shift lowers it), a pick takes a
  * placed block back, a tool does its work, a seed is planted, fertilizer spread, a building, a
- * machine or an animal placed, feed given to a housing, food eaten, and any item put in a chest is
- * stashed there. `null` when the item does nothing on the cell (a rod, a material, feed on the
- * ground), and for an empty hand on a station or a shop board (the scene opens the panel instead).
+ * machine or an animal placed, feed given to a housing, food eaten, any item put in a chest is
+ * stashed there, and any item put in a shipping bin is shipped (the server refuses what is not produce).
+ * `null` when the item does nothing on the cell (a rod, a material, feed on the ground), and for an
+ * empty hand on a station, a shop board or a shipping bin (the scene opens a panel, or nothing happens).
  */
 export function actionFor(item: string | null, data: GameData, facts: CellFacts = NO_FACTS, shift = false): ActionKind | null {
   if (item === null) {
     if (facts.container) return 'open';
     if (facts.housing || facts.machine) return 'collect';
-    if (facts.station || facts.shop) return null;
+    if (facts.station || facts.shop || facts.shipping) return null;
     return 'harvest';
   }
   if (facts.container) return 'stash';
+  if (facts.shipping) return 'ship';
   const id = baseItemOf(item);
   const tool = toolOf(data, id);
   if (tool) {

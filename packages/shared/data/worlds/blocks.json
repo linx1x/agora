@@ -459,7 +459,8 @@
       "height": 1,
       "placeable": true,
       "light": 0,
-      "biomes": []
+      "biomes": [],
+      "shipping": true
     },
     {
       "id": "shop_board",

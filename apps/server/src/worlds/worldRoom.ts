@@ -252,7 +252,7 @@ export class WorldRoom {
     const now = this.clock();
     const day = worldTime(this.world.createdAt, now).day;
     const previous = this.farmDay;
-    const next = await catchUpFarm(this.store, this.world.id, day, loadGameData(), this.world.seed);
+    const next = await catchUpFarm(this.store, this.world, day, loadGameData(), this.world.seed, now);
     this.farmDay = day;
     if (next) this.applyFarm(next);
     if (previous > 0 && day > previous) await this.rollover(day, now);

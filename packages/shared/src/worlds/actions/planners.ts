@@ -8,6 +8,7 @@ import { planLower, planOpen, planPlaceBlock, planRaise, planRemove, planStash, 
 import { planCollect, planCraft } from './crafting';
 import { planFeed, planPlaceAnimal } from './livestock';
 import { planBuy } from './shop';
+import { planShip } from './ship';
 import { planChop, planMine } from './harvest';
 import { planEat, planSleep } from './rest';
 import { planTill } from './till';
@@ -28,6 +29,7 @@ export const ACTION_PLANNERS: ActionPlanners = {
     return planPlace(view, req, env);
   },
   buy: planBuy,
+  ship: planShip,
   feed: planFeed,
   collect: planCollect,
   craft: planCraft,

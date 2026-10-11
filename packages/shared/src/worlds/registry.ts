@@ -62,6 +62,8 @@ export const BlockSchema = z
     machine: z.boolean().default(false),
     /** A shop board: items are bought with money here (P17.25). */
     shop: z.boolean().default(false),
+    /** The shipping bin: a stack put in it is sold at the next day change (P17.26). */
+    shipping: z.boolean().default(false),
     /** A hoe can till this ground block into a plot (P17.21). Ground blocks only. */
     tillable: z.boolean().default(false),
     light: z.number().int().min(0).max(15).default(0),

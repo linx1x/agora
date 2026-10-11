@@ -24,6 +24,7 @@ export const ACTION_KINDS = [
   'stash',
   'take',
   'buy',
+  'ship',
   'feed',
   'collect',
   'craft',

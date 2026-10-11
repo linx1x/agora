@@ -73,6 +73,8 @@ export interface WorldSimState {
   readonly machines: readonly MachineState[];
   /** Chests by cell key ("x,y"): stack key to quantity. Owner-only contents, so never in a chunk delta (P17.24). */
   readonly chests?: Readonly<Record<string, Readonly<Record<string, number>>>>;
+  /** The shipping bin's stacks (stack key to quantity), sold at the next day change (P17.26). Owner-only, like chests. */
+  readonly shipping?: Readonly<Record<string, number>>;
 }
 
 /** Our rule: an animal stops producing when this many products wait. */

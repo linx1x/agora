@@ -27,6 +27,7 @@ export const VISITOR_RULES: Readonly<Record<ActionKind, VisitorRule>> = {
   take: 'choice',
   // the farm, the shop and the bench are the owner's (P17.25)
   buy: 'deny',
+  ship: 'deny',
   feed: 'deny',
   collect: 'deny',
   craft: 'deny',
