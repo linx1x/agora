@@ -1,4 +1,5 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
+import { runView } from './views';
 
 /**
  * Farming in my world, played from the client (P17.21b, ADR-053): the item in hand acts on a cell
@@ -99,13 +100,20 @@ const cellInfo = (p: Page, cx: number, cy: number) =>
 
 /** Enter the office as a dev user (the same path as worlds.spec.ts). */
 async function enter(browser: Browser, devUser: number, hour = 13): Promise<Page> {
+  const mode = runView();
   const ctx = await browser.newContext();
-  await ctx.addInitScript(() => {
-    localStorage.setItem(
-      'agora.settings',
-      JSON.stringify({ lighting: true, sounds: false, autoSit: true, precheck: false }),
-    );
-  });
+  // the 2.5D project chooses the 2.5D view by the saved choice (as worlds.spec.ts): without it the
+  // world is drawn flat, and this spec would not test 2.5D at all
+  await ctx.addInitScript(
+    ([v]) => {
+      localStorage.setItem(
+        'agora.settings',
+        JSON.stringify({ lighting: v === '2d', sounds: false, autoSit: true, precheck: false }),
+      );
+      if (v === '2.5d') localStorage.setItem('agora.worldView', v);
+    },
+    [mode] as const,
+  );
   const page = await ctx.newPage();
   opened.push(page);
   await page.goto(`/?hour=${hour}`);
@@ -205,6 +213,10 @@ async function waitWorld(p: Page, timeout = 30_000) {
     timeout,
     polling: 200,
   });
+  // the world is drawn in the view the project runs (2.5D in the `2.5d` project, flat in `2d`)
+  expect(await p.evaluate(() => (window as any).__agora.view.engine)).toBe(
+    runView() === '2.5d' ? '2.5d' : '2d',
+  );
 }
 
 /** Claim the Jungle desk J-6 as Alice (or keep it if an earlier spec on this server did), and stand in my pod. */
@@ -238,10 +250,20 @@ async function hold(p: Page, item: string) {
 /** A click on the top face of a world cell, as a player does. */
 async function clickCell(p: Page, cx: number, cy: number) {
   const info = await cellInfo(p, cx, cy);
-  const at = await p.evaluate(([x, y]) => (window as any).__agora.view.toClient(x, y), [
-    cx * T + T / 2,
-    cy * T + T / 2 - 12 * info!.level,
-  ] as const);
+  const screen = () =>
+    p.evaluate(([x, y]) => (window as any).__agora.view.toClient(x, y), [
+      cx * T + T / 2,
+      cy * T + T / 2 - 12 * info!.level,
+    ] as const);
+  // the 2.5D camera eases after a walk: click once the cell has stopped moving on the screen
+  let at = await screen();
+  for (let i = 0; i < 30; i++) {
+    await p.waitForTimeout(100);
+    const next = await screen();
+    const still = Math.abs(next.x - at.x) < 0.5 && Math.abs(next.y - at.y) < 0.5;
+    at = next;
+    if (still) break;
+  }
   await p.mouse.click(at.x, at.y);
 }
 
@@ -352,6 +374,7 @@ test('farming in my world: till, plant, water, chop, and a refusal with its mess
   // chop: the oak of the starter drawing stands at (-3, 5); I walk beside it and fell it with an axe
   await walkWorld(a, -3, 6);
   const softwoodBefore = (await inventory(a)).softwood ?? 0;
+  const swingsBefore = (await world(a)).swings;
   await hold(a, 'axe_1');
   await clickCell(a, -3, 5);
   await a.waitForFunction(
@@ -362,6 +385,8 @@ test('farming in my world: till, plant, water, chop, and a refusal with its mess
   await expect
     .poll(async () => (await inventory(a)).softwood ?? 0, { timeout: 30_000 })
     .toBeGreaterThanOrEqual(softwoodBefore + 2);
+  // my own axe swing is counted in the view (the swing is drawn, the shake is not checked here)
+  expect((await world(a)).swings).toBeGreaterThan(swingsBefore);
 
   // a refusal: a pick on bare ground has nothing to mine, and says so in the HUD's polite status line
   await hold(a, 'pick_1');
@@ -438,10 +463,14 @@ test('building in my world: a wall placed and picked up, the ground raised, and 
     { timeout: 30_000, polling: 200 },
   );
 
-  // a chest on bare ground: the bag loses it, and the cell holds it
+  // a chest on bare ground: the bag loses it, and the cell holds it. Not beside the raised cell: its
+  // new cliff hides the top of the cell in front, so a click there would reach the raised cell
+  const beside = (x: number, y: number) => Math.abs(x - rx) + Math.abs(y - ry) === 1;
   const [cx, cy] = await freeCell(
     a,
-    around.filter(([x, y]) => (x !== wx || y !== wy) && (x !== rx || y !== ry)),
+    around.filter(
+      ([x, y]) => (x !== wx || y !== wy) && (x !== rx || y !== ry) && !beside(x, y),
+    ),
   );
   await hold(a, 'chest');
   await clickCell(a, cx, cy);
