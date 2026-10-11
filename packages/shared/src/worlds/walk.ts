@@ -118,6 +118,34 @@ export function validateWorldMove(
   return { ok: true };
 }
 
+/**
+ * One client-side prediction step of a walker (P17.14). The move is cut per axis like the office's
+ * `stepMove`: the x part is kept when the feet stay clear and every cell change is a legal step,
+ * then the y part the same way. The server re-checks every sent move with `validateWorldMove`, so
+ * prediction only has to match the server's rules, never be trusted.
+ */
+export function stepWorld(
+  world: WorldTerrain,
+  x: number,
+  y: number,
+  ix: number,
+  iy: number,
+  dtSec: number,
+): { x: number; y: number } {
+  const len = Math.hypot(ix, iy);
+  if (!len) return { x, y };
+  const d = SPEED_PX * Math.min(Math.max(dtSec, 0), 0.1);
+  const dx = (ix / len) * d;
+  const dy = (iy / len) * d;
+  const free = (ax: number, ay: number, bx: number, by: number) =>
+    !worldCollides(world, bx, by) && segmentWalkable(world, { x: ax, y: ay }, { x: bx, y: by }) === 'ok';
+  let nx = x;
+  let ny = y;
+  if (dx !== 0 && free(x, y, x + dx, y)) nx = x + dx;
+  if (dy !== 0 && free(nx, y, nx, y + dy)) ny = y + dy;
+  return { x: nx, y: ny };
+}
+
 /** Binary min-heap on f (ties on h, then insertion order), for the open list. */
 class OpenList {
   private readonly items: { f: number; h: number; seq: number; key: number; cx: number; cy: number }[] = [];
@@ -236,8 +264,12 @@ export function findWorldPath(
       const there = world.cellAt(nx, ny);
       if (!canStep(here, there)) continue;
       if (dx !== 0 && dy !== 0) {
-        if (!world.cellAt(node.cx + dx, node.cy).walkable) continue;
-        if (!world.cellAt(node.cx, node.cy + dy).walkable) continue;
+        // stepWorld slides per axis, so the feet may stand in either cell beside the corner before the
+        // target: each side must be a legal step from here and to the target
+        const sideX = world.cellAt(node.cx + dx, node.cy);
+        const sideY = world.cellAt(node.cx, node.cy + dy);
+        if (!canStep(here, sideX) || !canStep(here, sideY)) continue;
+        if (!canStep(sideX, there) || !canStep(sideY, there)) continue;
       }
       const ng = g + (dx !== 0 && dy !== 0 ? DIAGONAL : 1);
       const old = best.get(nk);

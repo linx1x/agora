@@ -52,7 +52,11 @@ export type Prompt =
   | { kind: 'closed'; deskId: string; owner: string }
   | { kind: 'teleport'; region: string; to: string }
   /** a character within talking range (P15.4): X opens the Talk box */
-  | { kind: 'talk'; npcId: string; name: string };
+  | { kind: 'talk'; npcId: string; name: string }
+  /** P17.14: standing in a pod I may enter: X goes into the owner's world (`portal:enter`) */
+  | { kind: 'world'; deskId: string; owner: string | null }
+  /** P17.14: standing on the return pad of a world: X goes back to the office desk */
+  | { kind: 'worldExit' };
 
 /** One line in a Talk box: mine (kept only in this browser) or a character's (P15.4). */
 export interface NpcLogLine {
@@ -240,6 +244,8 @@ export interface AppState {
   /** P15.5: what each character told me it remembers about me (undefined: not asked yet) */
   npcMemory: Record<string, string | null>;
   myDesk: string | null;
+  /** P17.14: the personal world I am in (null: the office). GameView mounts the world view for it. */
+  worldId: string | null;
   admitted: string[];
   prompt: Prompt | null;
   knocks: { from: string; name: string; deskId: string }[];
@@ -337,6 +343,7 @@ const initial: AppState = {
   npcRefused: null,
   npcMemory: {},
   myDesk: null,
+  worldId: null,
   admitted: [],
   prompt: null,
   knocks: [],

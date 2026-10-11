@@ -126,6 +126,26 @@ export function PromptBar() {
             </>
           )}
           {prompt.kind === 'closed' && <span>{t('prompt.closed', { name: prompt.owner })}</span>}
+          {prompt.kind === 'world' && (
+            <>
+              <span>
+                {prompt.owner
+                  ? t('prompt.worldVisit', { name: prompt.owner })
+                  : t('prompt.world')}
+              </span>
+              <button type="button" className="btn primary small-btn" onClick={act}>
+                {t('prompt.worldBtn')}
+              </button>
+            </>
+          )}
+          {prompt.kind === 'worldExit' && (
+            <>
+              <span>{t('prompt.worldExit')}</span>
+              <button type="button" className="btn primary small-btn" onClick={act}>
+                {t('prompt.worldExitBtn')}
+              </button>
+            </>
+          )}
           {prompt.kind === 'teleport' && (
             <>
               <span>{t('prompt.teleport')}</span>

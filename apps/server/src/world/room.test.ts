@@ -676,11 +676,21 @@ describe('SpaceRoom: portals into worlds (P17.8, ADR-053)', () => {
     expect(JSON.stringify([co.of('portal:go'), co.of('world:welcome')])).not.toContain(OWNER);
   });
 
-  it('refused with no_world when the owner has no world (none made, or removed)', async () => {
+  it('the owner with no world gets one on the first step through the desk (P17.14)', async () => {
     await store.worlds.deleteWorldOf(OWNER);
     await enter(owner);
-    expect(reasonOf(co)).toBe('no_world');
-    expect(co.of('portal:go')).toHaveLength(0);
+    const made = await store.worlds.worldOf(OWNER);
+    expect(made).not.toBeNull();
+    expect(co.of('portal:go')).toMatchObject([{ t: 'portal:go', id: 'desk:jungle-1', worldId: made!.id }]);
+  });
+
+  it('a visitor never creates the owner world: refused with no_world until the owner has one', async () => {
+    await store.worlds.deleteWorldOf(OWNER);
+    place(room, c, cellPos(map, spot.guest));
+    await enter(c);
+    expect(reasonOf(cc)).toBe('no_world');
+    expect(cc.of('portal:go')).toHaveLength(0);
+    expect(await store.worlds.worldOf(OWNER)).toBeNull();
   });
 
   it('an unclaimed pod has no world, and ids that name no desk are unknown', async () => {

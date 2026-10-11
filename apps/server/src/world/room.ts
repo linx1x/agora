@@ -81,6 +81,7 @@ import {
   type WorldMember,
   type WorldRoom,
 } from '../worlds/worldRoom';
+import { ensureOwnerWorld } from '../worlds/ownerWorld';
 
 export interface Conn {
   send(msg: S2CMsg): void;
@@ -838,7 +839,11 @@ export class SpaceRoom {
     const first = deskId ? this.portalVerdict(p, deskId) : undefined;
     if (!deskId || !first) return refuse('unknown');
     if (first.result !== 'ok') return refuse(first.result);
-    const world = await this.store.worldOf(first.ownerUid).catch(() => null);
+    // the owner's first step through their desk creates their world (P17.14); visitors never do
+    const world = await (first.ownerUid === p.uid
+      ? ensureOwnerWorld(this.store.worlds, first.ownerUid, Date.now())
+      : this.store.worldOf(first.ownerUid)
+    ).catch(() => null);
     if (!world) return refuse('no_world');
     const room = await this.worlds.enter(world.id).catch(() => null);
     if (!room || room.disposed) return refuse('no_world');

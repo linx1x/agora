@@ -379,7 +379,12 @@
     "standBtn": "Stand up",
     "knockTouch": "{{name}}’s desk: knock to enter",
     "talk": "Talk to {{name}} (X)",
-    "talkTouch": "{{name}} is right here"
+    "talkTouch": "{{name}} is right here",
+    "world": "X: enter my world",
+    "worldVisit": "{{name}}'s world: X to enter",
+    "worldBtn": "Enter the world",
+    "worldExit": "X: back to the office",
+    "worldExitBtn": "Back to the office"
   },
   "nav": {
     "unreachable": "Can't get there"
@@ -967,6 +972,14 @@
     }
   },
   "worlds": {
+    "noRoute": "No route there.",
+    "refused": {
+      "disabled": "Personal worlds are not open here.",
+      "unknown": "This door leads nowhere.",
+      "outside": "Stand in the doorway to enter.",
+      "no_permission": "This world is not open to you.",
+      "no_world": "This world is not ready yet."
+    },
     "tuning": {
       "open": "World tuning",
       "title": "World tuning (preview)",
