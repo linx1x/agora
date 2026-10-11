@@ -162,7 +162,10 @@ export const ToolSchema = z
     /** Energy per use before the farming-level reduction. */
     energy: int(0, 10),
     power: int(1, 5),
-    /** Swing speed-up: 1 is the base speed, 1.5 swings half as long again as fast (swing.ts). */
+    /**
+     * Swing speed-up of this tool kind: 1 is the base speed (swing.ts). Every tier of a kind has the same
+     * value, so tiers differ only by the 10 % per tier of `TIER_SWING_FACTOR` (P17.21e).
+     */
     speed: z.number().min(0.5).max(3),
     /** 0 = one tile; 1 = the 3 x 3 block around the target. */
     radius: int(0, 2),

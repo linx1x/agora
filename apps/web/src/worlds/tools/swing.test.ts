@@ -32,6 +32,22 @@ describe('swing: timing and juice per tool tier (P17.21)', () => {
     expect(swingDurationMs(tool(3))).toBeLessThan(swingDurationMs(tool(2)));
   });
 
+  it('in the game data, tiers of a tool are exactly 10 % apart: every tier of a tool has the same speed (P17.21e)', async () => {
+    const { loadGameData } = await import('@agora/shared');
+    const byKind = new Map<string, Set<number>>();
+    for (const t of loadGameData().tools) {
+      const speeds = byKind.get(t.tool) ?? new Set<number>();
+      speeds.add(t.speed);
+      byKind.set(t.tool, speeds);
+    }
+    for (const [kind, speeds] of byKind) expect([kind, speeds.size]).toEqual([kind, 1]);
+    // so the real swings of a tool kind are 480, 432 and 389 ms: 10 % apart, never compounded
+    const axe = loadGameData().tools.filter((t) => t.tool === 'axe').sort((a, b) => a.tier - b.tier);
+    const ms = axe.map((t) => swingDurationMs(t));
+    expect(ms[1]! / ms[0]!).toBeCloseTo(0.9, 6);
+    expect(ms[2]! / ms[1]!).toBeCloseTo(0.9, 6);
+  });
+
   it('the frame follows the swing and holds the last one after it ends', () => {
     const d = 300;
     expect(frameIndexAt(-5, d)).toBe(0);
