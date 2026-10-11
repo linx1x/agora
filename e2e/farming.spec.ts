@@ -3,9 +3,10 @@ import { runView } from './views';
 
 /**
  * Farming in my world, played from the client (P17.21b, ADR-053): the item in hand acts on a cell
- * (a click within reach, or Space on the faced cell) and the server decides. Alice enters her world
- * from her desk, tills bare ground, plants a seed, waters it, chops the oak of the starter drawing,
- * and a pick on bare ground is refused with its message. The bag and the farm change after each.
+ * (a click within reach, or Space on the faced cell) and the server decides. Benoît enters his world
+ * from his desk (a dev user of its own, so the world Alice plays in the other specs keeps its spawn),
+ * tills bare ground, plants a seed, waters it, chops the oak of the starter drawing, and a pick on bare
+ * ground is refused with its message. The bag and the farm change after each.
  * P17.24 adds the build test: a wall placed and picked up, the shovel raising the ground, and a chest
  * that holds a stack until it is taken back out of the dialog.
  * P17.25 adds the craft test: a bench placed from the bag, its recipes opened by an empty hand, and a craft
@@ -219,7 +220,7 @@ async function waitWorld(p: Page, timeout = 30_000) {
   );
 }
 
-/** Claim the Jungle desk J-6 as Alice (or keep it if an earlier spec on this server did), and stand in my pod. */
+/** Claim the Jungle desk J-6 (or keep it if an earlier spec on this server did), and stand in my pod. */
 async function claimJungle6(p: Page) {
   const spot = (await st(p)).map.desks.find((d: any) => d.id === 'jungle-6');
   await toJungle(p);
@@ -312,7 +313,7 @@ test('farming in my world: till, plant, water, chop, and a refusal with its mess
   browser,
 }) => {
   test.setTimeout(400_000);
-  const a = await enter(browser, 0, 20);
+  const a = await enter(browser, 1, 20);
   await claimJungle6(a);
 
   // standing in my own pod, off the chair: X enters my world (the server creates it on first entry)
@@ -402,7 +403,7 @@ test('building in my world: a wall placed and picked up, the ground raised, and 
   browser,
 }) => {
   test.setTimeout(400_000);
-  const a = await enter(browser, 0, 20);
+  const a = await enter(browser, 1, 20);
   await claimJungle6(a);
   await waitPrompt(a, 'world');
   await a.keyboard.press('x');
@@ -505,7 +506,7 @@ test('crafting in my world: a bench placed from the bag opens its recipes, and a
   browser,
 }) => {
   test.setTimeout(300_000);
-  const a = await enter(browser, 0, 20);
+  const a = await enter(browser, 1, 20);
   await claimJungle6(a);
   await waitPrompt(a, 'world');
   await a.keyboard.press('x');
