@@ -20,6 +20,8 @@ import { MAX_EDIT_CELLS, MapChangeSchema, type EditRefusal, type MapChange } fro
 import { PORTAL_ID, type PortalRefusal } from './portals';
 import type { WorldGenParams } from './worlds/gen';
 import type { ChunkDelta } from './worlds/delta';
+import type { WorldTime } from './worlds/clock';
+import type { PlotState } from './worlds/gamedata/state';
 
 /** Client → server messages, all validated with zod on the server. */
 export const C2S = z.discriminatedUnion('t', [
@@ -283,6 +285,16 @@ export type S2CMsg =
     }
   /** P17.9: you are back in the office, at your desk */
   | { t: 'world:exit' }
+  /**
+   * P17.20–22 (ADR-053 wave 2 contract): the farm layer for cells in your view. Plots are keyed by
+   * world cell "cx,cy" (cells, not px) as in `WorldSimState.plots`; `null` removes a plot. Sent with
+   * the chunks that come into view and whenever a plot changes (to everyone in range). The farm
+   * layer is the authority for tilled / watered / crop / sprinkler; chunk deltas keep terrain, blocks
+   * and decor only.
+   */
+  | { t: 'world:farm'; day: number; plots: Record<string, PlotState | null> }
+  /** P17.19/P17.23: the world clock, sent on welcome and every 10 game minutes */
+  | { t: 'world:time'; time: WorldTime }
   /**
    * SFU backend (ADR-031): the media rooms the server places me in, with fresh
    * tokens (used when (re)connecting; a live connection is kept). `zone` null =
