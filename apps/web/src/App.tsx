@@ -343,7 +343,7 @@ function DeniedDialog({ slug }: { slug: string }) {
   );
 }
 
-/** Mount Phaser only once the map and my id are known. */
+/** Mount the world view only once the map and my id are known. */
 function GameViewWhenReady() {
   const ready = useStore((s) => !!s.map && !!s.me);
   const gen = useStore((s) => s.mapGen);

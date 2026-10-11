@@ -124,7 +124,7 @@ export type SelCmd =
   | { t: 'cancel' };
 
 let selHandler: ((c: SelCmd) => boolean | void) | null = null;
-/** The world canvas (BuildMode) handles selection commands; returns an unsubscribe. */
+/** The 2.5D build mode (BuildMode3D) handles selection commands; returns an unsubscribe. */
 export function onSelCmd(h: (c: SelCmd) => boolean | void): () => void {
   selHandler = h;
   return () => {

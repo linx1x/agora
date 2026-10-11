@@ -70,19 +70,3 @@ export function setHeld(codes: string[]) {
   down.clear();
   for (const c of codes) down.add(c);
 }
-
-/** Held W/A/S/D only (build mode pans the camera with these; arrows move the build cursor). */
-export function panVector(): [number, number] {
-  if (isTyping()) return [0, 0];
-  let x = 0;
-  let y = 0;
-  for (const k of down) {
-    if (!k.startsWith('Key')) continue;
-    const v = MOVE_KEYS[k];
-    if (v) {
-      x += v[0];
-      y += v[1];
-    }
-  }
-  return [Math.sign(x), Math.sign(y)];
-}

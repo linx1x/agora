@@ -1,7 +1,7 @@
 /**
  * The seam between the world's logic and how it is drawn (P16.3, ADR-052).
  * `WorldController` (controller.ts) owns movement, paths, sitting, prompts and positions; a
- * renderer (today the flat Phaser `WorldScene`, later the 2.5D Three.js view) implements
+ * renderer (the 2.5D Three.js view, World3DView) implements
  * `WorldView` and draws what the controller decides.
  */
 import type { Cell } from '@agora/shared';
@@ -22,11 +22,11 @@ export interface WorldView {
 }
 
 /**
- * Renderer-neutral hooks for the e2e tests (`window.__agora.view`). Both views implement them,
- * so the specs do not depend on Phaser's camera or display list.
+ * Renderer-neutral hooks for the e2e tests (`window.__agora.view`). The 2.5D views implement them,
+ * so the specs do not depend on the renderer's internals.
  */
 export interface ViewTestApi {
-  readonly engine: '2d' | '2.5d';
+  readonly engine: '2d' | '2.5d'; // narrowed to '2.5d' in P16.21, with view2d
   /** Page (CSS px) point where a world pixel is drawn. */
   toClient(x: number, y: number): { x: number; y: number };
   /** Centre the camera on a world pixel. */
@@ -43,7 +43,7 @@ export interface ViewTestApi {
   blendKeyAt(cx: number, cy: number): string | null;
   /** Cells the build preview changes right now (0 when none is shown). */
   previewCells(): number;
-  /** The view has drawn its region and has nothing pending (the flat view: its blends are composed). */
+  /** The view has drawn its region and has nothing pending. */
   settled(): boolean;
   /** A person's current frame: `<dir>-<walk frame>`, `sit-<dir>` or `crouch-<dir>`; null when not drawn. */
   avatarFrame(id: string): string | null;

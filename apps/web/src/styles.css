@@ -2216,7 +2216,7 @@ body {
 }
 /* P16.8 2.5D overlays */
 /* Names, status dots, emotes and speech bubbles over people and characters (ADR-052), the same
-   look as the 2D view's Phaser text. Sizes are CSS px at every zoom: nothing here is scaled. */
+   look as the former flat view's Phaser text. Sizes are CSS px at every zoom: nothing here is scaled. */
 .ov25 {
   position: absolute;
   inset: 0;

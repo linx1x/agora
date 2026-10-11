@@ -1,6 +1,6 @@
 /**
  * The 2.5D world view (P16.6, ADR-052): a fixed-tilt Three.js camera over the region the player is
- * in. It implements the same `WorldView` seam as the flat Phaser scene (game/WorldScene.ts), so
+ * in. It implements the `WorldView` seam of game/view.ts, so
  * `WorldController` decides movement and the view only draws it and turns pointer input into
  * `clickTo`. Visual only: nothing here changes the server, the protocol or the map maths.
  *
@@ -89,10 +89,10 @@ const FADE_OUT_MS = 140;
 const FADE_IN_MS = 240;
 /** the controller's ~3 Hz work (the 2D cadence) */
 const SLOW_MS = 300;
-/** characters ease towards their server position like NpcsView (EASE 14/s, snap beyond 96 px) */
+/** characters ease towards their server position like the former NpcsView (EASE 14/s, snap beyond 96 px) */
 const NPC_EASE = 14;
 const NPC_SNAP_PX = 96;
-/** a click ends a drag beyond this many px (mouse) or this many px (touch), as WorldScene does */
+/** a click ends a drag beyond this many px (mouse) or this many px (touch), as the former flat scene did */
 const MOUSE_DRAG_PX = 6;
 const TOUCH_DRAG_PX = 14;
 const PINCH_LOW = 0.7;
@@ -607,7 +607,7 @@ export class World3DView implements WorldView {
     return { x: p.x + this.canvas.offsetLeft, y: p.y + this.canvas.offsetTop };
   }
 
-  /** Nearby chat, emotes and characters' lines, as the 2D view shows them (WorldScene.onMessage). */
+  /** Nearby chat, emotes and characters' lines, as the 2D view shows them (the former flat scene's onMessage). */
   private onMessage(m: S2CMsg) {
     const now = performance.now();
     const npcBubbles = store.get().settings.npcBubbles;
@@ -1240,7 +1240,7 @@ export class World3DView implements WorldView {
     return this.npcAt.get(id);
   }
 
-  /** e2e handles (`window.__agora.view`), the same contract as the 2D view. */
+  /** e2e handles (`window.__agora.view`): the `ViewTestApi` contract of game/view.ts. */
   private testApi(): ViewTestApi {
     return {
       engine: '2.5d',

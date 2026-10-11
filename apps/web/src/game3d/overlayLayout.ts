@@ -2,16 +2,16 @@
  * P16.8 (ADR-052): the pure parts of the 2.5D overlays (names, status dots, emotes and speech
  * bubbles above people and characters), kept free of the DOM so they are unit-tested.
  *
- * The numbers and rules are the 2D view's (`game/WorldScene.ts` for people, `game/NpcsView.ts`
- * for characters), so both views say the same things in the same places. Offsets are CSS px
+ * The numbers and rules were the former flat view's (WorldScene for people, NpcsView for
+ * characters, removed in P16.20), kept so the 2.5D view says the same things in the same places. Offsets are CSS px
  * above the head point; the DOM in `overlays.ts` applies them as `bottom` on each row.
  */
 
-/** chat lines longer than this are cut (2D `onMessage`) */
+/** chat lines longer than this are cut (the former flat `onMessage`) */
 export const CHAT_LIMIT = 90;
-/** a character's line is cut at this length (2D `NpcsView.say`) */
+/** a character's line is cut at this length (the former `NpcsView.say`) */
 export const LINE_LIMIT = 180;
-/** nearby chat stays this long (2D `onMessage`), in ms */
+/** nearby chat stays this long (the former flat `onMessage`), in ms */
 export const CHAT_MS = 5000;
 
 /** gap between the head point and the label's bottom edge (2D label origin, -AV_H - 2) */
@@ -47,7 +47,7 @@ export function clipBubble(text: string, limit = CHAT_LIMIT): string {
 
 /**
  * How long a character's line stays up, in ms: 70 ms a character, between 4 s and 12 s
- * (2D `NpcsView.say`). `length` is the length of the full line, before any cut.
+ * (the former `NpcsView.say`). `length` is the length of the full line, before any cut.
  */
 export function lineMs(length: number): number {
   return Math.min(12000, Math.max(4000, length * 70));

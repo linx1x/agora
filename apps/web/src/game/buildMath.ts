@@ -1,7 +1,7 @@
 /**
- * Pure build-mode helpers shared by the flat view (BuildMode.ts) and the 2.5D view
- * (game3d/BuildMode3D.ts): the directions of the keyboard, the runs of joined furniture and
- * what a run grows with. No Phaser or Three.js here, so both views (and the tests) can use them.
+ * Pure build-mode helpers of the 2.5D build mode (game3d/BuildMode3D.ts): the directions of the
+ * keyboard, the runs of joined furniture and what a run grows with. No Phaser or Three.js here,
+ * so the tests can run them without a browser.
  */
 import {
   PALETTE,

@@ -113,14 +113,14 @@ export function distForZoom(zoom: number, viewH: number, fov: number = FOV): num
 }
 
 /**
- * The zoom that fits a 22 × 14 tile area, clamped to 1–3 (the same rule as WorldScene.fitZoom).
+ * The zoom that fits a 22 × 14 tile area, clamped to 1–3 (the rule of the former flat view's fitZoom).
  * `h` is the height of the world viewport (above the dock).
  */
 export function fitZoom(w: number, h: number): number {
   return Math.max(1, Math.min(3, Math.round(Math.min(w / (22 * TILE), h / (14 * TILE)))));
 }
 
-/** The dock rule of ADR-035 (WorldScene.fitZoom): the world stops above the dock on phones in portrait. */
+/** The dock rule of ADR-035 (the former flat view's fitZoom): the world stops above the dock on phones in portrait. */
 export function dockPx(compact: boolean, portrait: boolean, touchControlsOn: boolean): number {
   return compact && portrait && touchControlsOn ? DOCK_PX : 0;
 }

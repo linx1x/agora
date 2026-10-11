@@ -1,6 +1,6 @@
 /**
- * The tile pixels and the cell composer of the blended tiles (ADR-037), with no Phaser: the 2D
- * view (`BlendLayers.ts`) and the 2.5D view (P16.12, `game3d/`) both compose from here.
+ * The tile pixels and the cell composer of the blended tiles (ADR-037), with no Phaser: the 2.5D
+ * view (P16.12, `game3d/`) composes from here.
  */
 import { T, composeFurniture, composeGround, type TileSource } from './compose';
 import { TILE_DEFS, TILESET_COLUMNS, markAnimated, type TileReader } from '@agora/shared';

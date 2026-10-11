@@ -1,6 +1,6 @@
 /**
- * Build mode in the 2.5D view (P16.13, P16.14, ADR-021, ADR-039). The same edits as the flat
- * BuildMode (`game/BuildMode.ts`), the same shared rules (`planEdit`, `dropPoint`, `snapSpots`, the
+ * Build mode in the 2.5D view (P16.13, P16.14, ADR-021, ADR-039). The same edits as the former flat
+ * BuildMode (removed in P16.20), the same shared rules (`planEdit`, `dropPoint`, `snapSpots`, the
  * stacking and stretch maths), and the same keys and panel. What differs is the picking: the cell
  * or prop under the pointer comes from a ray through the drawn faces (`pick3d.ts`), and the
  * previews are 3D shapes (`ghost3d.ts`). Only the picks and the drawing are three.js or canvas;
@@ -349,7 +349,7 @@ export class BuildMode3D {
   }
 
   // ───────────────────────────────────────────── input
-  /** Keys: the flat view's, on the same shared rules (BuildMode.onKey). */
+  /** Keys: the flat view's, on the same shared rules (the former flat BuildMode.onKey). */
   private onKey(e: KeyboardEvent, down: boolean) {
     if (e.key === 'Alt') {
       this.alt = down && this.active;
@@ -985,7 +985,7 @@ export class BuildMode3D {
     if (keep) this.sel = { kind: 'run', ax: keep.cx, ay: keep.cy };
   }
 
-  /** Panel buttons and selection shortcuts (BuildMode.command). */
+  /** Panel buttons and selection shortcuts (the former flat BuildMode.command). */
   private command(c: SelCmd): boolean | void {
     if (!this.active) return;
     const m = this.map;

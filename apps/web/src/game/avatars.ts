@@ -340,20 +340,6 @@ export function makeDecorCanvas(): HTMLCanvasElement {
   return cv;
 }
 
-/** Soft radial glow (white) used for additive lamp halos, tinted per light. */
-export function makeGlowCanvas(size = 128): HTMLCanvasElement {
-  const cv = document.createElement('canvas');
-  cv.width = cv.height = size;
-  const c = cv.getContext('2d')!;
-  const g = c.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
-  g.addColorStop(0, 'rgba(255,255,255,0.9)');
-  g.addColorStop(0.35, 'rgba(255,255,255,0.35)');
-  g.addColorStop(1, 'rgba(255,255,255,0)');
-  c.fillStyle = g;
-  c.fillRect(0, 0, size, size);
-  return cv;
-}
-
 /** Preview data-URL of a decor frame (desk personalisation dialog). */
 export function decorPreview(row: number, col: number, scale = 2): string {
   const sheet = makeDecorCanvas();
