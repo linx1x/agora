@@ -2,9 +2,9 @@
  * The 2.5D view of a personal world (P17.15, ADR-053): a fixed-tilt Three.js camera over the cells
  * it can see, drawn as one merged mesh per chunk of 32 × 32 cells (tops, stepped cliffs, decor and
  * the farm layer, `geometry.ts`), with the people as paper cut-outs and names as screen overlays.
- * It is the same world as the flat view (WorldRoomScene): the walking is `WorldWalker`, the
- * terrain is `worldSession.terrain`, and the clicks and the e2e hooks follow the flat view's pixel
- * rules, so the two views agree on every cell. Visual only: nothing here changes the server.
+ * It is the same world the former flat view drew (WorldRoomScene, removed in P16.21): the walking is
+ * `WorldWalker`, the terrain is `worldSession.terrain`, and the clicks and the e2e hooks follow the
+ * former flat view's pixel rules, so every cell is where it was. Visual only: nothing here changes the server.
  *
  * Heights: a level is `heightOf(level)` tiles above the floor (12 px of the flat view). Occlusion:
  * the solid decor (walls, trees) fades over a person behind it (`occlusion.ts`, as the office).
@@ -16,7 +16,14 @@ import * as use from '../use';
 import { liveUse } from '../useLive';
 import { speedOfTier } from '../tools/swing';
 import { farmSprites, type FarmSprites } from '../farmArt';
-import { CHUNK_SIZE, TILE, type CellRef, type Dir, type GridCell } from '@agora/shared';
+import {
+  CHUNK_SIZE,
+  TILE,
+  type CellRef,
+  type Dir,
+  type GridCell,
+  type PlotState,
+} from '@agora/shared';
 import { world as link } from '../../net/client';
 import { rendered } from '../../game/controller';
 import { inputVector, isTyping } from '../../game/input';
@@ -26,9 +33,8 @@ import { COMPACT_QUERY, matches } from '../../ui/layout';
 import { worldSession } from '../session';
 import { WorldWalker } from '../walker';
 import { portalOfPrompt, worldPromptAt } from '../prompts';
-import type { WorldTestApi } from '../view2d/WorldRoomScene';
-import { CELL, farmVisual, pickCell, type CellWindow } from '../view2d/math';
-import { cropFrameName } from '../view2d/art';
+import { CELL, farmVisual, pickCell, type CellWindow } from '../cellMath';
+import { cropFrameName } from '../blockArt';
 import {
   FOV,
   TILT,
@@ -62,6 +68,42 @@ import {
   type ChunkIndex,
 } from './math3d';
 import { SwingFx } from './swing3d';
+
+/** the e2e hooks of this view (`window.__agora.view3d`), on top of the shared `ViewTestApi` */
+interface WorldTestApi {
+  /** the world, me and what is drawn, for the e2e specs */
+  world(): {
+    id: string | null;
+    x: number;
+    y: number;
+    level: number;
+    cell: GridCell;
+    people: number;
+    cellsDrawn: number;
+    plots: number;
+    farmDay: number;
+    path: number;
+    /** tool swings played in this view (mine and the people I see) */
+    swings: number;
+  };
+  /** the level of a cell (with stored edits) */
+  levelAt(cx: number, cy: number): number;
+  /** whether a cell can be walked on */
+  walkableAt(cx: number, cy: number): boolean;
+  /** the items I hold, as the HUD has them (stack key to quantity) */
+  inventory(): Record<string, number>;
+  /** a cell as the view has it: its level, block, decor and farm plot (null when none) */
+  cellInfo(
+    cx: number,
+    cy: number,
+  ): {
+    level: number;
+    block: string;
+    decor: string;
+    plot: PlotState | null;
+    farmDay: number;
+  } | null;
+}
 
 const BG = 0x1b2733;
 const FADE_BG = 'rgb(10, 20, 30)';

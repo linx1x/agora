@@ -79,7 +79,7 @@ Vincent's review (art direction) before the rows use it.
 | REF-B | Props and decor: trees, plants, rocks, furniture, lights, pieces that stand | 32 × 32, or 32 × 64 for tall decor; base on the bottom row | placeholder decor shapes (`blob`, `tree`, `post`, `box`) in `placeholders.ts` | every decor row, the shared decor |
 | REF-C | Tools: sprites for the swing in four facings, three swing frames each | 32 × 32 per frame, frames named `swing-<facing>-<n>` (`tools/swing.ts`) | `apps/web/src/worlds/tools/swing.ts`, `overlay.ts` (the tier mark is code) | tool rows |
 | REF-D | UI: hotbar slot frames, energy, clock, coin, bag, refusal icons | 16 × 16 (inline) and 32 × 32 (toast) | text only today; the office UI icons in `art-src/common/` for weight | UI rows |
-| REF-E | Items and crops: crop growth frames 0 to 4 (4 is ripe), item icons | 32 × 32 per frame | `apps/web/src/worlds/view2d/art.ts` (crop frames) | crop and item rows |
+| REF-E | Items and crops: crop growth frames 0 to 4 (4 is ripe), item icons | 32 × 32 per frame | `apps/web/src/worlds/blockArt.ts` (crop frames) | crop and item rows |
 | REF-F | Seasonal: decor and unique items of a season (P17.37); season tints are code | 32 × 32 or 32 × 64, the same grid | none yet | seasonal rows |
 
 Rules for every sheet: one object per cell, the same light and outline as §2 and §3, the batch

@@ -140,7 +140,7 @@ Steps: **Settings** → **Add variable** → KEY and VALUE → tick **Secret** f
 ## Repository layout
 
 ```
-apps/web        Vite + React UI + Phaser 4 world + media (LiveKit, P2P fallback)
+apps/web        Vite + React UI + Three.js 2.5D world + media (LiveKit, P2P fallback)
 apps/server     Fastify HTTP + WebSocket SpaceRoom + Postgres store
 packages/shared protocol (zod), map/collision/zones, proximity math, flags, avatar catalog
 packages/maps   hq.tmj (Tiled JSON) and its generator

@@ -15,7 +15,7 @@ import {
   pickCell,
   sideStrip,
   topY,
-} from './math';
+} from './cellMath';
 
 describe('level lift (P17.14, ADR-053)', () => {
   it('lifts a cell 12 px per level, so level 0 sits on its row', () => {

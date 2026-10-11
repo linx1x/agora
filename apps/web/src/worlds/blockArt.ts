@@ -1,15 +1,15 @@
 /**
- * Pixel art of the flat world view (P17.14), drawn in code until real art exists (ADR-053: a
- * missing sprite falls back to the placeholder). Pure RGBA functions, so they are unit-tested; the
- * canvas atlas that holds them is in atlas.ts.
+ * Pixel art of the world's blocks and crops (P17.14), drawn in code until real art exists (ADR-053:
+ * a missing sprite falls back to the placeholder). Pure RGBA functions, so they are unit-tested; the
+ * 2.5D canvas atlas that holds them is `view3d/atlas3d.ts`.
  *
  * A block's top face is the first 24 rows of its placeholder tile, and its side band (rows 24-31)
  * repeats down a cliff strip. Decor is the whole placeholder tile. Crops and the sprinkler are
  * drawn here, one frame per growth stage.
  */
 import { LEVEL_MAX, hash32 } from '@agora/shared';
-import { placeholderTiles, TILE_PX, type Tile } from '../placeholders';
-import { CROP_FRAMES, LEVEL_PX, RIPE_FRAME } from './math';
+import { placeholderTiles, TILE_PX, type Tile } from './placeholders';
+import { CROP_FRAMES, LEVEL_PX, RIPE_FRAME } from './cellMath';
 
 export type Rgba = Uint8ClampedArray<ArrayBuffer>;
 type Rgb = readonly [number, number, number];

@@ -78,7 +78,7 @@ tile comes from `packages/shared/src/shape3d.ts`; a tile may override it with `T
 - **Shadows.** Blob shadows and the sun shadow are generated. Paint only the 2 px contact shadow.
 - **Personal worlds (ADR-053, P17.15).** A world block in 2.5D is a stepped column: its top is the
   24-row top face and its side is the 8-row side band repeated down the column, as in the flat
-  view (`apps/web/src/worlds/view2d/art.ts`). Decor is one card. Confirm this at P17.15 before
+  view (`apps/web/src/worlds/blockArt.ts`). Decor is one card. Confirm this at P17.15 before
   drawing world art in bulk.
 - **What needs new art.** (1) A tile whose shape the rules cannot extrude (two faces, an arch, a
   tiered object): draw it, then give it a `d3` override with a test. (2) A new biome look (new ramp

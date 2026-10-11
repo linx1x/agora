@@ -5,7 +5,7 @@
  * camera.ts and scene.ts. The walker's own position stays in world pixels, as in the flat view.
  */
 import { CHUNK_SIZE, WORLD_CELL_PX, type GridCell } from '@agora/shared';
-import { LEVEL_PX, pickCell, type CellWindow } from '../view2d/math';
+import { LEVEL_PX, pickCell, type CellWindow } from '../cellMath';
 import { focal, type Cam } from '../../game3d/camera';
 
 type V3 = readonly [number, number, number];

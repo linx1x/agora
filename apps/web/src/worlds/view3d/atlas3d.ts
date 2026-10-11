@@ -1,11 +1,11 @@
 /**
  * The 2.5D world view's texture (P17.15): the block tops, cliff sides, decor and crop frames of the
- * flat view (view2d/art.ts), packed into one canvas, one row per kind, so the whole world is one
+ * flat view (blockArt.ts), packed into one canvas, one row per kind, so the whole world is one
  * material. Browser only (it draws to a canvas). The frames are the same pixels as the flat view. The
  * last row holds the farm's animals and state marks (P17.21c, farmArt.ts), which the flat view does not draw.
  */
 import { TILE_PX } from '../placeholders';
-import { SIDE_PX, allBlockFrames, cropFrameSet, sprinklerPixels, type Rgba } from '../view2d/art';
+import { SIDE_PX, allBlockFrames, cropFrameSet, sprinklerPixels, type Rgba } from '../blockArt';
 import { ANIMAL_KINDS, MARK_KINDS, animalPixels, animalSprite, markPixels, markSprite } from '../farmArt';
 import type { UvRect } from './geometry';
 

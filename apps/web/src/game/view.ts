@@ -26,7 +26,7 @@ export interface WorldView {
  * so the specs do not depend on the renderer's internals.
  */
 export interface ViewTestApi {
-  readonly engine: '2d' | '2.5d'; // narrowed to '2.5d' in P16.21, with view2d
+  readonly engine: '2.5d';
   /** Page (CSS px) point where a world pixel is drawn. */
   toClient(x: number, y: number): { x: number; y: number };
   /** Centre the camera on a world pixel. */

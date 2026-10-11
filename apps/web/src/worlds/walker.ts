@@ -11,7 +11,7 @@ import {
   type GridCell,
 } from '@agora/shared';
 import { world as link } from '../net/client';
-import { CELL, FEET_DY } from './view2d/math';
+import { CELL, FEET_DY } from './cellMath';
 import type { WorldSession } from './session';
 
 /** Within this many px of a route point, the walker takes the next one. */

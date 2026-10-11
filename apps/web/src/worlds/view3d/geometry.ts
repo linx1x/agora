@@ -7,7 +7,7 @@
  */
 import { WORLD_CELL_PX } from '@agora/shared';
 import type { OccluderObject } from '../../game3d/occlusionMath';
-import { SIDE_PX } from '../view2d/art';
+import { SIDE_PX } from '../blockArt';
 import { heightOf, southFace } from './math3d';
 
 /** What the view draws of one cell. */
@@ -60,7 +60,7 @@ export interface ChunkGeometry {
   readonly occluders: OccluderObject[];
 }
 
-/** The flat view's shades (WorldRoomScene STRIP_STEP and STRIP_STEEP), as factors of 1. */
+/** The shades of the former flat view (WorldRoomScene STRIP_STEP and STRIP_STEEP), as factors of 1. */
 const STEP: readonly [number, number, number] = [0x8f / 255, 0x8f / 255, 0x8f / 255];
 const STEEP: readonly [number, number, number] = [0x55 / 255, 0x55 / 255, 0x55 / 255];
 /** the watered tint of the soil (the flat view's 0x8fb4e0) */

@@ -1,7 +1,8 @@
 /**
- * Pure geometry of the flat world view (P17.14, ADR-053): how a cell's level lifts it on screen, the
- * darker side strip a step leaves, the depth order of players, blocks and objects, which cells the
- * camera can see, and what the farm layer shows on a plot. No Phaser here, so it is unit-tested.
+ * Pure cell geometry of the world (P17.14, ADR-053), shared by the 2.5D views and the walker: how a
+ * cell's level lifts it on screen, the darker side strip a step leaves, the depth order of players,
+ * blocks and objects, which cells the camera can see, and what the farm layer shows on a plot. No
+ * Phaser or Three.js here, so it is unit-tested.
  */
 import { LEVEL_MAX, WORLD_CELL_PX, type GridCell, type PlotState } from '@agora/shared';
 

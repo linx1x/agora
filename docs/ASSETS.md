@@ -294,7 +294,7 @@ need no art: a new head (iron, diamond) is optional and falls back to the tier 1
 
 ### Crops (REF-E): 18 crops, five frames each
 
-`CROP_FRAMES` is 5: frames 0 to 3 are growth, frame 4 is ripe (`cropFrame`, `view2d/math.ts`). The stage
+`CROP_FRAMES` is 5: frames 0 to 3 are growth, frame 4 is ripe (`cropFrame`, `worlds/cellMath.ts`). The stage
 index is `floor(stage)`, clamped to 0 to 3, so a crop with fewer stages still needs all five frames: its
 middle frames are intermediate growth. Sprite key `worlds/crops/<id>`, 32 × 32 per frame. The stages are
 in days, from `crops.json`. Status: all to add; none is drawn.

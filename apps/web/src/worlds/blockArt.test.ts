@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { BLOCKS } from '@agora/shared';
-import { placeholderTiles, TILE_PX, renderTile } from '../placeholders';
-import { CROP_HUES, SIDE_PX, allBlockFrames, cropFrameName, cropFrameSet, cropPixels, cropVariant, sidePixels, sprinklerPixels, topPixels } from './art';
-import { RIPE_FRAME } from './math';
+import { placeholderTiles, TILE_PX, renderTile } from './placeholders';
+import { CROP_HUES, SIDE_PX, allBlockFrames, cropFrameName, cropFrameSet, cropPixels, cropVariant, sidePixels, sprinklerPixels, topPixels } from './blockArt';
+import { RIPE_FRAME } from './cellMath';
 
 const tile = (id: string) => renderTile(BLOCKS.byId.get(id)!);
 const px = (data: Uint8ClampedArray, w: number, x: number, y: number) => {
