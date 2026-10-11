@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BLOCKS, WORLD_BIOMES, getBlock } from './registry';
 import { CHUNK_SIZE, LEVEL_MAX } from './constants';
-import { WORLDGEN } from './gen';
+import { WORLDGEN, worldGenParamsFor } from './gen';
 import { worldSeedFor } from './noise';
 import { NO_RIVER, riverAt } from './rivers';
 import {
@@ -15,7 +15,8 @@ import {
   pickDecor,
 } from './terrain';
 
-const P = WORLDGEN.params;
+// the golden values were made with the params of genVersion 1 (before cave mouths, P17.32)
+const P = worldGenParamsFor(WORLDGEN, 1);
 const SEED = worldSeedFor('golden-1');
 
 // Golden values: computed by this module and reproduced exactly by an independent Python port

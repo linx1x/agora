@@ -4,6 +4,7 @@ export * from './registry';
 export * from './biomes';
 export * from './gen';
 export * from './terrain';
+export * from './caves';
 export * from './rivers';
 export * from './cells';
 export * from './walk';

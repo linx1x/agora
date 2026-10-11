@@ -65,6 +65,8 @@ import {
   deskGate,
   deskOfPortal,
   inPortal,
+  isCaveId,
+  portalAllows,
   type PortalRefusal,
 } from '@agora/shared';
 import {
@@ -168,8 +170,11 @@ export interface Player {
   admitted: Set<string>;
   /** pending knock: desk id and expiry */
   knock?: { deskId: string; until: number };
-  /** inside a personal world (P17.9): out of this office's presence, media and links until back */
-  world?: { room: WorldRoom; member: WorldMember };
+  /**
+   * inside a personal world (P17.9): out of this office's presence, media and links until back.
+   * `deskId` is the desk whose world it is: the rights to enter it and its caves are read from that desk.
+   */
+  world?: { room: WorldRoom; member: WorldMember; deskId: string };
   lastCallover: Map<string, number>;
   buckets: {
     move: Bucket;
@@ -891,7 +896,7 @@ export class SpaceRoom {
       return refuse(again.result === 'ok' ? 'no_world' : again.result);
     }
     p.conn.send({ t: 'portal:go', id, worldId: world.id, spawn: room.spawn() });
-    this.enterWorld(p, room, p.conn);
+    this.enterWorld(p, room, p.conn, this.desks.get(deskId)?.ownerName ?? '', deskId);
   }
 
   /**
@@ -899,7 +904,7 @@ export class SpaceRoom {
    * the world. Nothing of the office is sent to them after this (`broadcast` and `recomputeLinks`
    * only reach people in `players`), and nothing of the world reaches the office.
    */
-  private enterWorld(p: Player, room: WorldRoom, conn: Conn) {
+  private enterWorld(p: Player, room: WorldRoom, conn: Conn, owner: string, deskId: string) {
     const from = p.zone;
     this.players.delete(p.id);
     this.opts.npcs?.talk?.engine.end(p.uid);
@@ -912,13 +917,89 @@ export class SpaceRoom {
     this.recomputeLinks();
     p.world = {
       room,
+      deskId,
       member: room.join(
         conn,
         { id: p.id, uid: p.uid, name: p.profile.name, avatar: p.profile.avatar },
         this.worldMedia(),
+        owner,
       ),
     };
     this.log.info({ player: p.id, world: room.id }, 'entered world');
+  }
+
+  /**
+   * The rights to be in a world at all, read again whenever it matters (P17.32): the desk's own
+   * rules, for its owner and for the people the owner let in. `no_world` when the desk is unclaimed.
+   */
+  private worldGate(p: Player, from: NonNullable<Player['world']>, id: string): 'ok' | PortalRefusal {
+    if (p.world !== from || from.room.caveMouthAt(from.member) !== id) return 'outside';
+    const desk = this.desks.get(from.deskId);
+    if (!desk) return 'no_world';
+    if (!portalAllows(desk.access, desk.ownerUid === p.uid, p.admitted.has(from.deskId))) return 'no_permission';
+    return 'ok';
+  }
+
+  /**
+   * World → cave (P17.32): only the mouth under the person's own feet opens a cave, and only while
+   * they may be in this world. The cave is its own room with its own chat and media: the people left
+   * in the world neither hear nor see the people who go in, and the reverse holds too.
+   */
+  private async onCaveEnter(p: Player, id: string) {
+    const refuse = (reason: PortalRefusal) => p.conn?.send({ t: 'portal:refused', id, reason });
+    const from = p.world;
+    if (!from || from.room.cave) return refuse('unknown');
+    if (this.opts.clientConfig.flags.worlds !== true) return refuse('disabled');
+    const first = this.worldGate(p, from, id);
+    if (first !== 'ok') return refuse(first);
+    const room = await this.worlds.enter(id).catch(() => null);
+    if (!room || room.disposed) return refuse('no_world');
+    // the person may have moved, left or lost the right while the cave loaded
+    const again = this.worldGate(p, from, id);
+    if (again !== 'ok' || !p.conn) {
+      this.worlds.release(room);
+      return refuse(again === 'ok' ? 'no_world' : again);
+    }
+    this.moveWorld(p, room, from.deskId);
+  }
+
+  /**
+   * Cave → world (P17.32): the pad takes the person back to the world the cave opens from, beside its
+   * mouth. Leaving needs no right: anyone inside may always step out.
+   */
+  private async leaveCave(p: Player) {
+    const from = p.world;
+    const cave = from?.room.cave;
+    if (!from || !cave) return;
+    const parent = await this.worlds.enter(cave.worldId).catch(() => null);
+    if (!parent || parent.disposed) return p.conn?.send({ t: 'portal:refused', id: RETURN_PORTAL_ID, reason: 'no_world' });
+    if (p.world !== from || !p.conn) {
+      this.worlds.release(parent);
+      return;
+    }
+    this.moveWorld(p, parent, from.deskId, parent.arrivalNextTo(cave.mouthX, cave.mouthY));
+  }
+
+  /**
+   * Between two worlds of one desk (a cave in or out): the person leaves the room they are in, which
+   * tells the people there, and joins the other, which welcomes them with its own terrain and people.
+   */
+  private moveWorld(p: Player, room: WorldRoom, deskId: string, at?: { x: number; y: number }) {
+    const conn = p.conn;
+    const old = p.world;
+    if (!conn || !old) return;
+    p.world = undefined;
+    old.room.leave(old.member);
+    const owner = this.desks.get(deskId)?.ownerName ?? '';
+    const member = room.join(
+      conn,
+      { id: p.id, uid: p.uid, name: p.profile.name, avatar: p.profile.avatar },
+      this.worldMedia(),
+      owner,
+      at,
+    );
+    p.world = { room, deskId, member };
+    this.log.info({ player: p.id, world: room.id }, 'moved world');
   }
 
   /** The SFU a world's members use, when this server runs one (ADR-031). */
@@ -1008,10 +1089,15 @@ export class SpaceRoom {
         return w.room.refreshMedia(w.member);
       case 'portal:enter': {
         if (!p.buckets.misc.take()) return;
-        if (m.id !== RETURN_PORTAL_ID) return p.conn?.send({ t: 'portal:refused', id: m.id, reason: 'unknown' });
-        if (!w.room.atReturn(w.member))
-          return p.conn?.send({ t: 'portal:refused', id: m.id, reason: 'outside' });
-        return this.leaveWorld(p);
+        if (m.id === RETURN_PORTAL_ID) {
+          if (!w.room.atReturn(w.member))
+            return p.conn?.send({ t: 'portal:refused', id: m.id, reason: 'outside' });
+          // the pad of a cave goes back to its world; the pad of a world goes back to the office
+          if (w.room.cave) return void this.leaveCave(p);
+          return this.leaveWorld(p);
+        }
+        if (isCaveId(m.id)) return void this.onCaveEnter(p, m.id);
+        return p.conn?.send({ t: 'portal:refused', id: m.id, reason: 'unknown' });
       }
       case 'ping':
         return p.conn?.send({ t: 'pong', at: m.at });

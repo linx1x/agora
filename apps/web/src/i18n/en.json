@@ -384,7 +384,11 @@
     "worldVisit": "{{name}}'s world: X to enter",
     "worldBtn": "Enter the world",
     "worldExit": "X: back to the office",
-    "worldExitBtn": "Back to the office"
+    "worldExitBtn": "Back to the office",
+    "cave": "X: enter the cave",
+    "caveBtn": "Enter the cave",
+    "caveExit": "X: leave the cave",
+    "caveExitBtn": "Leave the cave"
   },
   "nav": {
     "unreachable": "Can't get there"
@@ -1108,7 +1112,14 @@
       "return_pad": "Return pad",
       "bed": "Bed",
       "shipping_bin": "Shipping bin",
-      "shop_board": "Shop board"
+      "shop_board": "Shop board",
+      "door": "Door",
+      "cave_floor": "Cave floor",
+      "cave_rock": "Cave rock",
+      "cave_mouth": "Cave mouth",
+      "ore_copper": "Copper ore",
+      "ore_iron": "Iron ore",
+      "ore_gold": "Gold ore"
     },
     "biome": {
       "meadow": "Meadow",
@@ -1241,6 +1252,14 @@
       "pearl_anchovy": "Pearl anchovy",
       "deep_ray": "Deep ray"
     },
-    "noRoute": "No route there."
+    "noRoute": "No route there.",
+    "card": {
+      "title": "World of {{owner}}",
+      "untitled": "Personal world",
+      "hint": "Only the people in this world can hear you",
+      "caveTitle": "Cave of {{owner}}",
+      "caveUntitled": "Cave",
+      "caveHint": "Only the people in this cave can hear you"
+    }
   }
 }

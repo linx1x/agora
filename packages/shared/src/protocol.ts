@@ -287,10 +287,14 @@ export type S2CMsg =
   | { t: 'portal:go'; id: string; worldId: string; spawn: { x: number; y: number } }
   /** P17.8: the portal was not entered, and why */
   | { t: 'portal:refused'; id: string; reason: PortalRefusal }
-  /** P17.9: you are in a world. Its seed and generator (the client regenerates the terrain) and who is here. */
+  /**
+   * P17.9: you are in a world. Its seed and generator (the client regenerates the terrain) and who is here.
+   * `owner` is the owner's display name (FIX-1: the card says "Monde de <owner>"), never a user id.
+   */
   | {
       t: 'world:welcome';
       worldId: string;
+      owner: string;
       you: string;
       seed: number;
       genVersion: number;

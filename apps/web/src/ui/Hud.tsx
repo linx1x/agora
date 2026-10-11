@@ -4,11 +4,15 @@ import { Lock, VolumeX, Users } from 'lucide-react';
 import { zoneName } from '../game/controller';
 import { store, useStore } from '../state/store';
 import { media } from '../media/MediaManager';
+import { placeOfWorldId, worldCardText } from '../worlds/card';
 
 /** Room name (bottom-right), who-can-hear hint, banners and the screen-reader live region (P6.6). */
 export function Hud() {
   const { t } = useTranslation();
   const zone = useStore((s) => s.myZone);
+  // FIX-1: inside a personal world the card names the world; the office zone is stale there
+  const worldId = useStore((s) => s.worldId);
+  const worldOwner = useStore((s) => s.worldOwner);
   const conn = useStore((s) => s.conn);
   const toast = useStore((s) => s.toast);
   const mediaError = useStore((s) => s.mediaError);
@@ -19,15 +23,20 @@ export function Hud() {
   const sfu = useStore((s) => s.sfu);
   const [announce, setAnnounce] = useState('');
   const prevPeers = useRef<string[]>([]);
-  const prevZone = useRef<string | null | undefined>(undefined);
+  const prevZone = useRef<string | undefined>(undefined);
   void store;
+
+  const card = worldId !== null ? worldCardText(placeOfWorldId(worldId), worldOwner) : null;
+  const cardTitle = card ? t(card.titleKey, card.titleVars) : null;
 
   useEffect(() => {
     const zid = zone?.id ?? null;
-    if (prevZone.current !== undefined && prevZone.current !== zid)
-      setAnnounce(t('a11y.entered', { place: zoneName(zid) }));
-    prevZone.current = zid;
-  }, [zone, t]);
+    // entering or leaving a world changes the place as much as walking into a pod does
+    const place = `${zid ?? ''}|${worldId ?? ''}`;
+    if (prevZone.current !== undefined && prevZone.current !== place)
+      setAnnounce(t('a11y.entered', { place: cardTitle ?? zoneName(zid) }));
+    prevZone.current = place;
+  }, [zone, worldId, cardTitle, t]);
 
   useEffect(() => {
     const added = peers.filter((p) => !prevPeers.current.includes(p));
@@ -43,9 +52,11 @@ export function Hud() {
     prevPeers.current = peers;
   }, [peers, profiles, t]);
 
-  const kind = zone?.kind;
-  const hearHint =
-    kind === 'private'
+  // inside a world the card is the world's own, whatever the office zone was when I entered
+  const kind = card ? 'world' : zone?.kind;
+  const hearHint = card
+    ? t(card.hintKey)
+    : kind === 'private'
       ? t('zone.hintPrivate')
       : kind === 'desk'
         ? t('zone.hintDesk')
@@ -57,18 +68,20 @@ export function Hud() {
 
   return (
     <>
-      {(kind === 'private' || kind === 'desk') && <div className="private-frame" aria-hidden />}
+      {(kind === 'private' || kind === 'desk' || kind === 'world') && (
+        <div className="private-frame" aria-hidden />
+      )}
       <div className="room-name" role="status">
         {spaceName && <span className="room-space">{spaceName}</span>}
         <span className="room-title">
-          {kind === 'private' || kind === 'desk' ? (
+          {kind === 'private' || kind === 'desk' || kind === 'world' ? (
             <Lock size={14} aria-hidden />
           ) : kind === 'quiet' ? (
             <VolumeX size={14} aria-hidden />
           ) : (
             <Users size={14} aria-hidden />
           )}
-          {zoneName(zone?.id)}
+          {cardTitle ?? zoneName(zone?.id)}
         </span>
         <span className="room-hint">{hearHint}</span>
       </div>

@@ -146,6 +146,22 @@ export function PromptBar() {
               </button>
             </>
           )}
+          {prompt.kind === 'cave' && (
+            <>
+              <span>{t('prompt.cave')}</span>
+              <button type="button" className="btn primary small-btn" onClick={act}>
+                {t('prompt.caveBtn')}
+              </button>
+            </>
+          )}
+          {prompt.kind === 'caveExit' && (
+            <>
+              <span>{t('prompt.caveExit')}</span>
+              <button type="button" className="btn primary small-btn" onClick={act}>
+                {t('prompt.caveExitBtn')}
+              </button>
+            </>
+          )}
           {prompt.kind === 'teleport' && (
             <>
               <span>{t('prompt.teleport')}</span>

@@ -7,13 +7,21 @@
  */
 import { randomUUID } from 'node:crypto';
 import {
+  CAVE_ARRIVAL,
+  CAVE_MOUTH_BLOCK,
   ChunkDeltaSchema,
   WORLDGEN,
+  caveExitRect,
+  caveIdOf,
+  cellFeet,
   loadGameData,
+  parseCaveId,
   WORLD_CELL_PX,
   WORLD_SPAWN,
   WORLD_VIEW_CHUNKS,
-  WorldTerrain,
+  type CaveRef,
+  type WorldTerrain,
+  worldTerrainFor,
   chunkKey,
   chunkOfCell,
   chunkOfPoint,
@@ -163,6 +171,8 @@ export class WorldRoom {
   readonly genVersion: number;
   readonly params: WorldGenParams;
   readonly terrain: WorldTerrain;
+  /** Set for a cave (P17.32): the world it opens from and its mouth. A cave has no farm and no edits. */
+  readonly cave: CaveRef | null;
   private readonly members = new Map<string, WorldMember>();
   /** stored edits only, by chunk key: the revision each chunk was saved at */
   private readonly deltas = new Map<string, { rev: number; delta: ChunkDelta }>();
@@ -209,24 +219,26 @@ export class WorldRoom {
     this.planners = deps.planners;
     this.log = deps.log ?? NO_LOG;
     this.onEmpty = onEmpty;
-    this.returnRect = returnTrigger(starter);
+    this.cave = parseCaveId(world.id);
+    this.returnRect = this.cave ? caveExitRect() : returnTrigger(starter);
     for (const c of stored) {
       // a stored delta that no longer parses is left out: its cells show the stamp or the base terrain
       const parsed = ChunkDeltaSchema.safeParse(c.delta);
       if (parsed.success) this.deltas.set(chunkKey(c.cx, c.cy), { rev: c.rev, delta: parsed.data });
     }
-    const stamp = starterPatches(starter);
+    // a cave has no starter stamp: its base is the cave map alone
+    const stamp = this.cave ? new Map<string, ChunkDelta>() : starterPatches(starter);
     this.stamp = stamp;
     for (const key of new Set([...stamp.keys(), ...this.deltas.keys()]))
       this.effective.set(key, mergeDeltas(stamp.get(key), this.deltas.get(key)?.delta));
     // the terrain reads the effective layers, built once here, so a chunk costs no copy per cell
-    this.terrain = new WorldTerrain(world.seed, params, {
+    this.terrain = worldTerrainFor(world.id, world.seed, params, {
       overlay: deltaOverlay((cx, cy) => this.effective.get(chunkKey(cx, cy))),
     });
     this.clock = deps.now ?? Date.now;
     this.timeSlot = timeSlotOf(worldTime(world.createdAt, this.clock()));
-    // the farm is brought up to today on load; actions also catch up inside their own transaction
-    this.farmReady = this.enqueue(() => this.catchUp());
+    // the farm is brought up to today on load (actions also catch up in their own transaction); a cave has none
+    this.farmReady = this.cave ? Promise.resolve() : this.enqueue(() => this.catchUp());
     if (deps.autoTick !== false) {
       this.timer = setInterval(() => this.tick(), 1000);
       this.timer.unref?.();
@@ -277,7 +289,7 @@ export class WorldRoom {
   tick(): void {
     if (this.disposed) return;
     const time = worldTime(this.world.createdAt, this.clock());
-    if (time.day !== this.farmDay) void this.enqueue(() => this.catchUp());
+    if (!this.cave && time.day !== this.farmDay) void this.enqueue(() => this.catchUp());
     const slot = timeSlotOf(time);
     if (slot !== this.timeSlot) {
       this.timeSlot = slot;
@@ -314,7 +326,30 @@ export class WorldRoom {
 
   /** Where someone arriving stands (see `worldSpawn`). */
   spawn(): { x: number; y: number } {
-    return worldSpawn(this.terrain);
+    return this.cave ? cellFeet(CAVE_ARRIVAL.x, CAVE_ARRIVAL.y) : worldSpawn(this.terrain);
+  }
+
+  /**
+   * Where someone coming back out of a cave stands in this world: the nearest free ground beside the
+   * mouth at (x, y), never the mouth itself, so they are not sent straight back in.
+   */
+  arrivalNextTo(x: number, y: number): { x: number; y: number } {
+    for (let r = 1; r <= SPAWN_SEARCH_CELLS; r++)
+      for (let dy = -r; dy <= r; dy++)
+        for (let dx = -r; dx <= r; dx++) {
+          if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+          const at = cellFeet(x + dx, y + dy);
+          if (!worldCollides(this.terrain, at.x, at.y)) return at;
+        }
+    return cellFeet(x, y);
+  }
+
+  /** The cave a cave mouth under this person's feet opens, or null. Only the server's terrain decides. */
+  caveMouthAt(m: WorldMember): string | null {
+    if (this.cave || this.members.get(m.id) !== m) return null;
+    const x = Math.floor(m.x / WORLD_CELL_PX);
+    const y = Math.floor(m.y / WORLD_CELL_PX);
+    return this.terrain.cellAt(x, y).decor === CAVE_MOUTH_BLOCK ? caveIdOf(this.id, x, y) : null;
   }
 
   /**
@@ -325,8 +360,9 @@ export class WorldRoom {
     conn: WorldConn,
     who: { id: string; uid: string; name: string; avatar: Avatar },
     media?: WorldMedia,
+    owner = '',
+    at: { x: number; y: number } = this.spawn(),
   ): WorldMember {
-    const at = this.spawn();
     const m: WorldMember = {
       id: who.id,
       uid: who.uid,
@@ -345,6 +381,7 @@ export class WorldRoom {
     conn.send({
       t: 'world:welcome',
       worldId: this.id,
+      owner,
       you: m.id,
       seed: this.seed,
       genVersion: this.genVersion,
@@ -369,6 +406,11 @@ export class WorldRoom {
    */
   act(m: WorldMember, req: WorldActRequest): void {
     if (this.disposed || this.members.get(m.id) !== m) return;
+    // a cave has no edits, farm or inventory rules yet (P17.33 brings mining there): nothing acts
+    if (this.cave) {
+      m.conn?.send({ t: 'world:refused', op: req.op, reason: 'forbidden' });
+      return;
+    }
     this.pending++;
     this.chain = this.chain
       .then(() => this.runAct(m, req))
@@ -650,16 +692,22 @@ export class WorldHub {
     if (room.size === 0) this.close(room);
   }
 
+  /**
+   * A world's room, or a cave's (P17.32): a cave is opened from its world's row, under the cave's own
+   * id, with the world's seed and generator, and no stored edits (the cave has none).
+   */
   private async open(worldId: string): Promise<WorldRoom | null> {
-    const world = await this.store.getWorld(worldId);
-    if (!world) return null;
+    const cave = parseCaveId(worldId);
+    const parent = await this.store.getWorld(cave ? cave.worldId : worldId);
+    if (!parent) return null;
+    const world: StoredWorld = cave ? { ...parent, id: worldId } : parent;
     let params: WorldGenParams;
     try {
       params = worldGenParamsFor(WORLDGEN, world.genVersion);
     } catch {
       return null;
     }
-    const stored = await this.store.loadAllChunks(worldId);
+    const stored = cave ? [] : await this.store.loadAllChunks(worldId);
     const starter = this.starter ?? defaultStarter();
     const room: WorldRoom = new WorldRoom(world, params, stored, () => this.close(room), starter, {
       store: this.store,

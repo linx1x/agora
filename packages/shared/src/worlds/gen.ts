@@ -35,6 +35,15 @@ export const RiverParamsSchema = z.strictObject({
 });
 export type RiverParams = z.infer<typeof RiverParamsSchema>;
 
+/** Cave mouths (caves.ts, P17.32). Absent in older params: the same as `mouthChance` 0, no caves. */
+export const CavesParamsSchema = z.strictObject({
+  /** Chance that a land cell (no decor, not water or sand) is a cave mouth. 0 turns caves off. */
+  mouthChance: z.number().min(0).max(0.2),
+  /** Mouths lie farther than this many cells from the origin, so the starter clearing stays free. */
+  clearRadius: z.number().int().min(0).max(64),
+});
+export type CavesParams = z.infer<typeof CavesParamsSchema>;
+
 export const WorldGenParamsSchema = z.strictObject({
   elevation: NoiseLayerSchema,
   temperature: NoiseLayerSchema,
@@ -46,6 +55,7 @@ export const WorldGenParamsSchema = z.strictObject({
   /** Elevation (0..1) from which a biome's alpine block is used. */
   alpineElevation: z.number().min(0.05).max(1),
   rivers: RiverParamsSchema,
+  caves: CavesParamsSchema.optional(),
 });
 export type WorldGenParams = z.infer<typeof WorldGenParamsSchema>;
 

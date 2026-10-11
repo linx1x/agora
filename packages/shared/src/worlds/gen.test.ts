@@ -21,8 +21,15 @@ function clone<T>(value: T): T {
 
 describe('shipped worldgen.json', () => {
   it('has a genVersion and params that match it', () => {
-    expect(WORLDGEN.genVersion).toBe(1);
-    expect(worldGenParamsFor(WORLDGEN, 1)).toBe(WORLDGEN.params);
+    expect(WORLDGEN.genVersion).toBe(2);
+    expect(worldGenParamsFor(WORLDGEN, 2)).toBe(WORLDGEN.params);
+  });
+
+  it('keeps the genVersion 1 params without caves, so older worlds generate as before', () => {
+    const v1 = worldGenParamsFor(WORLDGEN, 1);
+    expect(v1.caves).toBeUndefined();
+    expect(v1.rivers).toEqual(WORLDGEN.params.rivers);
+    expect(WORLDGEN.params.caves).toEqual({ mouthChance: 0.006, clearRadius: 16 });
   });
 
   it('refuses a version that was never shipped', () => {

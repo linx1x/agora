@@ -471,6 +471,83 @@
       "placeable": true,
       "light": 0,
       "biomes": []
+    },
+    {
+      "id": "door",
+      "layer": "decor",
+      "sprite": "worlds/shared/door",
+      "solid": false,
+      "liquid": false,
+      "height": 1,
+      "placeable": true,
+      "light": 0,
+      "biomes": []
+    },
+    {
+      "id": "cave_floor",
+      "layer": "ground",
+      "sprite": "worlds/shared/cave_floor",
+      "solid": false,
+      "liquid": false,
+      "height": 0,
+      "placeable": false,
+      "light": 0,
+      "biomes": []
+    },
+    {
+      "id": "cave_rock",
+      "layer": "ground",
+      "sprite": "worlds/shared/cave_rock",
+      "solid": false,
+      "liquid": false,
+      "height": 0,
+      "placeable": false,
+      "light": 0,
+      "biomes": []
+    },
+    {
+      "id": "cave_mouth",
+      "layer": "decor",
+      "sprite": "worlds/shared/cave_mouth",
+      "solid": false,
+      "liquid": false,
+      "height": 0,
+      "placeable": false,
+      "light": 0,
+      "biomes": []
+    },
+    {
+      "id": "ore_copper",
+      "layer": "decor",
+      "sprite": "worlds/shared/ore_copper",
+      "solid": true,
+      "liquid": false,
+      "height": 1,
+      "placeable": false,
+      "light": 0,
+      "biomes": []
+    },
+    {
+      "id": "ore_iron",
+      "layer": "decor",
+      "sprite": "worlds/shared/ore_iron",
+      "solid": true,
+      "liquid": false,
+      "height": 1,
+      "placeable": false,
+      "light": 0,
+      "biomes": []
+    },
+    {
+      "id": "ore_gold",
+      "layer": "decor",
+      "sprite": "worlds/shared/ore_gold",
+      "solid": true,
+      "liquid": false,
+      "height": 1,
+      "placeable": false,
+      "light": 0,
+      "biomes": []
     }
   ]
 }

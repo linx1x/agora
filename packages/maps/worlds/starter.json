@@ -5,7 +5,7 @@
   "legend": {
     "W": { "block": "wood_floor", "decor": "wood_wall" },
     "w": { "block": "wood_floor" },
-    "d": { "block": "wood_floor" },
+    "d": { "block": "wood_floor", "decor": "door" },
     "B": { "block": "wood_floor", "decor": "bed" },
     "f": { "block": "tilled_soil" },
     "S": { "block": "meadow_dirt", "decor": "shipping_bin" },

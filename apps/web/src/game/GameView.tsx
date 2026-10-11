@@ -14,9 +14,11 @@ export function GameView() {
   // 2.5D (P16.6) when the flag and this device ask for it, build mode included (P16.13).
   // A choice made in this session (Settings, or the automatic switch to 2D) wins.
   const engine = chooseEngine({ world25d }, location.search, readStoredView(), choice);
-  // P17.14: inside a personal world the world view replaces the office view (a remount); the
-  // 2.5D world view is P17.15, so a world is drawn flat for now.
-  const inWorld = useStore((s) => s.worldId !== null);
+  // P17.14: inside a personal world the world view replaces the office view (a remount). P17.15: the
+  // world has its own 2.5D view, the same engine choice as the office.
+  // a cave (P17.32) is another world: a new id remounts the view, so its terrain and walker start fresh
+  const worldKey = useStore((s) => s.worldId);
+  const inWorld = worldKey !== null;
 
   useEffect(() => {
     installInput();
@@ -29,7 +31,9 @@ export function GameView() {
     void loadSheets().then(async () => {
       if (cancelled || !ref.current) return;
       const stop = inWorld
-        ? start2d(ref.current, WorldRoomScene)
+        ? engine === '2.5d'
+          ? await start25dWorld(ref.current)
+          : start2d(ref.current, WorldRoomScene)
         : engine === '2.5d'
           ? await start25d(ref.current)
           : start2d(ref.current, WorldScene);
@@ -40,7 +44,7 @@ export function GameView() {
       cancelled = true;
       unmount?.();
     };
-  }, [engine, inWorld]);
+  }, [engine, inWorld, worldKey]);
 
   return <div ref={ref} className="world-canvas" aria-hidden="true" />;
 }
@@ -68,9 +72,30 @@ function start2d(parent: HTMLDivElement, scene: typeof WorldScene | typeof World
  * it (no WebGL, or the chunk fails to load) gets the 2D view: remembered, with a toast (P16.11).
  */
 async function start25d(parent: HTMLDivElement): Promise<() => void> {
-  try {
+  return start25dOr2d(parent, async () => {
     const { World3DView } = await import('../game3d/World3DView');
-    const view = new World3DView(parent);
+    return new World3DView(parent);
+  });
+}
+
+/** The 2.5D view of a personal world (P17.15), its own chunk like the office's. */
+async function start25dWorld(parent: HTMLDivElement): Promise<() => void> {
+  return start25dOr2d(parent, async () => {
+    const { WorldRoom3DView } = await import('../worlds/view3d/WorldRoom3DView');
+    return new WorldRoom3DView(parent);
+  });
+}
+
+/**
+ * Start a 2.5D view, or fall back to 2D when it cannot start (no WebGL, or the chunk fails to load):
+ * the choice is remembered and the device gets a toast (P16.11, P17.15).
+ */
+async function start25dOr2d(
+  parent: HTMLDivElement,
+  make: () => Promise<{ destroy(): void }>,
+): Promise<() => void> {
+  try {
+    const view = await make();
     return () => view.destroy();
   } catch {
     // a half-built canvas must not stay under the 2D game

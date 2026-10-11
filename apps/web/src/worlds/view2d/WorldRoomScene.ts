@@ -11,9 +11,7 @@ import { rendered } from '../../game/controller';
 import { inputVector, isTyping } from '../../game/input';
 import { exposeTestApi, type ViewTestApi } from '../../game/view';
 import {
-  RETURN_PORTAL_ID,
   avatarKey,
-  inPortal,
   type Avatar,
   type Dir,
   type GridCell,
@@ -23,7 +21,7 @@ import { store, toast } from '../../state/store';
 import { COMPACT_QUERY, matches } from '../../ui/layout';
 import { worldSession } from '../session';
 import { WorldWalker, cellFeet } from '../walker';
-import { RETURN_RECT } from '../starter';
+import { portalOfPrompt, worldPromptAt } from '../prompts';
 import { TEX, addWorldTextures } from './atlas';
 import { cropFrameName } from './art';
 import {
@@ -41,6 +39,12 @@ import {
 } from './math';
 
 const D_PATH = 1e8;
+/**
+ * The shade of a side strip (FIX-1): a step is in shadow, a cliff of two or more levels darker
+ * still. The tint multiplies the block's side colour, so a light side reads as a clear face.
+ */
+const STRIP_STEP = 0x8f8f8f;
+const STRIP_STEEP = 0x555555;
 const D_LABEL = 1e9;
 const WALK_SEQ = [1, 0, 3, 2];
 /** Height the phone dock covers at the bottom of the screen (as the office view). */
@@ -218,8 +222,8 @@ export class WorldRoomScene extends Phaser.Scene {
 
   /** X (or the touch button): act on the current prompt. */
   act(): void {
-    const p = store.get().prompt;
-    if (p?.kind === 'worldExit') link.send({ t: 'portal:enter', id: RETURN_PORTAL_ID });
+    const id = portalOfPrompt(store.get().prompt);
+    if (id !== null) link.send({ t: 'portal:enter', id });
   }
 
   private drawPath(): void {
@@ -299,7 +303,7 @@ export class WorldRoomScene extends Phaser.Scene {
           .image(x, strip.y, TEX.side, `side:${block}`)
           .setOrigin(0, 0)
           .setCrop(0, 0, CELL, strip.h)
-          .setTint(strip.shade === 'steep' ? 0x8c8c8c : 0xc2c2c2)
+          .setTint(strip.shade === 'steep' ? STRIP_STEEP : STRIP_STEP)
           .setDepth(depthOf(base, level, RANK.strip)),
       );
     }
@@ -454,9 +458,17 @@ export class WorldRoomScene extends Phaser.Scene {
   /** ~3 Hz: the prompt for the return pad. */
   private slowTick(): void {
     const at = this.walker;
-    const prompt = inPortal(RETURN_RECT, at.x, at.y) ? ({ kind: 'worldExit' } as const) : null;
+    const prompt = worldPromptAt(worldSession.worldId, worldSession.terrain, at);
     const cur = store.get().prompt;
     if (JSON.stringify(prompt) !== JSON.stringify(cur ?? null)) store.set({ prompt });
+  }
+
+  /**
+   * A tool swing by a person (P17.21b): the same hook as the 2.5D view (WorldRoom3DView). The swing
+   * frames per direction, sparks and the shake are not drawn yet.
+   */
+  playSwing(_personId: string, _dir: Dir, _tier: number): void {
+    // TODO(P17.21b): swing frames per direction from worlds/tools/swing.ts, sparks, the shake (off under reduced motion)
   }
 
   // ───────────────────────────────────────────── e2e handles

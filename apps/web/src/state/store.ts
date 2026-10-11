@@ -56,7 +56,11 @@ export type Prompt =
   /** P17.14: standing in a pod I may enter: X goes into the owner's world (`portal:enter`) */
   | { kind: 'world'; deskId: string; owner: string | null }
   /** P17.14: standing on the return pad of a world: X goes back to the office desk */
-  | { kind: 'worldExit' };
+  | { kind: 'worldExit' }
+  /** P17.32: standing on a cave mouth in a world: X goes into the cave `id` (`portal:enter`) */
+  | { kind: 'cave'; id: string }
+  /** P17.32: standing on the pad of a cave: X comes back out to its world */
+  | { kind: 'caveExit' };
 
 /** One line in a Talk box: mine (kept only in this browser) or a character's (P15.4). */
 export interface NpcLogLine {
@@ -246,6 +250,8 @@ export interface AppState {
   myDesk: string | null;
   /** P17.14: the personal world I am in (null: the office). GameView mounts the world view for it. */
   worldId: string | null;
+  /** FIX-1: the owner's display name of that world (the card says "Monde de <owner>"); '' when unknown */
+  worldOwner: string;
   admitted: string[];
   prompt: Prompt | null;
   knocks: { from: string; name: string; deskId: string }[];
@@ -344,6 +350,7 @@ const initial: AppState = {
   npcMemory: {},
   myDesk: null,
   worldId: null,
+  worldOwner: '',
   admitted: [],
   prompt: null,
   knocks: [],

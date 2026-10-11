@@ -1,0 +1,686 @@
+/**
+ * The 2.5D view of a personal world (P17.15, ADR-053): a fixed-tilt Three.js camera over the cells
+ * it can see, drawn as one merged mesh per chunk of 32 × 32 cells (tops, stepped cliffs, decor and
+ * the farm layer, `geometry.ts`), with the people as paper cut-outs and names as screen overlays.
+ * It is the same world as the flat view (WorldRoomScene): the walking is `WorldWalker`, the
+ * terrain is `worldSession.terrain`, and the clicks and the e2e hooks follow the flat view's pixel
+ * rules, so the two views agree on every cell. Visual only: nothing here changes the server.
+ *
+ * Heights: a level is `heightOf(level)` tiles above the floor (12 px of the flat view). Occlusion:
+ * the solid decor (walls, trees) fades over a person behind it (`occlusion.ts`, as the office).
+ */
+import * as THREE from 'three';
+import {
+  CHUNK_SIZE,
+  TILE,
+  type Dir,
+  type GridCell,
+} from '@agora/shared';
+import { world as link } from '../../net/client';
+import { rendered } from '../../game/controller';
+import { inputVector, isTyping } from '../../game/input';
+import { exposeTestApi, type ViewTestApi } from '../../game/view';
+import { store, toast } from '../../state/store';
+import { COMPACT_QUERY, matches } from '../../ui/layout';
+import { worldSession } from '../session';
+import { WorldWalker } from '../walker';
+import { portalOfPrompt, worldPromptAt } from '../prompts';
+import type { WorldTestApi } from '../view2d/WorldRoomScene';
+import { CELL, farmVisual, pickCell, type CellWindow } from '../view2d/math';
+import { cropFrameName } from '../view2d/art';
+import {
+  FOV,
+  TILT,
+  camPos,
+  distForZoom,
+  dockPx,
+  fitZoom,
+  followStep,
+  project,
+  screenRay,
+  unprojectFloor,
+  type Cam,
+  type Pt,
+} from '../../game3d/camera';
+import { FADE_ATTR, Occlusion, ditherFade } from '../../game3d/occlusion';
+import { screenBox, type Subject } from '../../game3d/occlusionMath';
+import { PaperFigures } from '../../game3d/paperFigures';
+import { paperScale } from '../../game3d/paperLayout';
+import { Overlays } from '../../game3d/overlays';
+import { FrameRate, SlowWatch } from '../../game3d/fallback';
+import { PROBE_MS, PROBE_WARMUP_MS, decideTier, isSoftwareGpu } from '../../game3d/tier';
+import { rememberView } from '../../game3d/engine';
+import { pixelTexture } from '../../game3d/meshes';
+import { buildWorldAtlas, type WorldAtlas } from './atlas3d';
+import { buildChunk, type CellIn, type ChunkGeometry } from './geometry';
+import { cellOnRay, chunkKey, chunksIn, heightOf, windowOf, type ChunkIndex } from './math3d';
+
+const BG = 0x1b2733;
+const FADE_BG = 'rgb(10, 20, 30)';
+const FADE_IN_MS = 300;
+const CAM_NEAR = 0.5;
+const CAM_FAR = 200;
+/** the controller's ~3 Hz work, as the flat view (the return pad's prompt) */
+const SLOW_MS = 300;
+/** a remote person catches up with the server's position in about this long (as the flat view) */
+const CATCH_UP_MS = 90;
+/** every other path cell is a dot (the flat view's rule) */
+const PATH_EVERY = 2;
+const PATH_Y = 0.03;
+const PORTRAIT_QUERY = '(orientation: portrait)';
+
+const reducedMotion = () =>
+  window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+/** Tests fix the hour with `?hour=`; then nothing is decided from this device's speed (P16.11). */
+const pinnedHour = () => new URLSearchParams(location.search).has('hour');
+
+function gpuName(renderer: THREE.WebGLRenderer): string {
+  const gl = renderer.getContext();
+  const ext = gl.getExtension('WEBGL_debug_renderer_info');
+  const name = ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
+  return String(name ?? '');
+}
+
+interface ChunkView {
+  readonly mesh: THREE.Mesh;
+  readonly occlusion: Occlusion | null;
+}
+
+export class WorldRoom3DView {
+  private readonly renderer: THREE.WebGLRenderer;
+  private readonly scene = new THREE.Scene();
+  private readonly camera = new THREE.PerspectiveCamera(FOV, 1, CAM_NEAR, CAM_FAR);
+  private readonly cam: Cam = { tx: 0, tz: 0, tilt: TILT, dist: 10, fov: FOV, w: 1, h: 1 };
+  private readonly atlas: WorldAtlas;
+  private readonly texture: THREE.CanvasTexture;
+  private readonly material: THREE.MeshBasicMaterial;
+  private readonly chunks = new Map<string, ChunkView>();
+  /** every chunk in view is rebuilt (the world's data or the farm changed) */
+  private dirtyAll = true;
+  private win: CellWindow | null = null;
+  private readonly people: PaperFigures;
+  private readonly overlays: Overlays;
+  private readonly fade: HTMLDivElement;
+  private fadeStart = 0;
+  private walker: WorldWalker | null = null;
+  private readonly drawn = new Map<string, { x: number; y: number }>();
+  private readonly shown = new Set<string>();
+  private target: Pt | null = null;
+  private following = true;
+  private zoomNow = 1;
+  private readonly pathMat = new THREE.PointsMaterial({
+    color: 0xf3f6f8,
+    size: 4,
+    sizeAttenuation: false,
+    transparent: true,
+    opacity: 0.55,
+    depthWrite: false,
+  });
+  private readonly goalMat = new THREE.PointsMaterial({
+    color: 0xf3f6f8,
+    size: 9,
+    sizeAttenuation: false,
+    transparent: true,
+    opacity: 0.8,
+    depthWrite: false,
+  });
+  private pathObj: THREE.Points | null = null;
+  private goalObj: THREE.Points | null = null;
+  private pathLen = 0;
+  private readonly gpu: string;
+  private readonly coarse: boolean;
+  private probe: FrameRate | null;
+  private readonly slowRate = new FrameRate(1000);
+  private readonly slowWatch = new SlowWatch();
+  private fellBack = false;
+  private lastFrame = 0;
+  private lastSlow = Number.NEGATIVE_INFINITY;
+  private raf = 0;
+  private destroyed = false;
+  private unsubs: (() => void)[] = [];
+  private ro: ResizeObserver | null = null;
+  private onKey: ((e: KeyboardEvent) => void) | null = null;
+
+  constructor(private readonly parent: HTMLElement) {
+    this.atlas = buildWorldAtlas();
+    this.renderer = new THREE.WebGLRenderer({ antialias: false });
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    this.renderer.setClearColor(BG);
+    parent.append(this.renderer.domElement);
+    this.renderer.domElement.style.touchAction = 'none';
+    this.gpu = gpuName(this.renderer);
+    this.coarse = window.matchMedia?.('(pointer: coarse)').matches ?? false;
+    this.probe = pinnedHour() ? null : new FrameRate(PROBE_MS, PROBE_WARMUP_MS);
+
+    this.texture = pixelTexture(this.atlas.canvas);
+    this.material = new THREE.MeshBasicMaterial({
+      map: this.texture,
+      vertexColors: true,
+      alphaTest: 0.5,
+      side: THREE.DoubleSide,
+    });
+    ditherFade(this.material);
+    // the paper cut-outs are lit cards (Lambert); the terrain is flat colour, as the flat view
+    this.scene.add(new THREE.AmbientLight(0xffffff, Math.PI));
+
+    this.fade = document.createElement('div');
+    this.fade.setAttribute('aria-hidden', 'true');
+    Object.assign(this.fade.style, {
+      position: 'absolute',
+      inset: '0',
+      background: FADE_BG,
+      opacity: reducedMotion() ? '0' : '1',
+      pointerEvents: 'none',
+    });
+    parent.append(this.fade);
+    this.fadeStart = performance.now();
+
+    this.people = new PaperFigures(this.scene, paperScale(window.devicePixelRatio || 1));
+    // after the canvas and the fade: the names go between them, so the fade covers them too
+    this.overlays = new Overlays(parent);
+
+    this.unsubs.push(
+      worldSession.on((c) => {
+        if (c === 'chunks' || c === 'farm' || c === 'welcome') this.dirtyAll = true;
+      }),
+    );
+    this.bindInput();
+    this.bindLayout();
+    this.layout();
+    exposeTestApi(this.testApi());
+    this.raf = requestAnimationFrame(this.frame);
+  }
+
+  private get canvas(): HTMLCanvasElement {
+    return this.renderer.domElement;
+  }
+
+  destroy(): void {
+    if (this.destroyed) return;
+    this.destroyed = true;
+    cancelAnimationFrame(this.raf);
+    this.unsubs.forEach((u) => u());
+    this.unsubs = [];
+    this.ro?.disconnect();
+    if (this.onKey) window.removeEventListener('keydown', this.onKey);
+    this.onKey = null;
+    for (const id of this.shown) rendered.delete(id);
+    exposeTestApi(null);
+    for (const v of this.chunks.values()) this.dropChunk(v);
+    this.chunks.clear();
+    this.clearPath();
+    this.people.dispose();
+    this.overlays.destroy();
+    this.pathMat.dispose();
+    this.goalMat.dispose();
+    this.material.dispose();
+    this.texture.dispose();
+    this.renderer.dispose();
+    this.renderer.forceContextLoss();
+    this.canvas.remove();
+    this.fade.remove();
+  }
+
+  // ───────────────────────────────────────────── input and layout
+  /** Walk to the cell under a point of the flat view's pixels (a click's rule, the People list's "go to"). */
+  clickPixel(wx: number, wy: number): void {
+    const t = worldSession.terrain;
+    if (!t) return;
+    this.walkTo(pickCell(wx, wy, (cx, cy) => t.cellAt(cx, cy).level));
+  }
+
+  private walkTo(cell: GridCell): void {
+    if (!this.walker) return;
+    if (!this.walker.goTo(cell)) toast('worlds.noRoute');
+    this.drawPath();
+  }
+
+  /** The cell a canvas point is over: the first one a ray through it meets (the raised tops too). */
+  private cellAtCanvas(sx: number, sy: number): GridCell | null {
+    const t = worldSession.terrain;
+    if (!t) return null;
+    const r = screenRay(this.cam, sx, sy);
+    return cellOnRay(r.o, r.d, (cx, cy) => t.cellAt(cx, cy).level);
+  }
+
+  /** X (or the touch button): act on the current prompt. */
+  private act(): void {
+    const id = portalOfPrompt(store.get().prompt);
+    if (id !== null) link.send({ t: 'portal:enter', id });
+  }
+
+  private stepZoom(dir: number): void {
+    const levels = [1, 2, 3, 4];
+    const cur = this.zoomNow;
+    const i = levels.findIndex((l) => l >= cur);
+    const next =
+      levels[Math.max(0, Math.min(levels.length - 1, (i < 0 ? levels.length - 1 : i) + dir))]!;
+    store.set({ zoom: next });
+  }
+
+  private bindInput(): void {
+    const c = this.canvas;
+    c.addEventListener('pointerdown', (e: PointerEvent) => {
+      if (e.button !== 0 || !this.walker) return;
+      (document.activeElement as HTMLElement | null)?.blur?.();
+      const r = c.getBoundingClientRect();
+      const cell = this.cellAtCanvas(e.clientX - r.left, e.clientY - r.top);
+      if (cell) this.walkTo(cell);
+    });
+    c.addEventListener('wheel', (e: WheelEvent) => this.stepZoom(e.deltaY > 0 ? -1 : 1), {
+      passive: true,
+    });
+    this.onKey = (e: KeyboardEvent) => {
+      if (isTyping() || e.metaKey || e.ctrlKey || e.altKey || store.get().dialog) return;
+      if (e.key === 'x' || e.key === 'X') this.act();
+    };
+    window.addEventListener('keydown', this.onKey);
+
+    let lastZoom = store.get().zoom;
+    let lastTouch = store.get().config?.flags.touchControls;
+    this.unsubs.push(
+      store.subscribe(() => {
+        const st = store.get();
+        if (st.zoom !== lastZoom || st.config?.flags.touchControls !== lastTouch) {
+          lastZoom = st.zoom;
+          lastTouch = st.config?.flags.touchControls;
+          this.layout();
+        }
+        const r = st.navRequest;
+        if (r) {
+          store.set({ navRequest: null });
+          if (r.kind === 'act') this.act();
+          else if (r.kind === 'point') this.clickPixel(r.x, r.y);
+          else if (r.kind === 'person') {
+            const at = rendered.get(r.id);
+            if (at) this.clickPixel(at.x, at.y);
+          }
+        }
+      }),
+    );
+  }
+
+  private bindLayout(): void {
+    this.ro = new ResizeObserver(() => this.layout());
+    this.ro.observe(this.parent);
+  }
+
+  /** The canvas fills the parent above the phone dock; the zoom is the stored level or the fit. */
+  private layout(): void {
+    if (this.destroyed) return;
+    const s = store.get();
+    const w = Math.max(1, this.parent.clientWidth);
+    const parentH = Math.max(1, this.parent.clientHeight);
+    const dock = dockPx(
+      matches(COMPACT_QUERY),
+      matches(PORTRAIT_QUERY),
+      s.config?.flags.touchControls !== false,
+    );
+    const h = Math.max(1, parentH - dock);
+    this.renderer.setSize(w, h, true);
+    this.camera.aspect = w / h;
+    this.camera.updateProjectionMatrix();
+    this.zoomNow = s.zoom ?? fitZoom(w, h);
+    Object.assign(this.cam, { w, h, dist: distForZoom(this.zoomNow, h, FOV) });
+  }
+
+  // ───────────────────────────────────────────── frame
+  private readonly frame = (): void => {
+    this.raf = requestAnimationFrame(this.frame);
+    if (document.hidden) return;
+    const now = performance.now();
+    const dtMs = this.lastFrame ? now - this.lastFrame : 16;
+    this.lastFrame = now;
+    if (this.fellBack || !this.ensureWalker()) return;
+    this.watchRate(now);
+    if (this.fellBack || !this.walker) return;
+
+    this.walker.step(dtMs, inputVector());
+    if (this.walker.path.length !== this.pathLen) this.drawPath();
+    this.syncPeople(now, dtMs);
+    this.updateCamera(dtMs);
+    this.syncChunks();
+    this.syncOverlays(now);
+    this.occlude(dtMs);
+    this.stepFade(now);
+    if (now - this.lastSlow > SLOW_MS) {
+      this.lastSlow = now;
+      this.slowTick();
+    }
+    const [x, y, z] = camPos(this.cam);
+    this.camera.position.set(x, y, z);
+    this.camera.lookAt(this.cam.tx, 0, this.cam.tz);
+    this.camera.updateMatrixWorld();
+    this.renderer.render(this.scene, this.camera);
+  };
+
+  /** The walker exists once the world's session is here (its welcome has set the terrain). */
+  private ensureWalker(): boolean {
+    if (this.walker) return true;
+    if (!worldSession.active || !worldSession.terrain) return false;
+    this.walker = new WorldWalker(worldSession);
+    const me = worldSession.people.get(worldSession.you);
+    const at = me ?? { x: 16, y: 26 };
+    this.walker.place(at.x, at.y);
+    this.target = { x: at.x / TILE, z: at.y / TILE };
+    return true;
+  }
+
+  /**
+   * The device probe and the fallback timer (P16.11), as the office view: a software renderer, or a
+   * device too slow for the 2.5D look, goes to 2D; 15 s in a row under 20 fps does too.
+   */
+  private watchRate(now: number): void {
+    if (this.probe) {
+      const fps = this.probe.frame(now);
+      if (fps !== null) {
+        this.probe = null;
+        if (decideTier({ coarse: this.coarse, gpu: this.gpu, probeFps: fps }) === 'off') {
+          this.fallBack(isSoftwareGpu(this.gpu) ? 'gpu' : 'slow');
+          return;
+        }
+      }
+    }
+    if (pinnedHour()) return;
+    const fps = this.slowRate.frame(now);
+    if (fps === null) return;
+    if (this.slowWatch.sample(now, fps)) this.fallBack('slow');
+  }
+
+  /** Switch the device to 2D: remembered, and the store re-renders the world into the flat view. */
+  private fallBack(reason: 'gpu' | 'slow'): void {
+    this.fellBack = true;
+    rememberView('2d');
+    store.set({ viewChoice: '2d' });
+    toast(reason === 'gpu' ? 'toast.worldViewNoGpu' : 'toast.worldViewSlow', undefined, 9000);
+  }
+
+  /** The fade-in from the dark on entering the world (none under reduced motion). */
+  private stepFade(now: number): void {
+    const a = reducedMotion() ? 0 : Math.max(0, 1 - (now - this.fadeStart) / FADE_IN_MS);
+    const next = a.toFixed(3);
+    if (this.fade.style.opacity !== next) this.fade.style.opacity = next;
+  }
+
+  // ───────────────────────────────────────────── people
+  private syncPeople(now: number, dtMs: number): void {
+    const s = worldSession;
+    const t = s.terrain!;
+    const ids = new Set<string>();
+    for (const p of s.people.values()) {
+      const mine = p.id === s.you;
+      let x: number;
+      let y: number;
+      let d: Dir;
+      let moving: boolean;
+      if (mine) {
+        ({ x, y, d, moving } = this.walker!);
+      } else {
+        // a remote person catches up with the last position the server sent (never teleports)
+        const at = this.drawn.get(p.id) ?? { x: p.x, y: p.y };
+        const k = Math.min(1, dtMs / CATCH_UP_MS);
+        at.x += (p.x - at.x) * k;
+        at.y += (p.y - at.y) * k;
+        this.drawn.set(p.id, at);
+        ({ x, y } = at);
+        d = p.d;
+        moving = Math.hypot(p.x - x, p.y - y) > 0.5;
+      }
+      const level = t.cellAt(
+        Math.floor(Math.round(x) / CELL),
+        Math.floor(Math.round(y) / CELL),
+      ).level;
+      this.people.place(
+        p.id,
+        p.avatar,
+        { x, y, dir: d, moving, pose: 'stand', poseAt: 0, elev: heightOf(level) },
+        now,
+      );
+      rendered.set(p.id, { x, y });
+      ids.add(p.id);
+    }
+    for (const id of this.shown) if (!ids.has(id)) rendered.delete(id);
+    this.people.keep(ids);
+    for (const id of [...this.drawn.keys()]) if (!s.people.has(id)) this.drawn.delete(id);
+    this.shown.clear();
+    for (const id of ids) this.shown.add(id);
+  }
+
+  private syncOverlays(now: number): void {
+    const s = worldSession;
+    const ids = new Set<string>();
+    for (const p of s.people.values()) {
+      ids.add(p.id);
+      this.overlays.sync(
+        p.id,
+        { name: p.name, online: true, hand: false },
+        this.toParent(this.people.headPoint(p.id)),
+        now,
+      );
+    }
+    this.overlays.keep(ids);
+  }
+
+  private toParent(pt: [number, number, number] | null): { x: number; y: number } | null {
+    if (!pt) return null;
+    const p = project(this.cam, pt);
+    if (!p) return null;
+    return { x: p.x + this.canvas.offsetLeft, y: p.y + this.canvas.offsetTop };
+  }
+
+  // ───────────────────────────────────────────── camera
+  private updateCamera(dtMs: number): void {
+    const me = this.walker;
+    if (!me) return;
+    const at = { x: me.x / TILE, z: me.y / TILE };
+    if (!this.target) this.target = at;
+    if (this.following) this.target = followStep(this.target, at, dtMs);
+    this.cam.tx = this.target.x;
+    this.cam.tz = this.target.z;
+  }
+
+  /** The cells the camera sees: the floor under the screen's corners, with the view's margins. */
+  private windowNow(): CellWindow {
+    const { w, h } = this.cam;
+    const pts = [
+      unprojectFloor(this.cam, 0, 0),
+      unprojectFloor(this.cam, w, 0),
+      unprojectFloor(this.cam, 0, h),
+      unprojectFloor(this.cam, w, h),
+      unprojectFloor(this.cam, w / 2, 0),
+    ];
+    if (pts.some((p) => p === null)) return windowOf([{ x: this.cam.tx, z: this.cam.tz }]);
+    return windowOf(pts as Pt[]);
+  }
+
+  /** Build the chunks in view that are missing (or all of them after a change), drop the others. */
+  private syncChunks(): void {
+    const win = this.windowNow();
+    const moved =
+      !this.win ||
+      win.x0 !== this.win.x0 ||
+      win.y0 !== this.win.y0 ||
+      win.x1 !== this.win.x1 ||
+      win.y1 !== this.win.y1;
+    if (!moved && !this.dirtyAll) return;
+    this.win = win;
+    const want = chunksIn(win);
+    const keep = new Set(want.map(chunkKey));
+    for (const [key, v] of this.chunks)
+      if (!keep.has(key)) {
+        this.dropChunk(v);
+        this.chunks.delete(key);
+      }
+    for (const c of want) {
+      const key = chunkKey(c);
+      const have = this.chunks.get(key);
+      if (have && !this.dirtyAll) continue;
+      if (have) {
+        this.dropChunk(have);
+        this.chunks.delete(key);
+      }
+      this.chunks.set(key, this.buildChunkView(c));
+    }
+    this.dirtyAll = false;
+  }
+
+  private buildChunkView(c: ChunkIndex): ChunkView {
+    const s = worldSession;
+    const t = s.terrain!;
+    const read = (cx: number, cy: number): CellIn => {
+      const cell = t.cellAt(cx, cy);
+      const plot = s.plots.get(`${cx},${cy}`);
+      const farm = farmVisual(plot, s.farmDay);
+      return {
+        level: cell.level,
+        block: cell.block,
+        decor: cell.decor,
+        solid: cell.solid,
+        soil: farm?.soil ?? false,
+        watered: farm?.watered ?? false,
+        crop:
+          farm && farm.crop !== null && plot?.crop
+            ? cropFrameName(plot.crop.crop, farm.crop)
+            : null,
+        sprinkler: farm?.sprinkler ?? false,
+      };
+    };
+    const geo: ChunkGeometry = buildChunk(
+      { x0: c.ix * CHUNK_SIZE, y0: c.iy * CHUNK_SIZE, size: CHUNK_SIZE },
+      read,
+      (name) => this.atlas.uv(name),
+    );
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(geo.position, 3));
+    g.setAttribute('uv', new THREE.BufferAttribute(geo.uv, 2));
+    g.setAttribute('color', new THREE.BufferAttribute(geo.color, 3));
+    const fade = new THREE.BufferAttribute(geo.fade, 1);
+    g.setAttribute(FADE_ATTR, fade);
+    g.setIndex(new THREE.BufferAttribute(geo.index, 1));
+    g.computeBoundingSphere();
+    const mesh = new THREE.Mesh(g, this.material);
+    this.scene.add(mesh);
+    return { mesh, occlusion: geo.occluders.length ? new Occlusion(fade, geo.occluders) : null };
+  }
+
+  private dropChunk(v: ChunkView): void {
+    this.scene.remove(v.mesh);
+    v.mesh.geometry.dispose();
+  }
+
+  /** The solid decor fades where it hides me (the office's rule, for the walls and the trees). */
+  private occlude(dtMs: number): void {
+    const subjects: Subject[] = [];
+    const me = worldSession.you ? screenBox(this.cam, this.people.box(worldSession.you)) : null;
+    if (me) subjects.push(me);
+    for (const v of this.chunks.values())
+      v.occlusion?.update(this.cam, subjects, dtMs, reducedMotion());
+  }
+
+  // ───────────────────────────────────────────── path
+  private drawPath(): void {
+    const path = this.walker?.path ?? [];
+    this.pathLen = path.length;
+    this.clearPath();
+    if (!path.length) return;
+    const dots = path.filter((_, i) => i % PATH_EVERY === 0);
+    this.pathObj = this.dotsAt(dots, this.pathMat);
+    this.goalObj = this.dotsAt([path[path.length - 1]!], this.goalMat);
+    if (this.pathObj) this.scene.add(this.pathObj);
+    if (this.goalObj) this.scene.add(this.goalObj);
+  }
+
+  private dotsAt(cells: readonly GridCell[], mat: THREE.PointsMaterial): THREE.Points {
+    const t = worldSession.terrain!;
+    const pos = new Float32Array(cells.length * 3);
+    cells.forEach((c, i) => {
+      pos[i * 3] = c.cx + 0.5;
+      pos[i * 3 + 1] = heightOf(t.cellAt(c.cx, c.cy).level) + PATH_Y;
+      pos[i * 3 + 2] = c.cy + 0.5;
+    });
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    return new THREE.Points(g, mat);
+  }
+
+  private clearPath(): void {
+    for (const o of [this.pathObj, this.goalObj]) {
+      if (!o) continue;
+      this.scene.remove(o);
+      o.geometry.dispose();
+    }
+    this.pathObj = null;
+    this.goalObj = null;
+  }
+
+  /** ~3 Hz: the prompt for the return pad. */
+  private slowTick(): void {
+    const at = this.walker;
+    const prompt = at ? worldPromptAt(worldSession.worldId, worldSession.terrain, at) : null;
+    const cur = store.get().prompt;
+    if (JSON.stringify(prompt) !== JSON.stringify(cur ?? null)) store.set({ prompt });
+  }
+
+  /**
+   * A tool swing by a person (P17.21b). The 2.5D view takes the same hook as the flat view; the
+   * swing frames, sparks and shake are not drawn yet.
+   */
+  playSwing(_personId: string, _dir: Dir, _tier: number): void {
+    // TODO(P17.21b): paper swing frames per direction, sparks and the shake (off under reduced motion)
+  }
+
+  private levelAtPx(x: number, y: number): number {
+    return worldSession.terrain?.cellAt(Math.floor(x / CELL), Math.floor(y / CELL)).level ?? 0;
+  }
+
+  // ───────────────────────────────────────────── e2e handles
+  private testApi(): ViewTestApi & WorldTestApi {
+    return {
+      engine: '2.5d',
+      toClient: (x, y) => {
+        const r = this.canvas.getBoundingClientRect();
+        const p = project(this.cam, [x / TILE, heightOf(this.levelAtPx(x, y)), y / TILE]);
+        return p ? { x: r.left + p.x, y: r.top + p.y } : { x: r.left, y: r.top };
+      },
+      centerOn: (x, y) => {
+        this.target = { x: x / TILE, z: y / TILE };
+        this.following = false;
+        this.cam.tx = this.target.x;
+        this.cam.tz = this.target.z;
+      },
+      zoom: () => this.zoomNow,
+      setZoom: (z) => {
+        this.zoomNow = z;
+        this.cam.dist = distForZoom(z, this.cam.h, FOV);
+      },
+      texts: (all = false) => this.overlays.texts(all),
+      // no props, office blends or build preview inside a personal world (P16.13–14 hooks)
+      propsCount: () => 0,
+      propScreen: () => null,
+      blendKeyAt: () => null,
+      previewCells: () => 0,
+      settled: () => this.win !== null && !this.dirtyAll,
+      avatarFrame: (id) => this.people.info(id)?.frame ?? null,
+      petsDrawn: () => 0,
+      world: () => {
+        const w = this.walker;
+        const cell = { cx: Math.floor((w?.x ?? 0) / CELL), cy: Math.floor((w?.y ?? 0) / CELL) };
+        const win = this.win;
+        return {
+          id: worldSession.worldId,
+          x: Math.round(w?.x ?? 0),
+          y: Math.round(w?.y ?? 0),
+          level: worldSession.terrain?.cellAt(cell.cx, cell.cy).level ?? -1,
+          cell,
+          people: worldSession.people.size,
+          cellsDrawn: win ? (win.x1 - win.x0 + 1) * (win.y1 - win.y0 + 1) : 0,
+          plots: worldSession.plots.size,
+          farmDay: worldSession.farmDay,
+          path: w?.path.length ?? 0,
+        };
+      },
+      levelAt: (cx, cy) => worldSession.terrain?.cellAt(cx, cy).level ?? -1,
+      walkableAt: (cx, cy) => worldSession.terrain?.cellAt(cx, cy).walkable ?? false,
+    };
+  }
+}

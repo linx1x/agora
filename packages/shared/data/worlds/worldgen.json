@@ -1,5 +1,5 @@
 {
-  "genVersion": 1,
+  "genVersion": 2,
   "params": {
     "elevation": {
       "scale": 96,
@@ -26,7 +26,40 @@
       "maxSteps": 128,
       "lakeRadius": 6,
       "lakeRise": 0.008
+    },
+    "caves": {
+      "mouthChance": 0.006,
+      "clearRadius": 16
     }
   },
-  "versions": {}
+  "versions": {
+    "1": {
+      "elevation": {
+        "scale": 96,
+        "octaves": 5,
+        "contrast": 1.6
+      },
+      "temperature": {
+        "scale": 128,
+        "octaves": 3,
+        "contrast": 2.2
+      },
+      "humidity": {
+        "scale": 128,
+        "octaves": 3,
+        "contrast": 2.2
+      },
+      "seaElevation": 0.39,
+      "beachWidth": 0.03,
+      "alpineElevation": 0.7,
+      "rivers": {
+        "sourceGrid": 16,
+        "sourceChance": 0.3,
+        "sourceHeight": 0.2,
+        "maxSteps": 128,
+        "lakeRadius": 6,
+        "lakeRise": 0.008
+      }
+    }
+  }
 }

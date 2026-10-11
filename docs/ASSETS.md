@@ -320,6 +320,19 @@ in days, from `crops.json`. Status: all to add; none is drawn.
 | `snow_lettuce` | winter | 4, 4, 4 | no | to add |
 | `ice_berry` | winter | 5, 5, 5 | 4 days | to add |
 
+### Caves (REF-A ground, REF-B ore nodes; P17.32)
+
+Cave maps behind cave mouths (`caves.ts`). Sprite keys as listed, 32 × 32, top and side faces for 2.5D. Status: all to add; drawn as code placeholders.
+
+| Block id | Layer | Sprite key | Harvestable | Where |
+|---|---|---|---|---|
+| `cave_floor` | ground | `worlds/shared/cave_floor` | no | cave (P17.32) |
+| `cave_rock` | ground | `worlds/shared/cave_rock` | no | cave (P17.32) |
+| `cave_mouth` | decor | `worlds/shared/cave_mouth` | no | cave mouth in every biome (P17.32) |
+| `ore_copper` | decor | `worlds/shared/ore_copper` | yes | cave, near the mouth (P17.32) |
+| `ore_iron` | decor | `worlds/shared/ore_iron` | yes | cave, middle depths (P17.32) |
+| `ore_gold` | decor | `worlds/shared/ore_gold` | yes | cave, deepest (P17.32) |
+
 ### UI (REF-D)
 
 Sizes are the art size. Text (names, refusal messages) is in the `fr` and `en` strings (`worlds.refused.<reason>`);

@@ -467,7 +467,9 @@ function MoreSheet({ onClose }: { onClose: () => void }) {
   const c = useControls();
   const touch = useTouchControls();
   const minimap = useStore((s) => s.minimap);
-  const showMinimap = useStore((s) => s.config?.flags.minimap !== false);
+  // FIX-1: no office minimap inside a personal world (App.tsx hides it there too)
+  const inWorld = useStore((s) => s.worldId !== null);
+  const showMinimap = useStore((s) => s.config?.flags.minimap !== false) && !inWorld;
   /** close the sheet, then act (opening another dialog replaces this one) */
   const go = (f: () => void) => () => {
     onClose();

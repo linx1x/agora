@@ -16,6 +16,7 @@ export const SALT = {
   biome: 0x0b10,
   decor: 0x0dec,
   river: 0x21e7,
+  cave: 0x0c4e,
 } as const;
 
 export interface TerrainSeeds {
@@ -25,6 +26,7 @@ export interface TerrainSeeds {
   readonly biome: number;
   readonly decor: number;
   readonly river: number;
+  readonly cave: number;
 }
 
 /** Per-layer seeds derived from the world seed. Computed once per chunk, not per cell. */
@@ -36,6 +38,7 @@ export function seedsOf(seed: number): TerrainSeeds {
     biome: hashCell(seed, SALT.biome, 0x51),
     decor: hashCell(seed, SALT.decor, 0x51),
     river: hashCell(seed, SALT.river, 0x51),
+    cave: hashCell(seed, SALT.cave, 0x51),
   };
 }
 

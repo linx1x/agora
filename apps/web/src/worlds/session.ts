@@ -7,9 +7,10 @@
  * state; `store.worldId` only says a world is open, and GameView mounts the world view for it.
  */
 import {
-  WorldTerrain,
   chunkKey,
   deltaOverlay,
+  worldTerrainFor,
+  type WorldTerrain,
   type ChunkDelta,
   type PlotState,
   type S2CMsg,
@@ -71,7 +72,8 @@ export class WorldSession {
         this.seed = m.seed;
         this.genVersion = m.genVersion;
         this.params = m.params;
-        this.terrain = new WorldTerrain(m.seed, m.params, {
+        // a cave (P17.32) is read from its id and the world's seed, so it is the same for everyone in it
+        this.terrain = worldTerrainFor(m.worldId, m.seed, m.params, {
           overlay: deltaOverlay((cx, cy) => this.deltas.get(chunkKey(cx, cy))),
         });
         this.deltas.clear();
@@ -81,7 +83,7 @@ export class WorldSession {
         this.people.clear();
         for (const p of m.people) this.people.set(p.id, p);
         // the office's prompt and zone describe the office: the world sets its own
-        store.set({ worldId: m.worldId, prompt: null, talkTo: null });
+        store.set({ worldId: m.worldId, worldOwner: m.owner, prompt: null, talkTo: null });
         this.emit('welcome');
         return;
       }
@@ -145,7 +147,7 @@ export class WorldSession {
     this.correction = null;
     // the office position comes back with the next `state` tick (the server sends none on exit)
     if (me) link.samples.delete(me);
-    store.set({ worldId: null, prompt: null });
+    store.set({ worldId: null, worldOwner: '', prompt: null });
     this.emit('exit');
   }
 }

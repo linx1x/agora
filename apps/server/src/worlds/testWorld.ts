@@ -51,8 +51,12 @@ export async function openWorld(backend: Backend, settings: Record<string, unkno
   return h.worlds;
 }
 
-/** Sets cells' block and decor in the stored deltas, one transaction per chunk. */
-export async function setCells(store: WorldStore, cells: Record<string, { block?: string; decor?: string }>): Promise<void> {
+/** Sets cells' block and decor in the stored deltas of a world (default w1), one transaction per chunk. */
+export async function setCells(
+  store: WorldStore,
+  cells: Record<string, { block?: string; decor?: string }>,
+  worldId = 'w1',
+): Promise<void> {
   const byChunk = new Map<string, { cx: number; cy: number; cells: [number, number, object][] }>();
   for (const [key, patch] of Object.entries(cells)) {
     const [x, y] = key.split(',').map(Number) as [number, number];
@@ -63,13 +67,13 @@ export async function setCells(store: WorldStore, cells: Record<string, { block?
   }
   for (const { cx, cy, cells: list } of byChunk.values()) {
     await store.withTxn(async (tx) => {
-      const [cur] = await tx.chunksOf('w1', [{ cx, cy }]);
+      const [cur] = await tx.chunksOf(worldId, [{ cx, cy }]);
       const delta: ChunkDelta = { ...(cur?.delta ?? {}) };
       for (const [x, y, patch] of list) {
         const index = localIndexOf(x, y);
         delta[index] = { ...((delta[index] as object | undefined) ?? {}), ...patch };
       }
-      const saved = await tx.saveChunk('w1', cx, cy, delta, cur?.rev ?? 0, 40_000);
+      const saved = await tx.saveChunk(worldId, cx, cy, delta, cur?.rev ?? 0, 40_000);
       expect(saved.ok).toBe(true);
     });
   }
