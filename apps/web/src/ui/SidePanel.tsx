@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { BellRing, Crosshair, Footprints, Mic, MicOff, Send, UserPlus, Video, X } from 'lucide-react';
+import { ArrowLeftRight, BellRing, Crosshair, Footprints, Mic, MicOff, Send, UserPlus, Video, X } from 'lucide-react';
 import { useCompactLayout } from './layout';
 import type { ChatMsg, NpcMindView } from '@agora/shared';
 import { avatarUrl } from '../game/textures';
@@ -126,6 +126,19 @@ function WorldPeople() {
               </div>
               <div className="muted small">{t('people.inThisWorld')}</div>
             </div>
+            {!p.you && (
+              <span className="person-actions">
+                <button
+                  type="button"
+                  className="icon-btn"
+                  onClick={() => world.send({ t: 'trade:ask', to: p.id })}
+                  aria-label={t('trade.ask', { name: p.name })}
+                  title={t('trade.ask', { name: p.name })}
+                >
+                  <ArrowLeftRight size={16} aria-hidden />
+                </button>
+              </span>
+            )}
           </li>
         ))}
       </ul>
@@ -149,6 +162,7 @@ function OfficePeople() {
   const hearts = useStore((s) => s.hearts);
   // P17.27: someone with a desk (and so a world) keeps a list of visitors
   const myWorld = useStore((s) => s.config?.flags.worlds === true && s.myDesk !== null);
+  const worldsOn = useStore((s) => s.config?.flags.worlds === true);
   const compact = useCompactLayout();
   /** on phones the sheet covers the world: close it so you see where you go */
   const hide = compact ? { panelOpen: false } : {};
@@ -252,6 +266,17 @@ function OfficePeople() {
                 >
                   <Crosshair size={16} aria-hidden />
                 </button>
+                {worldsOn && (
+                  <button
+                    type="button"
+                    className="icon-btn"
+                    onClick={() => world.send({ t: 'trade:ask', to: p.id })}
+                    aria-label={t('trade.ask', { name: p.name })}
+                    title={t('trade.ask', { name: p.name })}
+                  >
+                    <ArrowLeftRight size={16} aria-hidden />
+                  </button>
+                )}
                 {myWorld && (
                   <button
                     type="button"

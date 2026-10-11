@@ -1455,5 +1455,50 @@
       "chop": "Couper des arbres",
       "mine": "Miner de la roche"
     }
+  },
+  "trade": {
+    "ask": "Proposer un échange à {{name}}",
+    "asked": "{{name}} vous propose un échange",
+    "accept": "Échanger",
+    "decline": "Pas maintenant",
+    "title": "Échange avec {{name}}",
+    "waiting": "En attente de la réponse de {{name}}…",
+    "give": "Vous donnez",
+    "get": "{{name}} donne",
+    "nothing": "Rien dans votre sac ne s'échange (les outils et les machines restent à vous).",
+    "have": "vous en avez {{count}}",
+    "qty": "Quantité de {{item}} à donner",
+    "moneyLabel": "Argent à donner (vous avez {{have}})",
+    "money": "{{amount}} d'argent",
+    "propose": "Proposer cette offre",
+    "youOffer": "Votre offre actuelle",
+    "emptyOffer": "Rien pour l'instant.",
+    "noneConfirmed": "Personne n'a encore confirmé.",
+    "youConfirmed": "Vous avez confirmé. En attente de {{name}}.",
+    "themConfirmed": "{{name}} a confirmé cet échange. À vous.",
+    "rules": "Chacun confirme l'échange tel qu'il le voit. Tout changement annule les confirmations. L'échange se fait d'un coup, ou pas du tout.",
+    "confirm": "Confirmer l'échange",
+    "cancel": "Annuler l'échange",
+    "closed": {
+      "done": "Échange fait!",
+      "cancelled": "Échange annulé.",
+      "declined": "Échange refusé.",
+      "gone": "Échange terminé : l'autre personne est partie ou s'est éloignée."
+    },
+    "refused": {
+      "disabled": "Les échanges sont fermés sur ce serveur.",
+      "rate": "Doucement : réessayez dans un instant.",
+      "self": "Vous ne pouvez pas échanger avec vous-même.",
+      "far": "Approchez-vous pour échanger (dans la même pièce, à quelques pas).",
+      "busy": "Cette personne est déjà dans un échange.",
+      "gone": "Cet échange n'existe plus.",
+      "invalid": "Cette offre n'est pas valide.",
+      "restricted": "Les outils, les machines et les objets liés au compte ne s'échangent pas.",
+      "limit": "Trop d'objets dans l'offre (au plus 5 de chaque objet limité, 9 sortes).",
+      "missing": "Un sac ne contient plus ce qui est offert. Rien n'a bougé.",
+      "full": "Un sac est plein. Rien n'a bougé.",
+      "stale": "L'échange a changé : vérifiez-le, puis confirmez de nouveau.",
+      "conflict": "Quelque chose a changé entre-temps. Rien n'a bougé; réessayez."
+    }
   }
 }

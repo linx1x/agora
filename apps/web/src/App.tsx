@@ -22,6 +22,7 @@ import { PromptBar } from './ui/PromptBar';
 import { TalkBox } from './ui/TalkBox';
 import { OfficeShop } from './ui/OfficeShop';
 import { VisitorsPanel } from './worlds/ui/VisitorsPanel';
+import { TradePanel } from './ui/TradePanel';
 import { BuildPanel, BuildResetDialog } from './ui/BuildPanel';
 import { setBuild } from './game/build';
 import { DEFAULT_SPACE } from '@agora/shared';
@@ -268,6 +269,7 @@ function SpaceApp({ slug }: { slug: string }) {
       <TalkBox />
       <OfficeShop />
       <VisitorsPanel />
+      <TradePanel />
       {showMinimap && <Minimap />}
       {touch && <TouchControls />}
       {conn === 'full' && (

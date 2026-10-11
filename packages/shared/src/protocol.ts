@@ -34,11 +34,22 @@ import {
   type ContractRefusal,
   type ContractView,
 } from './worlds/contracts';
+import {
+  TRADE_MONEY_MAX,
+  TRADE_QTY_MAX,
+  type TradeEnd,
+  type TradeOffer,
+  type TradeRefusal,
+} from './worlds/trade';
 import { WORLD_COORD_LIMIT } from './worlds/constants';
 import { SKILLS } from './worlds/gamedata/schema';
 import type { Badge } from './worlds/progression';
 
 /** Client → server messages, all validated with zod on the server. */
+
+/** P17.29: a trade id (12 hex) and a stack key of a bag (an item id, with its quality `~n`) */
+export const TRADE_ID = z.string().regex(/^[a-f0-9]{12}$/);
+export const STACK_KEY = z.string().min(2).max(40).regex(/^[a-z][a-z0-9_]+(~[124])?$/);
 
 /** P17.27: an opaque name for a person in a world's visitor list (user ids never reach a client). */
 export const VISITOR_REF = z.string().regex(/^[a-f0-9]{16}$/);
@@ -121,6 +132,19 @@ export const C2S = z.discriminatedUnion('t', [
   }),
   /** P17.26b: my bag and money in the office (answered with `world:inv`), and my hearts (`friendship`). */
   z.object({ t: z.literal('office:inv') }),
+  /** P17.29: ask someone beside me to trade (their session id) */
+  z.object({ t: z.literal('trade:ask'), to: z.string().min(1).max(64) }),
+  z.object({ t: z.literal('trade:answer'), id: TRADE_ID, accept: z.boolean() }),
+  /** P17.29: my side of the trade, whole (stack keys of my bag and money) */
+  z.object({
+    t: z.literal('trade:offer'),
+    id: TRADE_ID,
+    items: z.record(STACK_KEY, z.number().int().min(1).max(TRADE_QTY_MAX)),
+    money: z.number().int().min(0).max(TRADE_MONEY_MAX),
+  }),
+  /** P17.29: I accept the trade exactly as it is at `rev` */
+  z.object({ t: z.literal('trade:confirm'), id: TRADE_ID, rev: z.number().int().min(0).max(1_000_000) }),
+  z.object({ t: z.literal('trade:cancel'), id: TRADE_ID }),
   /** P17.28: the owner posts a contract in their world (the reward leaves their account into it) */
   z.object({
     t: z.literal('contract:post'),
@@ -430,6 +454,23 @@ export type S2CMsg =
   | { t: 'world:visitors'; away: AwayRule; grants: ActionKind[]; people: VisitorView[] }
   /** P17.27: why my change to the matrix did nothing */
   | { t: 'world:visitors:refused'; reason: VisitorRefusal }
+  /** P17.29: someone beside me asks to trade */
+  | { t: 'trade:asked'; id: string; from: string; name: string }
+  /** P17.29: the trade as I see it: my side, theirs, its revision and who confirmed it */
+  | {
+      t: 'trade:state';
+      id: string;
+      with: string;
+      you: TradeOffer;
+      them: TradeOffer;
+      rev: number;
+      youConfirmed: boolean;
+      themConfirmed: boolean;
+      /** asked, not answered yet */
+      pending: boolean;
+    }
+  | { t: 'trade:closed'; id: string; reason: TradeEnd }
+  | { t: 'trade:refused'; reason: TradeRefusal; id?: string }
   /** P17.28: the open contracts of the world I am in, with my own progress */
   | { t: 'world:contracts'; contracts: ContractView[] }
   /** P17.28: the answer to my post or cancel */

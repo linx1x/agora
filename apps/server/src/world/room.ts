@@ -9,6 +9,8 @@ import {
   NPC_TALK_SLACK_TILES,
   NPC_TALK_TILES,
   giftNpcOf,
+  TRADE_RANGE_TILES,
+  WORLD_CELL_PX,
   applyVisitorEdit,
   awayAllows,
   awayOf,
@@ -70,6 +72,8 @@ import {
 import type { RoomStore, StoredDesk } from '../db/store';
 import { Bucket } from './rate';
 import { heartsOfUser, officeBuy, officeGift, officeInventory } from '../worlds/office';
+import { executeTrade } from '../worlds/trade';
+import { TradeDesk } from './trades';
 import { OfficeCat } from './pets';
 import type { ScoreWeights } from '@agora/shared';
 import {
@@ -217,6 +221,8 @@ export class SpaceRoom {
   readonly players = new Map<string, Player>();
   /** P17.15b: people of this space inside a personal world or cave: listed as `inWorld`, never placed */
   private readonly away = new Map<string, Player>();
+  /** P17.29: direct trades between people side by side (memory only) */
+  private readonly trades: TradeDesk;
   links = new Set<string>();
   /** desk id → ownership (persisted) */
   private desks = new Map<string, StoredDesk>();
@@ -253,6 +259,24 @@ export class SpaceRoom {
   ) {
     this.grace = opts.reconnectGraceMs ?? 20_000;
     this.worlds = worldHubFor(store.worlds);
+    this.trades = new TradeDesk({
+      send: (id, msg) => (this.players.get(id) ?? this.away.get(id))?.conn?.send(msg),
+      nameOf: (id) => {
+        const q = this.players.get(id) ?? this.away.get(id);
+        return q?.conn ? q.profile.name : null;
+      },
+      uidOf: (id) => (this.players.get(id) ?? this.away.get(id))?.uid ?? null,
+      together: (a, b) => this.tradeTogether(a, b),
+      data: () => loadGameData(),
+      swap: (id, a, b) => executeTrade(this.store.worlds, loadGameData(), { id, a, b, now: Date.now() }),
+      refresh: (id) => {
+        const q = this.players.get(id) ?? this.away.get(id);
+        if (!q) return;
+        if (q.world) q.world.room.refreshInventory(q.world.member);
+        else void this.sendOfficeInv(q).catch(() => {});
+      },
+      warn: (o, m) => this.log.warn(o, m),
+    });
     this.tmj = opts.tmj;
     this.mapRev = opts.mapRev ?? 0;
     for (const d of map.desks) this.spots.set(d.id, d);
@@ -575,6 +599,7 @@ export class SpaceRoom {
 
   /** Socket closed: keep the seat for the grace window, then remove. */
   disconnect(p: Player) {
+    this.trades.end(p.id);
     this.leaveWorld(p); // a closed socket inside a world goes back to its office seat first
     if (!this.players.has(p.id)) return;
     p.conn = null;
@@ -587,6 +612,7 @@ export class SpaceRoom {
   }
 
   remove(p: Player) {
+    this.trades.end(p.id);
     if (p.world) {
       // leaving the space from inside a world: take the person out of it, then run the normal removal
       this.detachWorld(p);
@@ -688,6 +714,12 @@ export class SpaceRoom {
         return void this.onVisitorsGet(p);
       case 'world:visitors:set':
         return void this.onVisitorsSet(p, m.edit);
+      case 'trade:ask':
+      case 'trade:answer':
+      case 'trade:offer':
+      case 'trade:confirm':
+      case 'trade:cancel':
+        return this.onTrade(p, m);
       case 'callover':
         return this.onCallover(p, m.to);
       case 'ping':
@@ -1017,6 +1049,7 @@ export class SpaceRoom {
    * only reach people in `players`), and nothing of the world reaches the office.
    */
   private enterWorld(p: Player, room: WorldRoom, conn: Conn, owner: string, deskId: string) {
+    this.trades.end(p.id);
     const from = p.zone;
     this.players.delete(p.id);
     this.opts.npcs?.talk?.engine.end(p.uid);
@@ -1103,6 +1136,7 @@ export class SpaceRoom {
     const conn = p.conn;
     const old = p.world;
     if (!conn || !old) return;
+    this.trades.end(p.id);
     p.world = undefined;
     old.room.leave(old.member);
     const owner = this.desks.get(deskId)?.ownerName ?? '';
@@ -1127,6 +1161,7 @@ export class SpaceRoom {
   private detachWorld(p: Player) {
     const w = p.world;
     if (!w) return;
+    this.trades.end(p.id);
     p.world = undefined;
     this.away.delete(p.id);
     delete p.profile.inWorld;
@@ -1231,6 +1266,12 @@ export class SpaceRoom {
         if (!p.buckets.misc.take())
           return p.conn?.send({ t: 'contract:result', op: m.t === 'contract:post' ? 'post' : 'cancel', ok: false, reason: 'rate' });
         return w.room.contract(w.member, m);
+      case 'trade:ask':
+      case 'trade:answer':
+      case 'trade:offer':
+      case 'trade:confirm':
+      case 'trade:cancel':
+        return this.onTrade(p, m);
       // P17.27: the owner answers a knock and edits the visitor matrix from inside their world too
       case 'knock:answer':
         return this.onKnockAnswer(p, m.visitor, m.accept);
@@ -1245,6 +1286,43 @@ export class SpaceRoom {
       default:
         return;
     }
+  }
+
+  // ───────────────────────────────────────────── direct trades (P17.29)
+  private onTrade(p: Player, m: Extract<C2SMsg, { t: `trade:${string}` }>): void {
+    if (!this.officeOpen) return p.conn?.send({ t: 'trade:refused', reason: 'disabled' });
+    if (!p.buckets.misc.take()) return p.conn?.send({ t: 'trade:refused', reason: 'rate' });
+    switch (m.t) {
+      case 'trade:ask':
+        return this.trades.ask(p.id, m.to);
+      case 'trade:answer':
+        return this.trades.answer(p.id, m.id, m.accept);
+      case 'trade:offer':
+        return this.trades.offer(p.id, m.id, { items: m.items, money: m.money });
+      case 'trade:confirm':
+        return this.trades.confirm(p.id, m.id, m.rev);
+      case 'trade:cancel':
+        return this.trades.cancel(p.id, m.id);
+    }
+  }
+
+  /**
+   * Two people may trade from where they stand: in the same world (or cave) within a few cells, or both
+   * on the office floor within a few tiles and in the same room (a private room, a pod, a quiet zone or
+   * the open floor): what is said in a private room stays there, and so does a trade.
+   */
+  private tradeTogether(a: string, b: string): boolean {
+    const pa = this.players.get(a) ?? this.away.get(a);
+    const pb = this.players.get(b) ?? this.away.get(b);
+    if (!pa?.conn || !pb?.conn) return false;
+    if (pa.world || pb.world) {
+      if (!pa.world || !pb.world || pa.world.room !== pb.world.room) return false;
+      const ma = pa.world.member;
+      const mb = pb.world.member;
+      return Math.hypot(ma.x - mb.x, ma.y - mb.y) <= TRADE_RANGE_TILES * WORLD_CELL_PX;
+    }
+    if (this.placed(pa).zoneId !== this.placed(pb).zoneId) return false;
+    return Math.hypot(pa.x - pb.x, pa.y - pb.y) <= TRADE_RANGE_TILES * TILE;
   }
 
   // ───────────────────────────────────────────── visitor matrix (P17.27)

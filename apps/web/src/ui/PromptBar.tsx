@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { BellRing, DoorOpen, Footprints, MessageCircle, Sparkles, X } from 'lucide-react';
+import { BellRing, DoorOpen, Footprints, MessageCircle, Sparkles, X, ArrowLeftRight } from 'lucide-react';
 import { world } from '../net/client';
 import { store, useStore } from '../state/store';
 import { useTouchControls } from './layout';
@@ -12,6 +12,7 @@ export function PromptBar() {
   const callover = useStore((s) => s.callover);
   const talking = useStore((s) => s.talkTo !== null);
   const officeShop = useStore((s) => s.officeShop);
+  const tradeAsk = useStore((s) => s.tradeAsk);
   const map = useStore((s) => s.map);
   const fr = i18n.language.startsWith('fr');
   /** no X key on a touch screen: prompts get a button instead (P8.2) */
@@ -55,6 +56,29 @@ export function PromptBar() {
           </button>
         </div>
       ))}
+      {tradeAsk && (
+        <div className="prompt-card" role="alertdialog" aria-label={t('trade.asked', { name: tradeAsk.name })}>
+          <ArrowLeftRight size={16} aria-hidden />
+          <span>{t('trade.asked', { name: tradeAsk.name })}</span>
+          <button
+            type="button"
+            className="btn primary small-btn"
+            onClick={() => world.send({ t: 'trade:answer', id: tradeAsk.id, accept: true })}
+          >
+            {t('trade.accept')}
+          </button>
+          <button
+            type="button"
+            className="btn secondary small-btn"
+            onClick={() => {
+              world.send({ t: 'trade:answer', id: tradeAsk.id, accept: false });
+              store.set({ tradeAsk: null });
+            }}
+          >
+            {t('trade.decline')}
+          </button>
+        </div>
+      )}
       {callover && (
         <div
           className="prompt-card"

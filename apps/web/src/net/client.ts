@@ -284,6 +284,28 @@ export class WorldClient {
         store.set({ npcMemory: {} });
         toast('talk.memory.forgot');
         break;
+      case 'trade:asked':
+        store.set({ tradeAsk: { id: m.id, from: m.from, name: m.name } });
+        break;
+      case 'trade:state':
+        store.set((s) => ({
+          trade: m,
+          tradeAsk: s.tradeAsk?.id === m.id ? null : s.tradeAsk,
+          tradeRefused: s.trade?.id === m.id ? s.tradeRefused : null,
+        }));
+        break;
+      case 'trade:closed':
+        store.set((s) => ({
+          trade: s.trade?.id === m.id ? null : s.trade,
+          tradeAsk: s.tradeAsk?.id === m.id ? null : s.tradeAsk,
+          tradeRefused: null,
+        }));
+        toast(`trade.closed.${m.reason}`, undefined, 4000);
+        break;
+      case 'trade:refused':
+        store.set({ tradeRefused: m.reason });
+        if (!store.get().trade) toast(`trade.refused.${m.reason}`, undefined, 4000);
+        break;
       case 'world:contracts':
         store.set({ contracts: m.contracts });
         break;

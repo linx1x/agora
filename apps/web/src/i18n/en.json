@@ -1455,5 +1455,50 @@
       "chop": "Chop trees",
       "mine": "Mine rock"
     }
+  },
+  "trade": {
+    "ask": "Offer {{name}} a trade",
+    "asked": "{{name}} offers you a trade",
+    "accept": "Trade",
+    "decline": "Not now",
+    "title": "Trade with {{name}}",
+    "waiting": "Waiting for {{name}} to answer…",
+    "give": "You give",
+    "get": "{{name}} gives",
+    "nothing": "Nothing in your bag can be traded (tools and machines stay yours).",
+    "have": "you have {{count}}",
+    "qty": "How many {{item}} to give",
+    "moneyLabel": "Money to give (you have {{have}})",
+    "money": "{{amount}} money",
+    "propose": "Propose this offer",
+    "youOffer": "Your current offer",
+    "emptyOffer": "Nothing yet.",
+    "noneConfirmed": "Nobody has confirmed yet.",
+    "youConfirmed": "You confirmed. Waiting for {{name}}.",
+    "themConfirmed": "{{name}} confirmed this trade. Your turn.",
+    "rules": "Each of you confirms the trade as you see it. Any change clears the confirmations. The trade happens all at once, or not at all.",
+    "confirm": "Confirm the trade",
+    "cancel": "Cancel the trade",
+    "closed": {
+      "done": "Trade done!",
+      "cancelled": "Trade cancelled.",
+      "declined": "Trade declined.",
+      "gone": "Trade over: the other person left or moved away."
+    },
+    "refused": {
+      "disabled": "Trading is closed on this server.",
+      "rate": "Easy: try again in a moment.",
+      "self": "You cannot trade with yourself.",
+      "far": "Come closer to trade (in the same room, a few steps away).",
+      "busy": "That person is already in a trade.",
+      "gone": "That trade no longer exists.",
+      "invalid": "That offer is not valid.",
+      "restricted": "Tools, machines and account-bound items cannot be traded.",
+      "limit": "Too many things in the offer (at most 5 of each limited item, 9 kinds).",
+      "missing": "A bag no longer holds what is offered. Nothing moved.",
+      "full": "A bag is full. Nothing moved.",
+      "stale": "The trade changed: check it, then confirm again.",
+      "conflict": "Something changed meanwhile. Nothing moved; try again."
+    }
   }
 }

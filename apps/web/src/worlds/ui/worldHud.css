@@ -286,3 +286,43 @@
   outline: 3px solid #1a6cff;
   outline-offset: 2px;
 }
+/* P17.29: the trade panel */
+.tp-sides {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 600px) {
+  .tp-sides {
+    grid-template-columns: 1fr;
+  }
+}
+.tp-stacks,
+.tp-offer {
+  list-style: none;
+  margin: 4px 0;
+  padding: 0;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.tp-stacks label,
+.tp-money {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+}
+.tp-stacks input,
+.tp-money input {
+  width: 5em;
+}
+.tp input:focus-visible {
+  outline: 3px solid #1a6cff;
+  outline-offset: 2px;
+}
+.tp-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}

@@ -350,6 +350,11 @@ export class WorldRoom {
     m.conn?.send({ t: 'world:perms', kinds: this.cave ? [] : visitorKinds(this.world.settings, m.uid) });
   }
 
+  /** The person's bag, money and energy again (P17.29: after a trade). */
+  refreshInventory(m: WorldMember): void {
+    if (this.members.get(m.id) === m) this.sendInventory(m);
+  }
+
   /** The people here by user id and name (the owner's view of the matrix marks who is here). */
   people(): { uid: string; name: string; id: string }[] {
     return [...this.members.values()].map((m) => ({ uid: m.uid, name: m.name, id: m.id }));

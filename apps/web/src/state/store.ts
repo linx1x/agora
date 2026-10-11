@@ -21,6 +21,7 @@ import type {
   S2CMsg,
   VisitorRefusal,
   ContractRefusal,
+  TradeRefusal,
   ContractView,
 } from '@agora/shared';
 
@@ -292,6 +293,12 @@ export interface AppState {
   contractsOpen: boolean;
   /** P17.28: why my last post or cancel did nothing */
   contractRefused: ContractRefusal | null;
+  /** P17.29: the trade I am in, as the server last described it */
+  trade: Extract<S2CMsg, { t: 'trade:state' }> | null;
+  /** P17.29: someone beside me asks to trade */
+  tradeAsk: { id: string; from: string; name: string } | null;
+  /** P17.29: why my last trade step did nothing */
+  tradeRefused: TradeRefusal | null;
   /** P17.27: the visitors panel is open */
   visitorsOpen: boolean;
   /** P17.27: why my last change to the matrix did nothing */
@@ -404,6 +411,9 @@ const initial: AppState = {
   worldPerms: null,
   worldVisitors: null,
   visitorsOpen: false,
+  trade: null,
+  tradeAsk: null,
+  tradeRefused: null,
   contracts: [],
   contractsOpen: false,
   contractRefused: null,
