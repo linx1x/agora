@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { glyphOf, type Glyph } from './itemGlyph';
+import { glyphOf, type Glyph } from './glyphs';
 
 /** The ink every glyph is outlined in: it reads on the light HUD and on the dark theme alike. */
 const INK = '#1d2328';

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { loadGameData } from '@agora/shared';
 import { tierOverlay } from '../tools/overlay';
-import { GLYPHS, glyphOf } from './itemGlyph';
+import { GLYPHS, glyphOf } from './glyphs';
 
 const data = loadGameData();
 
