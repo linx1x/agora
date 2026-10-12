@@ -17,8 +17,64 @@ import type { NpcMindView } from './npc-mind';
 import { NPC_TALK_MAX_LEN, type NpcConsentState, type NpcEmote, type NpcRefusal } from './npc-talk';
 import { DESK_ACCESS, DeskDecorSchema, type DeskState } from './desks';
 import { MAX_EDIT_CELLS, MapChangeSchema, type EditRefusal, type MapChange } from './edit';
+import { PORTAL_ID, type PortalRefusal } from './portals';
+import type { WorldGenParams } from './worlds/gen';
+import type { ChunkDelta } from './worlds/delta';
+import type { WorldTime } from './worlds/clock';
+import type { OfficeRefusal } from './worlds/office';
+import type { Taste } from './worlds/friendship';
+import type { AnimalState, MachineState, PlotState } from './worlds/gamedata/state';
+import { ACTION_KINDS, type ActionChanges, type ActionKind, type WorldRefusal } from './worlds/actions/kinds';
+import { AWAY_RULES, type AwayRule } from './worlds/actions/visitors';
+import {
+  CONTRACT_GOAL_MAX,
+  CONTRACT_KINDS,
+  CONTRACT_REWARD_MAX,
+  type ContractKind,
+  type ContractRefusal,
+  type ContractView,
+} from './worlds/contracts';
+import {
+  TRADE_MONEY_MAX,
+  TRADE_QTY_MAX,
+  type TradeEnd,
+  type TradeOffer,
+  type TradeRefusal,
+} from './worlds/trade';
+import {
+  MARKET_PRICE_MAX,
+  MARKET_QTY_MAX,
+  type ListingView,
+  type MarketLimits,
+  type MarketRefusal,
+} from './worlds/market';
+import { WORLD_COORD_LIMIT } from './worlds/constants';
+import { SKILLS } from './worlds/gamedata/schema';
+import type { Badge } from './worlds/progression';
 
 /** Client → server messages, all validated with zod on the server. */
+
+/** P17.29: a trade id (12 hex) and a stack key of a bag (an item id, with its quality `~n`) */
+export const TRADE_ID = z.string().regex(/^[a-f0-9]{12}$/);
+export const STACK_KEY = z.string().min(2).max(40).regex(/^[a-z][a-z0-9_]+(~[124])?$/);
+/** P17.30: a marketplace listing id */
+export const LISTING_ID = z.string().regex(/^m[a-f0-9]{15}$/);
+
+/** P17.27: an opaque name for a person in a world's visitor list (user ids never reach a client). */
+export const VISITOR_REF = z.string().regex(/^[a-f0-9]{16}$/);
+/** P17.27: why the owner's change to the visitor matrix did nothing. */
+export const VISITOR_REFUSALS = ['disabled', 'rate', 'no_world', 'unknown', 'full', 'self'] as const;
+export type VisitorRefusal = (typeof VISITOR_REFUSALS)[number];
+/** P17.27: one person in the owner's view of the matrix. */
+export interface VisitorView {
+  ref: string;
+  name: string;
+  /** their own grants, or null for the world default */
+  grants: ActionKind[] | null;
+  listed: boolean;
+  /** in the world right now */
+  here: boolean;
+}
 export const C2S = z.discriminatedUnion('t', [
   z.object({
     t: z.literal('move'),
@@ -32,6 +88,119 @@ export const C2S = z.discriminatedUnion('t', [
   }),
   /** Teleport from a portal pad to another region (hub or biome). */
   z.object({ t: z.literal('teleport'), to: z.string().min(1).max(32) }),
+  /** P17.8 (ADR-053): step through a portal by id. The server decides from its own position. */
+  z.object({ t: z.literal('portal:enter'), id: z.string().regex(PORTAL_ID) }),
+  /** P17.9: walk back out of the world to the office, to your desk. */
+  z.object({ t: z.literal('world:leave') }),
+  /**
+   * P17.20 (ADR-053): ask the server for a world action. `op` is the client's number for this
+   * request, echoed in the reply. `key` is an idempotency key, kept for resends: the same key
+   * twice has one effect and gets the same reply.
+   */
+  z.object({
+    t: z.literal('world:act'),
+    op: z.number().int().nonnegative().max(2 ** 31 - 1),
+    kind: z.enum(ACTION_KINDS),
+    at: z
+      .object({
+        x: z.number().int().min(-WORLD_COORD_LIMIT).max(WORLD_COORD_LIMIT),
+        y: z.number().int().min(-WORLD_COORD_LIMIT).max(WORLD_COORD_LIMIT),
+      })
+      .optional(),
+    item: z
+      .string()
+      .min(2)
+      .max(40)
+      .regex(/^[a-z][a-z0-9_]+(~[124])?$/)
+      .optional(),
+    target: z.string().min(1).max(64).optional(),
+    /** the idempotency key: letters, digits, `_` and `-` only, so no key can name a settlement row (`ship:`, P17.26) */
+    key: z.string().min(8).max(64).regex(/^[A-Za-z0-9_-]+$/),
+  }),
+  /** P17.31: the skill to show on the card (null shows none). The server shows only a level that is earned. */
+  z.object({ t: z.literal('badge'), skill: z.enum(SKILLS).nullable() }),
+  /**
+   * P17.26b: a gift to a character in the office (Talk range and zone rules). `item` is a stack key of
+   * my bag; `key` the idempotency key (the same rules as `world:act`).
+   */
+  z.object({
+    t: z.literal('gift'),
+    npcId: z.string().min(1).max(64),
+    item: z
+      .string()
+      .min(2)
+      .max(40)
+      .regex(/^[a-z][a-z0-9_]+(~[124])?$/),
+    key: z.string().min(8).max(64).regex(/^[A-Za-z0-9_-]+$/),
+  }),
+  /** P17.26b: buy one item at the office shop board (standing in its zone). */
+  z.object({
+    t: z.literal('office:buy'),
+    item: z.string().min(2).max(40).regex(/^[a-z][a-z0-9_]+$/),
+    key: z.string().min(8).max(64).regex(/^[A-Za-z0-9_-]+$/),
+  }),
+  /** P17.26b: my bag and money in the office (answered with `world:inv`), and my hearts (`friendship`). */
+  z.object({ t: z.literal('office:inv') }),
+  /** P17.30: the marketplace board (standing at the office board) */
+  z.object({ t: z.literal('market:browse') }),
+  z.object({
+    t: z.literal('market:list'),
+    item: STACK_KEY,
+    qty: z.number().int().min(1).max(MARKET_QTY_MAX),
+    price: z.number().int().min(1).max(MARKET_PRICE_MAX),
+    key: z.string().min(8).max(64).regex(/^[A-Za-z0-9_-]+$/),
+  }),
+  z.object({ t: z.literal('market:buy'), id: LISTING_ID, key: z.string().min(8).max(64).regex(/^[A-Za-z0-9_-]+$/) }),
+  z.object({ t: z.literal('market:cancel'), id: LISTING_ID }),
+  /** P17.29: ask someone beside me to trade (their session id) */
+  z.object({ t: z.literal('trade:ask'), to: z.string().min(1).max(64) }),
+  z.object({ t: z.literal('trade:answer'), id: TRADE_ID, accept: z.boolean() }),
+  /** P17.29: my side of the trade, whole (stack keys of my bag and money) */
+  z.object({
+    t: z.literal('trade:offer'),
+    id: TRADE_ID,
+    items: z.record(STACK_KEY, z.number().int().min(1).max(TRADE_QTY_MAX)),
+    money: z.number().int().min(0).max(TRADE_MONEY_MAX),
+  }),
+  /** P17.29: I accept the trade exactly as it is at `rev` */
+  z.object({ t: z.literal('trade:confirm'), id: TRADE_ID, rev: z.number().int().min(0).max(1_000_000) }),
+  z.object({ t: z.literal('trade:cancel'), id: TRADE_ID }),
+  /** P17.28: the owner posts a contract in their world (the reward leaves their account into it) */
+  z.object({
+    t: z.literal('contract:post'),
+    kind: z.enum(CONTRACT_KINDS),
+    goal: z.number().int().min(1).max(CONTRACT_GOAL_MAX),
+    reward: z.number().int().min(1).max(CONTRACT_REWARD_MAX),
+    key: z.string().min(8).max(64).regex(/^[A-Za-z0-9_-]+$/),
+  }),
+  /** P17.28: the owner cancels an open contract (the reward comes back) */
+  z.object({ t: z.literal('contract:cancel'), id: z.string().regex(/^c[a-f0-9]{15}$/) }),
+  /** P17.27: the owner reads their world's visitor matrix (answered with `world:visitors`, to them alone). */
+  z.object({ t: z.literal('world:visitors') }),
+  /**
+   * P17.27: the owner changes the matrix. A person is named by the `ref` the owner got in
+   * `world:visitors`, or by their session id (`player`) when they are here or in the office.
+   */
+  z.object({
+    t: z.literal('world:visitors:set'),
+    edit: z.discriminatedUnion('op', [
+      z.object({ op: z.literal('defaults'), grants: z.array(z.enum(ACTION_KINDS)).max(ACTION_KINDS.length) }),
+      z.object({ op: z.literal('away'), rule: z.enum(AWAY_RULES) }),
+      z.object({
+        op: z.literal('person'),
+        ref: VISITOR_REF.optional(),
+        player: z.string().min(1).max(64).optional(),
+        grants: z.array(z.enum(ACTION_KINDS)).max(ACTION_KINDS.length).nullable(),
+      }),
+      z.object({
+        op: z.literal('list'),
+        ref: VISITOR_REF.optional(),
+        player: z.string().min(1).max(64).optional(),
+        on: z.boolean(),
+      }),
+      z.object({ op: z.literal('forget'), ref: VISITOR_REF }),
+    ]),
+  }),
   z.object({ t: z.literal('desk:claim'), deskId: z.string().min(1).max(32) }),
   z.object({ t: z.literal('desk:release') }),
   z.object({
@@ -114,6 +283,11 @@ export const C2S = z.discriminatedUnion('t', [
   z.object({ t: z.literal('npc:consent'), accept: z.boolean() }),
   /** P15.5 (ADR-046): what does this character remember about me? */
   z.object({ t: z.literal('npc:recall'), npcId: z.string().min(1).max(40) }),
+  /**
+   * The Talk box is open on this character (sent on open and while it stays open): the character waits
+   * for me instead of walking off while I read the notice or choose a gift. Carries nothing I wrote.
+   */
+  z.object({ t: z.literal('npc:attend'), npcId: z.string().min(1).max(40) }),
   /** P15.5: forget me, every character at once */
   z.object({ t: z.literal('npc:forget') }),
   /** P15.6: do I want to hear characters' voices? Only people who said yes are sent clips. */
@@ -140,6 +314,13 @@ export interface PlayerProfile {
   screen: boolean;
   /** false while the seat is held for a reconnecting client */
   online: boolean;
+  /** P17.31: the skill this person shows, at the level they have earned (absent when none) */
+  badge?: Badge;
+  /**
+   * P17.15b: in a personal world or cave, not on the office floor. Only this flag reaches the office:
+   * never which world, where in it, or who else is there (ADR-053 privacy).
+   */
+  inWorld?: boolean;
 }
 /** Compact dynamic state sent every tick. */
 export interface PlayerPos {
@@ -152,6 +333,16 @@ export interface PlayerPos {
   z: string | null;
   /** pose: 's' = sitting (omitted when standing) */
   p?: 'stand' | 'sit';
+}
+
+/** A person in a personal world (P17.9): who, and where they stand (world pixels). */
+export interface WorldPerson {
+  id: string;
+  name: string;
+  avatar: Avatar;
+  x: number;
+  y: number;
+  d: Dir;
 }
 
 export interface ChatMsg {
@@ -232,6 +423,143 @@ export type S2CMsg =
   | { t: 'peers'; peers: string[] }
   | { t: 'myDesk'; deskId: string | null }
   | { t: 'admitted'; deskIds: string[] }
+  /** P17.8: the portal was entered; only the person who asked receives this (never broadcast) */
+  | { t: 'portal:go'; id: string; worldId: string; spawn: { x: number; y: number } }
+  /** P17.8: the portal was not entered, and why */
+  | { t: 'portal:refused'; id: string; reason: PortalRefusal }
+  /**
+   * P17.9: you are in a world. Its seed and generator (the client regenerates the terrain) and who is here.
+   * `owner` is the owner's display name (FIX-1: the card says "Monde de <owner>"), never a user id.
+   */
+  | {
+      t: 'world:welcome';
+      worldId: string;
+      owner: string;
+      /** P17.27: this is my own world (I may do everything, and set what visitors may do) */
+      mine?: boolean;
+      you: string;
+      seed: number;
+      genVersion: number;
+      params: WorldGenParams;
+      people: WorldPerson[];
+    }
+  /** P17.9: chunks that came into your view (with their stored edits; rev 0 when never edited) and left it */
+  | {
+      t: 'world:chunks';
+      add: { cx: number; cy: number; rev: number; delta: ChunkDelta }[];
+      drop: { cx: number; cy: number }[];
+    }
+  /** P17.9: a person in your world moved (sent to everyone in that world, you included) */
+  | { t: 'world:pos'; id: string; x: number; y: number; d: Dir }
+  | { t: 'world:join'; person: WorldPerson }
+  | { t: 'world:depart'; id: string }
+  /** P17.9: the server refused your move; `x`, `y` is where you really stand */
+  | {
+      t: 'world:correction';
+      x: number;
+      y: number;
+      seq: number;
+      reason: 'bounds' | 'speed' | 'collision' | 'step';
+    }
+  /** P17.9: you are back in the office, at your desk */
+  | { t: 'world:exit' }
+  /** P17.26b: the answer to a gift: the taste and my hearts with every character, or why not (nothing changed) */
+  | {
+      t: 'gift:result';
+      key: string;
+      npcId: string;
+      ok: boolean;
+      reason?: OfficeRefusal;
+      taste?: Taste;
+      hearts?: Record<string, number>;
+    }
+  /** P17.26b: my hearts with each character (0 to 10), on join and after each gift. Only I get it. */
+  | { t: 'friendship'; hearts: Record<string, number> }
+  /** P17.27: the visitor matrix of my world, to me (the owner) alone */
+  | { t: 'world:visitors'; away: AwayRule; grants: ActionKind[]; people: VisitorView[] }
+  /** P17.27: why my change to the matrix did nothing */
+  | { t: 'world:visitors:refused'; reason: VisitorRefusal }
+  /** P17.30: the marketplace board as I see it: open listings (mine marked, nobody named), my limits today */
+  | {
+      t: 'market:board';
+      listings: ListingView[];
+      limits: MarketLimits;
+      listedToday: number;
+      boughtToday: number;
+      active: number;
+    }
+  | { t: 'market:result'; op: 'list' | 'buy' | 'cancel'; ok: boolean; reason?: MarketRefusal }
+  /** P17.30: something I listed was bought (the money is in my bag) */
+  | { t: 'market:sold'; item: string; qty: number; price: number }
+  /** P17.29: someone beside me asks to trade */
+  | { t: 'trade:asked'; id: string; from: string; name: string }
+  /** P17.29: the trade as I see it: my side, theirs, its revision and who confirmed it */
+  | {
+      t: 'trade:state';
+      id: string;
+      with: string;
+      you: TradeOffer;
+      them: TradeOffer;
+      rev: number;
+      youConfirmed: boolean;
+      themConfirmed: boolean;
+      /** asked, not answered yet */
+      pending: boolean;
+    }
+  | { t: 'trade:closed'; id: string; reason: TradeEnd }
+  | { t: 'trade:refused'; reason: TradeRefusal; id?: string }
+  /** P17.28: the open contracts of the world I am in, with my own progress */
+  | { t: 'world:contracts'; contracts: ContractView[] }
+  /** P17.28: the answer to my post or cancel */
+  | { t: 'contract:result'; op: 'post' | 'cancel'; ok: boolean; id?: string; reason?: ContractRefusal }
+  /** P17.28: I reached a contract's goal and was paid */
+  | { t: 'contract:paid'; id: string; kind: ContractKind; reward: number }
+  /** P17.27: what I may do in the world I am visiting (each visitor hears only their own) */
+  | { t: 'world:perms'; kinds: ActionKind[] }
+  /** P17.26b: the answer to an office purchase */
+  | { t: 'office:bought'; key: string; item: string; ok: boolean; reason?: OfficeRefusal }
+  /** P17.15b: the office roster again, for someone back from a world (who missed its changes) */
+  | { t: 'roster'; profiles: PlayerProfile[]; desks: DeskState[] }
+  /**
+   * P17.20–22 (ADR-053 wave 2 contract): the farm layer for cells in your view. Plots are keyed by
+   * world cell "cx,cy" (cells, not px) as in `WorldSimState.plots`; `null` removes a plot. Sent with
+   * the chunks that come into view and whenever a plot changes (to everyone in range). The farm
+   * layer is the authority for tilled / watered / crop / sprinkler; chunk deltas keep terrain, blocks
+   * and decor only.
+   */
+  | {
+      t: 'world:farm';
+      day: number;
+      plots: Record<string, PlotState | null>;
+      /** P17.25: the animals and the machine batches of the world, whole lists, when they changed (everyone in the world). */
+      animals?: readonly AnimalState[];
+      machines?: readonly MachineState[];
+    }
+  /** P17.19/P17.23: the world clock, sent on welcome and every 10 game minutes */
+  | { t: 'world:time'; time: WorldTime }
+  /** P17.20: an approved action (or a resend of one) and what it changed for you. Only you get it. */
+  | { t: 'world:acted'; op: number; changes: ActionChanges }
+  /** P17.20: a refused action and why. Nothing changed. Only you get it. */
+  | { t: 'world:refused'; op: number; reason: WorldRefusal }
+  /** P17.20/P17.23: your inventory, money and energy, on join and after each change. Only you get it. */
+  | {
+      t: 'world:inv';
+      items: Record<string, number>;
+      money: number;
+      energy: number;
+      maxEnergy: number;
+    }
+  /**
+   * P17.24 (ADR-053): the contents of a chest I opened or changed (stack key to quantity). Only
+   * I get it: a chest is the owner's, and its contents never go in a chunk delta.
+   */
+  | { t: 'world:chest'; at: { x: number; y: number }; items: Record<string, number> }
+  /**
+   * P17.21b (ADR-053): someone in my view swung a tool (sent when an action with a tool is
+   * accepted, to the others in view, never to the actor). Cosmetic only: no state. `dir` is the
+   * way they faced, `tier` the tool's tier (1 to 3).
+   */
+  | { t: 'world:swing'; id: string; dir: Dir; tier: number }
   /**
    * SFU backend (ADR-031): the media rooms the server places me in, with fresh
    * tokens (used when (re)connecting; a live connection is kept). `zone` null =
@@ -241,7 +569,8 @@ export type S2CMsg =
   | {
       t: 'media:grant';
       url: string;
-      floor: MediaRoomGrant;
+      /** null inside a personal world (P17.11): the world's room is then the only media room */
+      floor: MediaRoomGrant | null;
       zone: MediaRoomGrant | null;
       publish: 'floor' | 'zone' | 'none';
     }

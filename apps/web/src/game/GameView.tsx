@@ -1,21 +1,24 @@
 import { useEffect, useRef } from 'react';
-import Phaser from 'phaser';
-import { WorldScene } from './WorldScene';
 import { installInput } from './input';
 import { loadSheets } from './sprites';
-import { chooseEngine, readStoredView, rememberViewFromUrl } from '../game3d/engine';
-import { useStore } from '../state/store';
+import { toast, useStore } from '../state/store';
 
+/** The view saved by the removed 2D choice (ADR-054): nothing reads it any more, so it is taken out. */
+const RETIRED_VIEW_KEY = 'agora.worldView';
+
+/**
+ * The world canvas. The office and a personal world are both drawn in 2.5D (ADR-054): the office
+ * view, or the world's own view inside a world (P17.14, P17.15).
+ */
 export function GameView() {
   const ref = useRef<HTMLDivElement>(null);
-  const build = useStore((s) => !!s.build);
-  const world25d = useStore((s) => s.config?.flags.world25d === true);
-  // 2.5D (P16.6) when the flag and this device ask for it; build mode is 2D until P16.13
-  const engine = chooseEngine({ world25d }, location.search, readStoredView(), build);
+  // a cave (P17.32) is another world: a new id remounts the view, so its terrain and walker start fresh
+  const worldKey = useStore((s) => s.worldId);
+  const inWorld = worldKey !== null;
 
   useEffect(() => {
     installInput();
-    rememberViewFromUrl(location.search);
+    forgetRetiredView();
   }, []);
 
   useEffect(() => {
@@ -23,7 +26,7 @@ export function GameView() {
     let unmount: (() => void) | undefined;
     void loadSheets().then(async () => {
       if (cancelled || !ref.current) return;
-      const stop = engine === '2.5d' ? await start25d(ref.current) : start2d(ref.current);
+      const stop = await (inWorld ? start25dWorld(ref.current) : start25d(ref.current));
       if (cancelled) stop();
       else unmount = stop;
     });
@@ -31,32 +34,50 @@ export function GameView() {
       cancelled = true;
       unmount?.();
     };
-  }, [engine]);
+  }, [inWorld, worldKey]);
 
   return <div ref={ref} className="world-canvas" aria-hidden="true" />;
 }
 
-/** Returns the teardown. */
-function start2d(parent: HTMLDivElement): () => void {
-  const game = new Phaser.Game({
-    type: Phaser.AUTO,
-    parent,
-    pixelArt: true,
-    roundPixels: true,
-    backgroundColor: '#1b2733',
-    scale: { mode: Phaser.Scale.RESIZE, width: '100%', height: '100%' },
-    scene: [WorldScene],
-    banner: false,
-    audio: { noAudio: true },
-    input: { keyboard: false },
+/** Three.js is loaded only when the world is drawn (its own chunk). */
+async function start25d(parent: HTMLDivElement): Promise<() => void> {
+  return startOrNotice(parent, async () => {
+    const { World3DView } = await import('../game3d/World3DView');
+    return new World3DView(parent);
   });
-  (window as unknown as { __agoraGame?: Phaser.Game }).__agoraGame = game;
-  return () => game.destroy(true);
 }
 
-/** Three.js is loaded only when the 2.5D view is chosen (its own chunk). */
-async function start25d(parent: HTMLDivElement): Promise<() => void> {
-  const { World3DView } = await import('../game3d/World3DView');
-  const view = new World3DView(parent);
-  return () => view.destroy();
+/** The 2.5D view of a personal world (P17.15), its own chunk like the office's. */
+async function start25dWorld(parent: HTMLDivElement): Promise<() => void> {
+  return startOrNotice(parent, async () => {
+    const { WorldRoom3DView } = await import('../worlds/view3d/WorldRoom3DView');
+    return new WorldRoom3DView(parent);
+  });
+}
+
+/**
+ * Start a 2.5D view. It needs WebGL and its chunk; when either fails there is no other view to show
+ * (ADR-054), so the canvas is cleared and the device is told once. The People list still works.
+ */
+async function startOrNotice(
+  parent: HTMLDivElement,
+  make: () => Promise<{ destroy(): void }>,
+): Promise<() => void> {
+  try {
+    const view = await make();
+    return () => view.destroy();
+  } catch {
+    // a half-built canvas must not stay on the page
+    parent.replaceChildren();
+    toast('toast.worldUnavailable', undefined, 12000);
+    return () => {};
+  }
+}
+
+function forgetRetiredView(): void {
+  try {
+    localStorage.removeItem(RETIRED_VIEW_KEY);
+  } catch {
+    // storage blocked: nothing was saved there
+  }
 }

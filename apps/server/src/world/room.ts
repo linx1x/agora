@@ -1,4 +1,4 @@
-import { randomBytes, randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import {
   C2S,
   DEFAULT_DECOR,
@@ -8,6 +8,20 @@ import {
   NPC_GROUP_TILES,
   NPC_TALK_SLACK_TILES,
   NPC_TALK_TILES,
+  giftNpcOf,
+  type MarketRefusal,
+  TRADE_RANGE_TILES,
+  WORLD_CELL_PX,
+  applyVisitorEdit,
+  awayAllows,
+  awayOf,
+  cleanGrants,
+  visitorsOf,
+  type VisitorEdit,
+  type VisitorRefusal,
+  type VisitorView,
+  officeDayOf,
+  type OfficeRefusal,
   TILE,
   TICK_HZ,
   cellOf,
@@ -51,11 +65,29 @@ import {
   type Tmj,
   type WorldMap,
   type Zone,
+  type Badge,
+  type Skill,
+  type Taste,
+  loadGameData,
 } from '@agora/shared';
 import type { RoomStore, StoredDesk } from '../db/store';
 import { Bucket } from './rate';
+import { heartsOfUser, officeBuy, officeGift, officeInventory } from '../worlds/office';
+import { executeTrade } from '../worlds/trade';
+import { boardOf, buyListing, cancelListing, listItem, sweepExpired } from '../worlds/market';
+import { TradeDesk } from './trades';
 import { OfficeCat } from './pets';
 import type { ScoreWeights } from '@agora/shared';
+import {
+  RETURN_PORTAL_ID,
+  checkPortal,
+  deskGate,
+  deskOfPortal,
+  inPortal,
+  isCaveId,
+  portalAllows,
+  type PortalRefusal,
+} from '@agora/shared';
 import {
   NpcDirector,
   type Npc,
@@ -66,6 +98,14 @@ import {
   type NpcTalkLink,
 } from './npcs';
 import { MediaGate, type GatePlayer, type SfuApi } from '../media/gate';
+import {
+  worldHubFor,
+  type WorldHub,
+  type WorldMedia,
+  type WorldMember,
+  type WorldRoom,
+} from '../worlds/worldRoom';
+import { ensureOwnerWorld } from '../worlds/ownerWorld';
 
 export interface Conn {
   send(msg: S2CMsg): void;
@@ -149,6 +189,11 @@ export interface Player {
   admitted: Set<string>;
   /** pending knock: desk id and expiry */
   knock?: { deskId: string; until: number };
+  /**
+   * inside a personal world (P17.9): out of this office's presence, media and links until back.
+   * `deskId` is the desk whose world it is: the rights to enter it and its caves are read from that desk.
+   */
+  world?: { room: WorldRoom; member: WorldMember; deskId: string };
   lastCallover: Map<string, number>;
   buckets: {
     move: Bucket;
@@ -159,6 +204,8 @@ export interface Player {
     social: Bucket;
     edit: Bucket;
     talk: Bucket;
+    /** world actions (P17.20): a swing every 170 ms, a burst of 12 */
+    act: Bucket;
   };
 }
 
@@ -174,10 +221,16 @@ const CALLOVER_COOLDOWN_MS = 10_000;
  */
 export class SpaceRoom {
   readonly players = new Map<string, Player>();
+  /** P17.15b: people of this space inside a personal world or cave: listed as `inWorld`, never placed */
+  private readonly away = new Map<string, Player>();
+  /** P17.29: direct trades between people side by side (memory only) */
+  private readonly trades: TradeDesk;
   links = new Set<string>();
   /** desk id → ownership (persisted) */
   private desks = new Map<string, StoredDesk>();
   private spots = new Map<string, DeskSpot>();
+  /** open personal worlds, shared by every space in this process (P17.9) */
+  private readonly worlds: WorldHub;
   private timer?: NodeJS.Timeout;
   private history: ChatMsg[] = [];
   private grace: number;
@@ -207,6 +260,25 @@ export class SpaceRoom {
     private log: Logger,
   ) {
     this.grace = opts.reconnectGraceMs ?? 20_000;
+    this.worlds = worldHubFor(store.worlds);
+    this.trades = new TradeDesk({
+      send: (id, msg) => (this.players.get(id) ?? this.away.get(id))?.conn?.send(msg),
+      nameOf: (id) => {
+        const q = this.players.get(id) ?? this.away.get(id);
+        return q?.conn ? q.profile.name : null;
+      },
+      uidOf: (id) => (this.players.get(id) ?? this.away.get(id))?.uid ?? null,
+      together: (a, b) => this.tradeTogether(a, b),
+      data: () => loadGameData(),
+      swap: (id, a, b) => executeTrade(this.store.worlds, loadGameData(), { id, a, b, now: Date.now() }),
+      refresh: (id) => {
+        const q = this.players.get(id) ?? this.away.get(id);
+        if (!q) return;
+        if (q.world) q.world.room.refreshInventory(q.world.member);
+        else void this.sendOfficeInv(q).catch(() => {});
+      },
+      warn: (o, m) => this.log.warn(o, m),
+    });
     this.tmj = opts.tmj;
     this.mapRev = opts.mapRev ?? 0;
     for (const d of map.desks) this.spots.set(d.id, d);
@@ -426,6 +498,7 @@ export class SpaceRoom {
     } else {
       if (this.connectedCount >= this.opts.capacity) return null;
       const stored = await this.store.getUser(user.uid).catch(() => null);
+      const badge = await this.badgeOf(user.uid);
       const myDesk = this.deskOf(user.uid);
       const spot = myDesk ? this.spots.get(myDesk.deskId) : undefined;
       let pos: { x: number; y: number };
@@ -484,9 +557,11 @@ export class SpaceRoom {
           edit: new Bucket(8, 30),
           /** Talk-box messages to characters: one every 2 s, a burst of 4 */
           talk: new Bucket(0.5, 4),
+          act: new Bucket(6, 12),
         },
       };
       p.profile.id = p.id;
+      if (badge) p.profile.badge = badge;
       p.zone = zoneAt(this.map, p.x, p.y);
       p.scope = mediaScope(this.placed(p));
       this.players.set(p.id, p);
@@ -504,7 +579,7 @@ export class SpaceRoom {
     conn.send({
       t: 'welcome',
       you: p.id,
-      profiles: [...this.players.values()].map((q) => q.profile),
+      profiles: this.roster(),
       positions: [...this.players.values()].map((q) => this.pos(q)),
       history: this.history,
       config: this.opts.clientConfig,
@@ -518,6 +593,7 @@ export class SpaceRoom {
     if (this.officeCat) conn.send({ t: 'pet:state', pets: [this.officeCat.snapshot()] });
     if (this.npcDirector) conn.send({ t: 'npc:state', npcs: this.npcDirector.snapshot() });
     this.sendNpcConsent(p);
+    void this.sendFriendship(p);
     if (this.deskOf(p.uid)) this.broadcastDesks();
     void this.gate?.joined(this.gp(p));
     return p;
@@ -525,6 +601,8 @@ export class SpaceRoom {
 
   /** Socket closed: keep the seat for the grace window, then remove. */
   disconnect(p: Player) {
+    this.trades.end(p.id);
+    this.leaveWorld(p); // a closed socket inside a world goes back to its office seat first
     if (!this.players.has(p.id)) return;
     p.conn = null;
     p.disconnectedAt = Date.now();
@@ -536,6 +614,12 @@ export class SpaceRoom {
   }
 
   remove(p: Player) {
+    this.trades.end(p.id);
+    if (p.world) {
+      // leaving the space from inside a world: take the person out of it, then run the normal removal
+      this.detachWorld(p);
+      this.players.set(p.id, p);
+    }
     if (!this.players.delete(p.id)) return;
     this.opts.npcs?.talk?.engine.end(p.uid);
     void this.gate?.left(p.id, p.scope);
@@ -553,6 +637,8 @@ export class SpaceRoom {
       return;
     }
     const m = parsed.data;
+    if (m.t === 'badge') return void this.onBadge(p, m.skill);
+    if (p.world) return this.onWorldMessage(p, m);
     switch (m.t) {
       case 'move':
         return this.onMove(p, m);
@@ -593,12 +679,20 @@ export class SpaceRoom {
         }
         return;
       }
+      case 'gift':
+        return void this.onGift(p, m);
+      case 'office:buy':
+        return void this.onOfficeBuy(p, m);
+      case 'office:inv':
+        return void this.onOfficeInv(p);
       case 'npc:talk':
         return this.onNpcTalk(p, m);
       case 'npc:consent':
         return this.onNpcConsent(p, m.accept);
       case 'npc:recall':
         return this.onNpcRecall(p, m.npcId);
+      case 'npc:attend':
+        return this.onNpcAttend(p, m.npcId);
       case 'npc:forget':
         return this.onNpcForget(p);
       case 'npc:voice':
@@ -608,6 +702,8 @@ export class SpaceRoom {
         return this.onRtc(p, m);
       case 'teleport':
         return this.onTeleport(p, m.to);
+      case 'portal:enter':
+        return this.onPortalEnter(p, m.id);
       case 'desk:claim':
         return this.onClaim(p, m.deskId);
       case 'desk:release':
@@ -618,6 +714,21 @@ export class SpaceRoom {
         return this.onKnock(p, m.deskId);
       case 'knock:answer':
         return this.onKnockAnswer(p, m.visitor, m.accept);
+      case 'world:visitors':
+        return void this.onVisitorsGet(p);
+      case 'world:visitors:set':
+        return void this.onVisitorsSet(p, m.edit);
+      case 'trade:ask':
+      case 'trade:answer':
+      case 'trade:offer':
+      case 'trade:confirm':
+      case 'trade:cancel':
+        return this.onTrade(p, m);
+      case 'market:browse':
+      case 'market:list':
+      case 'market:buy':
+      case 'market:cancel':
+        return void this.onMarket(p, m);
       case 'callover':
         return this.onCallover(p, m.to);
       case 'ping':
@@ -709,6 +820,119 @@ export class SpaceRoom {
       .catch((err) => this.log.warn({ err: String(err) }, 'saveMap failed'));
   }
 
+  /** The badge a person shows (P17.31); none when the store cannot answer, so the office still opens. */
+  private async badgeOf(uid: string): Promise<Badge | undefined> {
+    try {
+      return await this.store.worlds.badgeOf(uid, loadGameData().progression);
+    } catch (err) {
+      this.log.warn({ err }, 'badge not read');
+      return undefined;
+    }
+  }
+
+  /** Brings a person's badge up to date (the xp they earned in a world); the space hears it only if it changed. */
+  private async refreshBadge(p: Player) {
+    const badge = await this.badgeOf(p.uid);
+    if (JSON.stringify(badge) !== JSON.stringify(p.profile.badge)) this.setProfile(p, { badge });
+  }
+
+  /** P17.31: the person chose the skill to show (null: none). Rate-limited like the other profile messages. */
+  private async onBadge(p: Player, skill: Skill | null) {
+    if (!p.buckets.misc.take()) return;
+    try {
+      const badge = await this.store.worlds.setShowOff(p.uid, skill, loadGameData().progression);
+      this.setProfile(p, { badge });
+    } catch (err) {
+      this.log.warn({ err }, 'badge not saved');
+    }
+  }
+
+  // ───────────────────────────────────────────── office shop and gifts (P17.26b)
+  /** Office gifts and the office board need personal worlds (the account store) on. */
+  private get officeOpen(): boolean {
+    return this.opts.clientConfig.flags.worlds === true;
+  }
+
+  /** My hearts with each character: on join (when the characters are here) and after each gift. */
+  private async sendFriendship(p: Player): Promise<void> {
+    if (!this.officeOpen || !this.npcDirector) return;
+    try {
+      p.conn?.send({ t: 'friendship', hearts: await heartsOfUser(this.store.worlds, p.uid) });
+    } catch (err) {
+      this.log.warn({ err }, 'friendship not read');
+    }
+  }
+
+  /** My bag and money in the office, as a world shows them (`world:inv`). */
+  private async sendOfficeInv(p: Player): Promise<void> {
+    const inv = await officeInventory(this.store.worlds, p.uid, loadGameData(), Date.now());
+    p.conn?.send({ t: 'world:inv', ...inv });
+  }
+
+  private async onOfficeInv(p: Player): Promise<void> {
+    if (!this.officeOpen || !p.buckets.misc.take()) return;
+    try {
+      await this.sendOfficeInv(p);
+      await this.sendFriendship(p);
+    } catch (err) {
+      this.log.warn({ err }, 'office inventory not read');
+    }
+  }
+
+  /**
+   * A gift to a character (P17.26b). The talking rules decide where: the character is here, the giver is
+   * on the open floor (never in a private room, desk pod or quiet zone) and within talking range. The
+   * account action decides the rest (the bag, the day and week limits) in one transaction.
+   */
+  private async onGift(p: Player, m: Extract<C2SMsg, { t: 'gift' }>): Promise<void> {
+    const reply = (ok: boolean, extra: { reason?: OfficeRefusal; taste?: Taste; hearts?: Record<string, number> }) =>
+      p.conn?.send({ t: 'gift:result', key: m.key, npcId: m.npcId, ok, ...extra });
+    if (!this.officeOpen || !this.npcDirector) return reply(false, { reason: 'disabled' });
+    if (!p.buckets.misc.take()) return reply(false, { reason: 'rate' });
+    const npc = this.npcDirector.get(m.npcId);
+    const who = giftNpcOf(m.npcId);
+    if (!npc || !who) return reply(false, { reason: 'gone' });
+    if (NPC_FORBIDDEN.includes(this.placed(p).zoneKind ?? 'area')) return reply(false, { reason: 'zone' });
+    const reach = (NPC_TALK_TILES + NPC_TALK_SLACK_TILES) * TILE;
+    if (Math.hypot(npc.state.x - p.x, npc.state.y - p.y) > reach) return reply(false, { reason: 'range' });
+    const now = Date.now();
+    try {
+      const r = await officeGift(this.store.worlds, loadGameData(), {
+        userId: p.uid,
+        npc: who,
+        item: m.item,
+        key: m.key,
+        day: officeDayOf(now),
+        now,
+      });
+      if (!r.ok) return reply(false, { reason: r.reason });
+      reply(true, { taste: r.taste, hearts: r.hearts });
+      p.conn?.send({ t: 'friendship', hearts: r.hearts });
+      await this.sendOfficeInv(p);
+    } catch (err) {
+      this.log.warn({ err }, 'gift failed');
+      reply(false, { reason: 'conflict' });
+    }
+  }
+
+  /** A purchase at the office shop board (P17.26b): only standing in front of it (its `shop` zone). */
+  private async onOfficeBuy(p: Player, m: Extract<C2SMsg, { t: 'office:buy' }>): Promise<void> {
+    const reply = (ok: boolean, reason?: OfficeRefusal) =>
+      p.conn?.send({ t: 'office:bought', key: m.key, item: m.item, ok, ...(reason ? { reason } : {}) });
+    if (!this.officeOpen) return reply(false, 'disabled');
+    if (!p.buckets.misc.take()) return reply(false, 'rate');
+    if (zoneAt(this.map, p.x, p.y)?.kind !== 'shop') return reply(false, 'range');
+    try {
+      const r = await officeBuy(this.store.worlds, loadGameData(), { userId: p.uid, item: m.item, key: m.key, now: Date.now() });
+      if (!r.ok) return reply(false, r.reason);
+      reply(true);
+      await this.sendOfficeInv(p);
+    } catch (err) {
+      this.log.warn({ err }, 'office purchase failed');
+      reply(false, 'conflict');
+    }
+  }
+
   private setProfile(p: Player, patch: Partial<PlayerProfile>) {
     Object.assign(p.profile, patch);
     this.broadcast({ t: 'profile', profile: p.profile });
@@ -770,6 +994,502 @@ export class SpaceRoom {
     this.onZoneChange(p, before, p.zone);
     this.correct(p, 0, 'teleport');
     this.recomputeLinks();
+  }
+
+  /**
+   * The server's verdict on a step into a desk portal: the pod's rectangle, the pod's access and
+   * the visitor's own position and admission. `ownerUid` is the desk owner's (never sent).
+   */
+  private portalVerdict(
+    p: Player,
+    deskId: string,
+  ): { result: 'ok'; ownerUid: string } | { result: PortalRefusal } {
+    const spot = this.spots.get(deskId);
+    if (!spot) return { result: 'unknown' };
+    if (!inPortal(spot.zone, p.x, p.y)) return { result: 'outside' };
+    const d = this.desks.get(deskId);
+    if (!d) return { result: 'no_world' }; // an unclaimed pod has no owner, so no world
+    const verdict = checkPortal(
+      deskGate(deskId, spot.zone, d.access),
+      { x: p.x, y: p.y },
+      { isOwner: d.ownerUid === p.uid, admitted: p.admitted.has(deskId) },
+    );
+    if (verdict !== 'ok') return { result: verdict };
+    return { result: 'ok', ownerUid: d.ownerUid };
+  }
+
+  /**
+   * P17.8 (ADR-053): step through a portal. Only the server's position and rights count. The
+   * answer goes to the person who asked and nobody else; nobody moves here (the transfer is
+   * P17.9), so presence, media links, pods and chat do not change. The rights are checked again
+   * after the world lookup, in case the person moved or the desk changed meanwhile.
+   */
+  private async onPortalEnter(p: Player, id: string) {
+    if (!p.buckets.misc.take()) return;
+    const refuse = (reason: PortalRefusal) => p.conn?.send({ t: 'portal:refused', id, reason });
+    // ADR-053: personal worlds stay closed until the `worlds` flag is on (checkpoint O)
+    if (this.opts.clientConfig.flags.worlds !== true) return refuse('disabled');
+    const deskId = deskOfPortal(id);
+    const first = deskId ? this.portalVerdict(p, deskId) : undefined;
+    if (!deskId || !first) return refuse('unknown');
+    if (first.result !== 'ok') return refuse(first.result);
+    // the owner's first step through their desk creates their world (P17.14); visitors never do
+    const world = await (first.ownerUid === p.uid
+      ? ensureOwnerWorld(this.store.worlds, first.ownerUid, Date.now())
+      : this.store.worldOf(first.ownerUid)
+    ).catch(() => null);
+    if (!world) return refuse('no_world');
+    const room = await this.worlds.enter(world.id).catch(() => null);
+    if (!room || room.disposed) return refuse('no_world');
+    // the position, the rights and the desk's owner may have changed while the world loaded
+    const again = this.portalVerdict(p, deskId);
+    const moved = again.result !== 'ok' || again.ownerUid !== first.ownerUid;
+    if (moved || p.world || !p.conn || !this.players.has(p.id)) {
+      this.worlds.release(room);
+      return refuse(again.result === 'ok' ? 'no_world' : again.result);
+    }
+    p.conn.send({ t: 'portal:go', id, worldId: world.id, spawn: room.spawn() });
+    this.enterWorld(p, room, p.conn, this.desks.get(deskId)?.ownerName ?? '', deskId);
+  }
+
+  /**
+   * Office → world (P17.9): the person leaves this office's presence, media and links and joins
+   * the world. Nothing of the office is sent to them after this (`broadcast` and `recomputeLinks`
+   * only reach people in `players`), and nothing of the world reaches the office.
+   */
+  private enterWorld(p: Player, room: WorldRoom, conn: Conn, owner: string, deskId: string) {
+    this.trades.end(p.id);
+    const from = p.zone;
+    this.players.delete(p.id);
+    this.opts.npcs?.talk?.engine.end(p.uid);
+    void this.gate?.left(p.id, p.scope);
+    // P17.15b: the office keeps the person in its list as "in a world" (neutral), never where
+    p.profile.inWorld = true;
+    this.away.set(p.id, p);
+    this.broadcast({ t: 'profile', profile: p.profile });
+    this.onZoneChange(p, from, undefined);
+    p.zone = undefined;
+    p.peers = '';
+    conn.send({ t: 'peers', peers: [] });
+    this.recomputeLinks();
+    p.world = {
+      room,
+      deskId,
+      member: room.join(
+        conn,
+        { id: p.id, uid: p.uid, name: p.profile.name, avatar: p.profile.avatar },
+        this.worldMedia(),
+        owner,
+      ),
+    };
+    this.log.info({ player: p.id, world: room.id }, 'entered world');
+  }
+
+  /**
+   * The rights to be in a world at all, read again whenever it matters (P17.32): the desk's own
+   * rules, for its owner and for the people the owner let in. `no_world` when the desk is unclaimed.
+   */
+  private worldGate(p: Player, from: NonNullable<Player['world']>, id: string): 'ok' | PortalRefusal {
+    if (p.world !== from || from.room.caveMouthAt(from.member) !== id) return 'outside';
+    const desk = this.desks.get(from.deskId);
+    if (!desk) return 'no_world';
+    if (!portalAllows(desk.access, desk.ownerUid === p.uid, p.admitted.has(from.deskId))) return 'no_permission';
+    return 'ok';
+  }
+
+  /**
+   * World → cave (P17.32): only the mouth under the person's own feet opens a cave, and only while
+   * they may be in this world. The cave is its own room with its own chat and media: the people left
+   * in the world neither hear nor see the people who go in, and the reverse holds too.
+   */
+  private async onCaveEnter(p: Player, id: string) {
+    const refuse = (reason: PortalRefusal) => p.conn?.send({ t: 'portal:refused', id, reason });
+    const from = p.world;
+    if (!from || from.room.cave) return refuse('unknown');
+    if (this.opts.clientConfig.flags.worlds !== true) return refuse('disabled');
+    const first = this.worldGate(p, from, id);
+    if (first !== 'ok') return refuse(first);
+    const room = await this.worlds.enter(id).catch(() => null);
+    if (!room || room.disposed) return refuse('no_world');
+    // the person may have moved, left or lost the right while the cave loaded
+    const again = this.worldGate(p, from, id);
+    if (again !== 'ok' || !p.conn) {
+      this.worlds.release(room);
+      return refuse(again === 'ok' ? 'no_world' : again);
+    }
+    this.moveWorld(p, room, from.deskId);
+  }
+
+  /**
+   * Cave → world (P17.32): the pad takes the person back to the world the cave opens from, beside its
+   * mouth. Leaving needs no right: anyone inside may always step out.
+   */
+  private async leaveCave(p: Player) {
+    const from = p.world;
+    const cave = from?.room.cave;
+    if (!from || !cave) return;
+    const parent = await this.worlds.enter(cave.worldId).catch(() => null);
+    if (!parent || parent.disposed) return p.conn?.send({ t: 'portal:refused', id: RETURN_PORTAL_ID, reason: 'no_world' });
+    if (p.world !== from || !p.conn) {
+      this.worlds.release(parent);
+      return;
+    }
+    this.moveWorld(p, parent, from.deskId, parent.arrivalNextTo(cave.mouthX, cave.mouthY));
+  }
+
+  /**
+   * Between two worlds of one desk (a cave in or out): the person leaves the room they are in, which
+   * tells the people there, and joins the other, which welcomes them with its own terrain and people.
+   */
+  private moveWorld(p: Player, room: WorldRoom, deskId: string, at?: { x: number; y: number }) {
+    const conn = p.conn;
+    const old = p.world;
+    if (!conn || !old) return;
+    this.trades.end(p.id);
+    p.world = undefined;
+    old.room.leave(old.member);
+    const owner = this.desks.get(deskId)?.ownerName ?? '';
+    const member = room.join(
+      conn,
+      { id: p.id, uid: p.uid, name: p.profile.name, avatar: p.profile.avatar },
+      this.worldMedia(),
+      owner,
+      at,
+    );
+    p.world = { room, deskId, member };
+    this.log.info({ player: p.id, world: room.id }, 'moved world');
+  }
+
+  /** The SFU a world's members use, when this server runs one (ADR-031). */
+  private worldMedia(): WorldMedia | undefined {
+    const sfu = this.opts.sfu;
+    return sfu ? { api: sfu.api, url: sfu.url, prefix: sfu.prefix, log: this.log } : undefined;
+  }
+
+  /** Take the person out of their world. Nothing is sent to them here. */
+  private detachWorld(p: Player) {
+    const w = p.world;
+    if (!w) return;
+    this.trades.end(p.id);
+    p.world = undefined;
+    this.away.delete(p.id);
+    delete p.profile.inWorld;
+    w.room.leave(w.member);
+  }
+
+  /** Everyone this space lists: the people on the floor and those inside a world (P17.15b). */
+  private roster(): PlayerProfile[] {
+    return [...this.players.values(), ...this.away.values()].map((q) => q.profile);
+  }
+
+  /**
+   * World → office: back at the desk (a visitor: the hub), with the office presence, media and
+   * links again. Everyone in the office hears the person arrive.
+   */
+  private leaveWorld(p: Player) {
+    if (!p.world) return;
+    this.detachWorld(p);
+    const home = this.homeSpot(p.uid);
+    p.x = home.x;
+    p.y = home.y;
+    p.pose = 'stand';
+    p.dir = 'down';
+    p.lastMoveAt = Date.now();
+    p.zone = zoneAt(this.map, p.x, p.y);
+    p.scope = mediaScope(this.placed(p));
+    this.players.set(p.id, p);
+    this.onZoneChange(p, undefined, p.zone);
+    void this.gate?.joined(this.gp(p));
+    this.broadcast({ t: 'profile', profile: p.profile }, p.id);
+    this.recomputeLinks();
+    p.conn?.send({ t: 'world:exit' });
+    // what changed in the office while away (arrivals, departures, desks): the whole roster again
+    p.conn?.send({ t: 'roster', profiles: this.roster(), desks: this.deskStates() });
+    // the xp earned in the world may have opened a level: the card shows it from now on (P17.31)
+    void this.refreshBadge(p);
+    this.log.info({ player: p.id }, 'left world');
+  }
+
+  /** Where someone returning from a world stands: their desk's guest spot, else the hub spawn. */
+  private homeSpot(uid: string): { x: number; y: number } {
+    const myDesk = this.deskOf(uid);
+    const spot = myDesk ? this.spots.get(myDesk.deskId) : undefined;
+    if (spot) {
+      const g = cellPos(this.map, spot.guest);
+      return nearestFree(this.map, g.x, g.y);
+    }
+    const s = defaultSpawn(this.map);
+    return nearestFree(this.map, s.x, s.y);
+  }
+
+  /**
+   * Messages from someone inside a world: moves, leaving, ping, chat and signalling inside the
+   * world (P17.11), media tokens, and the return pad (P17.10: the only portal inside a world,
+   * checked against the person's position). Office-only messages do nothing there.
+   */
+  private onWorldMessage(p: Player, m: C2SMsg) {
+    const w = p.world;
+    if (!w) return;
+    switch (m.t) {
+      case 'move':
+        if (!p.buckets.move.take()) return;
+        return w.room.move(w.member, m);
+      case 'world:leave':
+        if (!p.buckets.misc.take()) return;
+        return this.leaveWorld(p);
+      case 'world:act':
+        // P17.20: the server decides; a refusal says which request and why, and nothing changes
+        if (this.opts.clientConfig.flags.worlds !== true)
+          return p.conn?.send({ t: 'world:refused', op: m.op, reason: 'disabled' });
+        if (!p.buckets.act.take()) return p.conn?.send({ t: 'world:refused', op: m.op, reason: 'rate' });
+        return w.room.act(w.member, m);
+      case 'chat':
+        if (!p.buckets.chat.take()) return p.conn?.send({ t: 'error', code: 'rate_limited' });
+        return w.room.chat(w.member, m.body);
+      case 'rtc': {
+        if (!p.buckets.rtc.take()) return;
+        const verdict = w.room.signal(w.member, m.to, m.data);
+        if (verdict !== 'ok') p.conn?.send({ t: 'error', code: verdict === 'off' ? 'rtc_off' : 'rtc_not_linked' });
+        return;
+      }
+      case 'media:token':
+        if (!p.buckets.misc.take()) return;
+        return w.room.refreshMedia(w.member);
+      case 'portal:enter': {
+        if (!p.buckets.misc.take()) return;
+        if (m.id === RETURN_PORTAL_ID) {
+          if (!w.room.atReturn(w.member))
+            return p.conn?.send({ t: 'portal:refused', id: m.id, reason: 'outside' });
+          // the pad of a cave goes back to its world; the pad of a world goes back to the office
+          if (w.room.cave) return void this.leaveCave(p);
+          return this.leaveWorld(p);
+        }
+        if (isCaveId(m.id)) return void this.onCaveEnter(p, m.id);
+        return p.conn?.send({ t: 'portal:refused', id: m.id, reason: 'unknown' });
+      }
+      case 'contract:post':
+      case 'contract:cancel':
+        // P17.28: the world room decides (the owner only, in their own world)
+        if (this.opts.clientConfig.flags.worlds !== true)
+          return p.conn?.send({ t: 'contract:result', op: m.t === 'contract:post' ? 'post' : 'cancel', ok: false, reason: 'disabled' });
+        if (!p.buckets.misc.take())
+          return p.conn?.send({ t: 'contract:result', op: m.t === 'contract:post' ? 'post' : 'cancel', ok: false, reason: 'rate' });
+        return w.room.contract(w.member, m);
+      case 'trade:ask':
+      case 'trade:answer':
+      case 'trade:offer':
+      case 'trade:confirm':
+      case 'trade:cancel':
+        return this.onTrade(p, m);
+      // P17.27: the owner answers a knock and edits the visitor matrix from inside their world too
+      case 'knock:answer':
+        return this.onKnockAnswer(p, m.visitor, m.accept);
+      case 'world:visitors':
+        return void this.onVisitorsGet(p);
+      case 'world:visitors:set':
+        return void this.onVisitorsSet(p, m.edit);
+      case 'ping':
+        return p.conn?.send({ t: 'pong', at: m.at });
+      case 'leave':
+        return this.remove(p);
+      default:
+        return;
+    }
+  }
+
+  // ───────────────────────────────────────────── marketplace board (P17.30)
+  /**
+   * The marketplace board, at the office board only (its `shop` zone). Expired listings are given
+   * back first, so the list never shows them and their items are home before anything else happens.
+   */
+  private async onMarket(p: Player, m: Extract<C2SMsg, { t: `market:${string}` }>): Promise<void> {
+    const op = m.t === 'market:list' ? 'list' : m.t === 'market:buy' ? 'buy' : m.t === 'market:cancel' ? 'cancel' : null;
+    const refuse = (reason: MarketRefusal) =>
+      op ? p.conn?.send({ t: 'market:result', op, ok: false, reason }) : undefined;
+    if (!this.officeOpen) return void refuse('disabled');
+    if (!p.buckets.misc.take()) return void refuse('rate');
+    if (zoneAt(this.map, p.x, p.y)?.kind !== 'shop') return void refuse('range');
+    const data = loadGameData();
+    const now = Date.now();
+    try {
+      await sweepExpired(this.store.worlds, data, now);
+      if (m.t === 'market:browse') return await this.sendBoard(p);
+      const r =
+        m.t === 'market:list'
+          ? await listItem(this.store.worlds, data, { userId: p.uid, item: m.item, qty: m.qty, price: m.price, key: m.key, now })
+          : m.t === 'market:buy'
+            ? await buyListing(this.store.worlds, data, { userId: p.uid, id: m.id, key: m.key, now })
+            : await cancelListing(this.store.worlds, data, { userId: p.uid, id: m.id, now });
+      if (!r.ok) return void refuse(r.reason);
+      p.conn?.send({ t: 'market:result', op: op!, ok: true });
+      await this.sendOfficeInv(p);
+      if (m.t === 'market:buy') {
+        const l = r.listing;
+        for (const s of this.reachableOf(l.sellerId)) {
+          s.conn?.send({ t: 'market:sold', item: l.item, qty: l.qty, price: l.price });
+          if (s.world) s.world.room.refreshInventory(s.world.member);
+          else void this.sendOfficeInv(s).catch(() => {});
+        }
+      }
+      // everyone at the board sees the board as it is now
+      for (const q of this.players.values())
+        if (q.conn && zoneAt(this.map, q.x, q.y)?.kind === 'shop') await this.sendBoard(q);
+    } catch (err) {
+      this.log.warn({ err }, 'market request failed');
+      refuse('conflict');
+    }
+  }
+
+  private async sendBoard(p: Player): Promise<void> {
+    const board = await boardOf(this.store.worlds, p.uid, Date.now());
+    p.conn?.send({ t: 'market:board', ...board });
+  }
+
+  // ───────────────────────────────────────────── direct trades (P17.29)
+  private onTrade(p: Player, m: Extract<C2SMsg, { t: `trade:${string}` }>): void {
+    if (!this.officeOpen) return p.conn?.send({ t: 'trade:refused', reason: 'disabled' });
+    if (!p.buckets.misc.take()) return p.conn?.send({ t: 'trade:refused', reason: 'rate' });
+    switch (m.t) {
+      case 'trade:ask':
+        return this.trades.ask(p.id, m.to);
+      case 'trade:answer':
+        return this.trades.answer(p.id, m.id, m.accept);
+      case 'trade:offer':
+        return this.trades.offer(p.id, m.id, { items: m.items, money: m.money });
+      case 'trade:confirm':
+        return this.trades.confirm(p.id, m.id, m.rev);
+      case 'trade:cancel':
+        return this.trades.cancel(p.id, m.id);
+    }
+  }
+
+  /**
+   * Two people may trade from where they stand: in the same world (or cave) within a few cells, or both
+   * on the office floor within a few tiles and in the same room (a private room, a pod, a quiet zone or
+   * the open floor): what is said in a private room stays there, and so does a trade.
+   */
+  private tradeTogether(a: string, b: string): boolean {
+    const pa = this.players.get(a) ?? this.away.get(a);
+    const pb = this.players.get(b) ?? this.away.get(b);
+    if (!pa?.conn || !pb?.conn) return false;
+    if (pa.world || pb.world) {
+      if (!pa.world || !pb.world || pa.world.room !== pb.world.room) return false;
+      const ma = pa.world.member;
+      const mb = pb.world.member;
+      return Math.hypot(ma.x - mb.x, ma.y - mb.y) <= TRADE_RANGE_TILES * WORLD_CELL_PX;
+    }
+    if (this.placed(pa).zoneId !== this.placed(pb).zoneId) return false;
+    return Math.hypot(pa.x - pb.x, pa.y - pb.y) <= TRADE_RANGE_TILES * TILE;
+  }
+
+  // ───────────────────────────────────────────── visitor matrix (P17.27)
+  /** An opaque, stable name for a person in one world's list: user ids never reach a client. */
+  private visitorRef(worldId: string, uid: string): string {
+    return createHash('sha256').update(`agora-visitor:${worldId}:${uid}`).digest('hex').slice(0, 16);
+  }
+
+  /** The owner's view of their world's matrix: the people they set, and the visitors here now. */
+  private visitorView(worldId: string, ownerUid: string, settings: Record<string, unknown>) {
+    const entries = visitorsOf(settings);
+    const here = new Map<string, string>();
+    for (const room of this.worlds.openRoomsOf(worldId))
+      for (const person of room.people()) if (person.uid !== ownerUid) here.set(person.uid, person.name);
+    const people: VisitorView[] = [];
+    for (const [uid, e] of Object.entries(entries))
+      people.push({
+        ref: this.visitorRef(worldId, uid),
+        name: e.name,
+        grants: e.grants ? [...e.grants] : null,
+        listed: e.listed === true,
+        here: here.has(uid),
+      });
+    for (const [uid, name] of here)
+      if (!entries[uid])
+        people.push({ ref: this.visitorRef(worldId, uid), name, grants: null, listed: false, here: true });
+    people.sort((a, b) => Number(b.here) - Number(a.here) || a.name.localeCompare(b.name));
+    return { t: 'world:visitors' as const, away: awayOf(settings), grants: cleanGrants(settings.grants), people };
+  }
+
+  /** Every connection of a person, on the office floor or in a world. */
+  private reachableOf(uid: string): Player[] {
+    const out: Player[] = [];
+    for (const p of [...this.players.values(), ...this.away.values()]) if (p.uid === uid && p.conn) out.push(p);
+    return out;
+  }
+
+  private async onVisitorsGet(p: Player): Promise<void> {
+    const refuse = (reason: VisitorRefusal) => p.conn?.send({ t: 'world:visitors:refused', reason });
+    if (!this.officeOpen) return refuse('disabled');
+    if (!p.buckets.misc.take()) return refuse('rate');
+    const world = await this.store.worldOf(p.uid).catch(() => null);
+    if (!world) return refuse('no_world');
+    p.conn?.send(this.visitorView(world.id, p.uid, world.settings));
+  }
+
+  /**
+   * The owner changes their matrix. Only the owner's own world is ever written (looked up from their
+   * user id, never from the message); the people they name are resolved here. The change reaches the
+   * open rooms at once, so the next action of every visitor is judged by it.
+   */
+  private async onVisitorsSet(p: Player, edit: Extract<C2SMsg, { t: 'world:visitors:set' }>['edit']): Promise<void> {
+    const refuse = (reason: VisitorRefusal) => p.conn?.send({ t: 'world:visitors:refused', reason });
+    if (!this.officeOpen) return refuse('disabled');
+    if (!p.buckets.misc.take()) return refuse('rate');
+    const world = await this.store.worldOf(p.uid).catch(() => null);
+    if (!world) return refuse('no_world');
+    let change: VisitorEdit;
+    if (edit.op === 'defaults' || edit.op === 'away') change = edit;
+    else {
+      const who = this.resolveVisitor(world.id, world.settings, edit);
+      if (!who) return refuse('unknown');
+      if (who.uid === p.uid) return refuse('self');
+      change =
+        edit.op === 'forget'
+          ? { op: 'forget', uid: who.uid }
+          : edit.op === 'person'
+            ? { op: 'person', uid: who.uid, name: who.name, grants: edit.grants }
+            : { op: 'list', uid: who.uid, name: who.name, on: edit.on };
+    }
+    let refusal: VisitorRefusal | null = null;
+    const settings = await this.store.worlds
+      .updateSettings(world.id, (before) => {
+        const r = applyVisitorEdit(before, change);
+        if (!r.ok) {
+          refusal = r.reason;
+          return null;
+        }
+        return r.settings;
+      })
+      .catch((err: unknown) => {
+        this.log.warn({ err }, 'visitor matrix not saved');
+        return null;
+      });
+    if (!settings) return refuse('no_world');
+    if (refusal) return refuse(refusal);
+    for (const room of this.worlds.openRoomsOf(world.id)) room.setSettings(settings);
+    const view = this.visitorView(world.id, p.uid, settings);
+    for (const o of this.reachableOf(p.uid)) o.conn?.send(view);
+  }
+
+  /** A person named in an edit: by their ref in this world's list, or by a session id here or in a world. */
+  private resolveVisitor(
+    worldId: string,
+    settings: Record<string, unknown>,
+    edit: { ref?: string; player?: string },
+  ): { uid: string; name: string } | null {
+    if (edit.player) {
+      const q = this.players.get(edit.player) ?? this.away.get(edit.player);
+      if (q) return { uid: q.uid, name: q.profile.name };
+      for (const room of this.worlds.openRoomsOf(worldId))
+        for (const person of room.people()) if (person.id === edit.player) return person;
+      return null;
+    }
+    if (!edit.ref) return null;
+    for (const [uid, e] of Object.entries(visitorsOf(settings)))
+      if (this.visitorRef(worldId, uid) === edit.ref) return { uid, name: e.name };
+    for (const room of this.worlds.openRoomsOf(worldId))
+      for (const person of room.people()) if (this.visitorRef(worldId, person.uid) === edit.ref) return person;
+    return null;
   }
 
   private onClaim(p: Player, deskId: string) {
@@ -839,13 +1559,36 @@ export class SpaceRoom {
       return p.conn?.send({ t: 'error', code: 'knock_too_far' });
     if (!d || d.access === 'open') return reply('accepted');
     if (d.access === 'closed') return reply('busy');
-    const owner = this.onlineOf(d.ownerUid);
-    if (!owner) return reply('away');
-    if (owner.profile.status === 'dnd') return reply('busy');
+    // P17.27: the owner hears a knock in the office or in their world; away, their away rule decides
+    const owners = this.reachableOf(d.ownerUid);
+    if (owners.length === 0) return void this.knockWhileAway(p, deskId, d.ownerUid, reply);
+    if (owners[0]!.profile.status === 'dnd') return reply('busy');
     p.knock = { deskId, until: Date.now() + KNOCK_MS };
-    for (const o of this.sessionsOf(d.ownerUid))
-      o.conn?.send({ t: 'knock', from: p.id, name: p.profile.name, deskId });
+    for (const o of owners) o.conn?.send({ t: 'knock', from: p.id, name: p.profile.name, deskId });
     reply('pending');
+  }
+
+  /**
+   * A knock while the owner is away (P17.27, ADR-053 "away rule"): with the rule `list`, a person on
+   * the owner's list is let in as if the owner had said yes; anyone else hears `away`. Read from the
+   * owner's world settings, so it holds in every space.
+   */
+  private async knockWhileAway(
+    p: Player,
+    deskId: string,
+    ownerUid: string,
+    reply: (result: 'accepted' | 'away') => void,
+  ): Promise<void> {
+    if (!this.officeOpen) return reply('away');
+    const world = await this.store.worldOf(ownerUid).catch(() => null);
+    const d = this.desks.get(deskId);
+    if (!world || !d || d.ownerUid !== ownerUid || !this.players.has(p.id)) return reply('away');
+    if (!awayAllows(world.settings, p.uid)) return reply('away');
+    // the owner may have come back meanwhile: a live answer is theirs to give, not the rule's
+    if (this.reachableOf(ownerUid).length > 0) return reply('away');
+    p.admitted.add(deskId);
+    p.conn?.send({ t: 'admitted', deskIds: [...p.admitted] });
+    reply('accepted');
   }
 
   private onKnockAnswer(owner: Player, visitorId: string, accept: boolean) {
@@ -1094,6 +1837,21 @@ export class SpaceRoom {
     if (link.notice.needed && !p.npcConsent) return refuse('consent');
     npc.attend(p, Date.now());
     void this.runTalk(p, npc, m.body, link);
+  }
+
+  /**
+   * The Talk box is open (P15.4 follow-up): the character holds still for a while, as it does for a
+   * message, under the same place rules (here, on the open floor, within talking range). Silent: no
+   * answer, no refusal; it only keeps the character from walking off mid-conversation.
+   */
+  private onNpcAttend(p: Player, npcId: string) {
+    if (!this.npcDirector || !p.buckets.misc.take()) return;
+    if (this.opts.clientConfig.flags.npcTalk !== true && this.opts.clientConfig.flags.worlds !== true) return;
+    const npc = this.npcDirector.get(npcId);
+    if (!npc || NPC_FORBIDDEN.includes(this.placed(p).zoneKind ?? 'area')) return;
+    const reach = (NPC_TALK_TILES + NPC_TALK_SLACK_TILES) * TILE;
+    if (Math.hypot(npc.state.x - p.x, npc.state.y - p.y) > reach) return;
+    npc.attend(p, Date.now());
   }
 
   private async runTalk(p: Player, npc: Npc, body: string, link: NpcTalkLink) {

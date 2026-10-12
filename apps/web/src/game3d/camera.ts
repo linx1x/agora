@@ -91,6 +91,20 @@ export function unprojectFloor(c: Cam, sx: number, sy: number): Pt | null {
 }
 
 /**
+ * The ray through a screen point (CSS px in the canvas): from the eye, along an unnormalised
+ * direction. P16.13: build mode picks what is drawn under the pointer with it (pick3d.ts).
+ */
+export function screenRay(c: Cam, sx: number, sy: number): { o: V3; d: V3 } {
+  const t = (c.tilt * Math.PI) / 180;
+  const st = Math.sin(t);
+  const ct = Math.cos(t);
+  const f = focal(c.h, c.fov);
+  const rx = (sx - c.w / 2) / f;
+  const ry = -(sy - c.h / 2) / f;
+  return { o: camPos(c), d: [rx, ry * ct - st, -ry * st - ct] };
+}
+
+/**
  * Distance (tiles) at which a floor tile at the target is `32 * zoom` px across, for a viewport
  * `viewH` px tall: `focal / dist = 32 * zoom`.
  */
@@ -99,14 +113,14 @@ export function distForZoom(zoom: number, viewH: number, fov: number = FOV): num
 }
 
 /**
- * The zoom that fits a 22 × 14 tile area, clamped to 1–3 (the same rule as WorldScene.fitZoom).
+ * The zoom that fits a 22 × 14 tile area, clamped to 1–3 (the rule of the former flat view's fitZoom).
  * `h` is the height of the world viewport (above the dock).
  */
 export function fitZoom(w: number, h: number): number {
   return Math.max(1, Math.min(3, Math.round(Math.min(w / (22 * TILE), h / (14 * TILE)))));
 }
 
-/** The dock rule of ADR-035 (WorldScene.fitZoom): the world stops above the dock on phones in portrait. */
+/** The dock rule of ADR-035 (the former flat view's fitZoom): the world stops above the dock on phones in portrait. */
 export function dockPx(compact: boolean, portrait: boolean, touchControlsOn: boolean): number {
   return compact && portrait && touchControlsOn ? DOCK_PX : 0;
 }

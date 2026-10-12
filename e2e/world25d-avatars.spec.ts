@@ -2,8 +2,7 @@
  * P16.8 (ADR-052): people and characters in the 2.5D view are paper cut-out cards. Each card
  * stands on the floor with a blob shadow; a left-right turn plays a short card flip (instant under
  * prefers-reduced-motion); a seated card sits at seat height; names, emotes and nearby-chat bubbles
- * are screen-space overlays above the head. The view is chosen per device by `agora.worldView`
- * (the flag `world25d` is on in playwright.config.ts), the way e2e/world25d.spec.ts does it.
+ * are screen-space overlays above the head. The 2.5D view is the only view (ADR-054).
  */
 import { expect, test, type Browser, type Page } from '@playwright/test';
 
@@ -40,7 +39,6 @@ async function enter(
       'agora.settings',
       JSON.stringify({ lighting: false, sounds: false, autoSit: false, precheck: false }),
     );
-    localStorage.setItem('agora.worldView', '2.5d');
   });
   const page = await ctx.newPage();
   opened.push(page);

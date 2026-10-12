@@ -1,0 +1,79 @@
+{
+  "progression": {
+    "energy": {
+      "max": 270
+    },
+    "home": {
+      "x0": -6,
+      "y0": -6,
+      "x1": -2,
+      "y1": -2
+    },
+    "passOut": {
+      "moneyPct": 10,
+      "moneyCap": 1000
+    },
+    "starterKit": {
+      "money": 500,
+      "items": {
+        "hoe_1": 1,
+        "shovel_1": 1,
+        "chest": 1,
+        "wood_wall": 4,
+        "can_1": 1,
+        "axe_1": 1,
+        "pick_1": 1,
+        "rod_1": 1,
+        "dawn_radish_seed": 6,
+        "clover_bulb_seed": 4,
+        "workbench": 1
+      }
+    },
+    "levelXp": [
+      100,
+      300,
+      700,
+      1200,
+      2000,
+      3000,
+      4500,
+      6500,
+      9000,
+      12500
+    ],
+    "xp": {
+      "harvest": {
+        "skill": "farming",
+        "amount": 8
+      },
+      "chop": {
+        "skill": "foraging",
+        "amount": 4
+      },
+      "mine": {
+        "skill": "mining",
+        "amount": 4
+      },
+      "catch": {
+        "skill": "fishing",
+        "amount": 6
+      },
+      "kill": {
+        "skill": "combat",
+        "amount": 5
+      }
+    },
+    "unlocks": [
+      { "item": "hoe_2", "skill": "farming", "level": 1 },
+      { "item": "can_2", "skill": "farming", "level": 1 },
+      { "item": "axe_2", "skill": "foraging", "level": 1 },
+      { "item": "pick_2", "skill": "mining", "level": 1 },
+      { "item": "rod_2", "skill": "fishing", "level": 1 },
+      { "item": "hoe_3", "skill": "farming", "level": 3 },
+      { "item": "can_3", "skill": "farming", "level": 3 },
+      { "item": "axe_3", "skill": "foraging", "level": 3 },
+      { "item": "pick_3", "skill": "mining", "level": 3 },
+      { "item": "rod_3", "skill": "fishing", "level": 3 }
+    ]
+  }
+}

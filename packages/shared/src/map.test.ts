@@ -194,6 +194,15 @@ describe('hq map (hub + 4 biomes)', () => {
     expect(map.zones.filter((z) => z.kind === 'private')).toHaveLength(7);
     expect(map.zones.some((z) => z.kind === 'quiet')).toBe(true);
     expect(map.zones.filter((z) => z.kind === 'portal')).toHaveLength(8);
+    // P17.26b: one office shop board, in the hub
+    expect(map.zones.filter((z) => z.kind === 'shop').map((z) => [z.id, z.region])).toEqual([
+      ['comptoir', 'hub'],
+    ]);
+  });
+  it('the office shop board is reachable from the hub arrival point', () => {
+    const z = map.zones.find((q) => q.kind === 'shop')!;
+    const sp = regionSpawn(map, 'hub')!;
+    expect(findPath(map, cellOf(map, sp.x, sp.y), cellOf(map, z.x + 16, z.y + 26))).not.toBeNull();
   });
   it('default spawn and every region arrival point are walkable', () => {
     const s = defaultSpawn(map);

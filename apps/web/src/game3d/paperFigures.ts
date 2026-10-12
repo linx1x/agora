@@ -18,6 +18,7 @@ import { POSE_MS } from '../game/controller';
 import { TILT } from './camera';
 import {
   FIG_TOP,
+  FIG_W,
   PAD_BOTTOM,
   QUAD_H,
   QUAD_W,
@@ -29,6 +30,7 @@ import {
   seatPlacement,
   type FlipStart,
 } from './figureMath';
+import type { Box3 } from './occlusionMath';
 import { makePaperSheet } from './paperAvatar';
 import type { PaperScale } from './paperLayout';
 
@@ -41,6 +43,8 @@ export interface FigurePose {
   pose: 'stand' | 'sit';
   /** when the pose last changed (performance.now ms); a crouch frame plays for POSE_MS after */
   poseAt: number;
+  /** height of the floor under the feet, tiles (a raised cell of a personal world); 0 in the office */
+  elev?: number;
 }
 
 /** Test and overlay read-out of one figure. */
@@ -181,7 +185,7 @@ interface Figure {
   look: string;
   group: THREE.Group;
   card: THREE.Mesh;
-  mat: THREE.MeshBasicMaterial;
+  mat: THREE.MeshLambertMaterial;
   /** this figure's clone of the shared sheet (own offset and repeat) */
   tex: THREE.CanvasTexture;
   shadow: THREE.Mesh;
@@ -251,7 +255,7 @@ export class PaperFigures {
     f.tex.repeat.set(uv.repeatX, uv.repeatY);
 
     // the floor point moves; the card is lifted onto the seat; the shadow stays on the floor
-    f.group.position.set(p.x / TILE, 0, p.y / TILE + dz);
+    f.group.position.set(p.x / TILE, p.elev ?? 0, p.y / TILE + dz);
     f.card.position.y = lift;
     // the shadow and the ring stay under the seat (the floor point), not under the shifted card
     f.shadow.position.z = -dz;
@@ -287,7 +291,28 @@ export class PaperFigures {
     // the top of the figure's art: the cut-out margin above the head is not counted
     // the art leaves ~5 % of the figure empty above the hair (P16.7 drawing box), so names sit
     // on the head as in 2D rather than floating above it
-    return [f.group.position.x, f.info.lift + FIG_TOP * 0.95, f.group.position.z];
+    return [
+      f.group.position.x,
+      f.group.position.y + f.info.lift + FIG_TOP * 0.95,
+      f.group.position.z,
+    ];
+  }
+
+  /** The body as a world box (tiles): its width, from the feet (or the seat) up to the top. */
+  box(id: string): Box3 | null {
+    const f = this.figs.get(id);
+    if (!f) return null;
+    const x = f.group.position.x;
+    const z = f.group.position.z;
+    const y0 = f.group.position.y + f.info.lift;
+    return {
+      x0: x - FIG_W / 2,
+      x1: x + FIG_W / 2,
+      y0,
+      y1: y0 + FIG_TOP,
+      z0: z - 0.15,
+      z1: z + 0.15,
+    };
   }
 
   /** Remove every figure whose id is not in `ids`. */
@@ -314,13 +339,15 @@ export class PaperFigures {
     const tex = master.clone();
     tex.needsUpdate = true;
 
-    const mat = new THREE.MeshBasicMaterial({
+    // lit by the world's lights (P16.10): a figure darkens at night like the walls do
+    const mat = new THREE.MeshLambertMaterial({
       map: tex,
       transparent: true,
       alphaTest: 0.5,
       depthWrite: true,
     });
     const card = new THREE.Mesh(sh.card, mat);
+    card.receiveShadow = true;
 
     const shadowMat = new THREE.MeshBasicMaterial({
       map: sh.shadowTex,

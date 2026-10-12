@@ -67,6 +67,8 @@ export const ZONE_KINDS = [
   'desk',
   'door',
   'portal',
+  /** P17.26b: in front of the office shop board; a public area (no media or chat rule) */
+  'shop',
 ] as const;
 export type ZoneKind = (typeof ZONE_KINDS)[number];
 
@@ -377,7 +379,8 @@ const PRIORITY: Record<ZoneKind, number> = {
   spotlight: 4,
   broadcast: 5,
   door: 6,
-  area: 7,
+  shop: 7,
+  area: 8,
 };
 
 /** Zone at a point (avatar feet), highest-priority first. */

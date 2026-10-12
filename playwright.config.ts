@@ -3,9 +3,14 @@ import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { defineConfig } from '@playwright/test';
 
-const PORT = 3123;
+/**
+ * E2E_PORT_OFFSET shifts every port below, so several checkouts (parallel worktrees) can run
+ * the suite at the same time. Default 0 keeps the usual ports.
+ */
+const OFF = Number(process.env.E2E_PORT_OFFSET ?? 0) || 0;
+const PORT = 3123 + OFF;
 /** second server in AUTH_MODE=passkey; its owner setup link lands in SETUP_LINK_FILE */
-export const PASSKEY_PORT = 3124;
+export const PASSKEY_PORT = 3124 + OFF;
 // One file per run (workers inherit the env), outside test-results/ which Playwright empties.
 process.env.AGORA_E2E_RUN ??= `${Date.now()}-${process.pid}`;
 export const SETUP_LINK_FILE = join(tmpdir(), `agora-e2e-setup-${process.env.AGORA_E2E_RUN}.txt`);
@@ -17,12 +22,12 @@ export const SETUP_LINK_FILE = join(tmpdir(), `agora-e2e-setup-${process.env.AGO
  * Character voices (P15.6): the fake voice of apps/ml (beeps, no model) when python3 and ffmpeg are
  * there; e2e/npcs.spec.ts skips the voice test otherwise.
  */
-const VOICE_PORT = 8793;
+const VOICE_PORT = 8793 + OFF;
 const has = (cmd: string, args: string[]) => spawnSync(cmd, args, { stdio: 'ignore' }).status === 0;
 const VOICE_E2E = has('python3', ['--version']) && has('ffmpeg', ['-version']);
 process.env.AGORA_E2E_VOICE = VOICE_E2E ? '1' : '';
 const LIVEKIT_BIN = process.env.LIVEKIT_BIN;
-const LK_PORT = 7880;
+const LK_PORT = 7880 + OFF;
 const livekitEnv = LIVEKIT_BIN
   ? {
       LIVEKIT_URL: `ws://127.0.0.1:${LK_PORT}`,
@@ -30,6 +35,32 @@ const livekitEnv = LIVEKIT_BIN
       LIVEKIT_API_SECRET: 'secret',
     }
   : {};
+/**
+ * The dev-login server the specs play against. The server keeps its state (people, desk pods,
+ * positions) in memory for as long as it runs; the specs share it, one after another (workers: 1).
+ */
+const devServer = (port: number) => ({
+  command: `node apps/server/dist/index.js`,
+  url: `http://localhost:${port}/healthz`,
+  reuseExistingServer: false,
+  env: {
+    PORT: String(port),
+    AUTH_DEV_LOGIN: 'true',
+    NODE_ENV: 'test',
+    LOG_LEVEL: 'warn',
+    BUILDER_IDS: 'dev-alice',
+    // the office cat is off by default until its art is approved (ADR-040);
+    // the characters (ADR-042) at a fixed hour so their schedule puts them in the office
+    FEATURE_FLAGS:
+      'pets=true,npcs=true,npcTalk=true,npcMemory=true,npcSocial=true,npcVoice=true,worlds=true',
+    ...(VOICE_E2E ? { NPC_VOICE_URL: `http://127.0.0.1:${VOICE_PORT}` } : {}),
+    // a stand-in for the cloud model: its replies start with "(fake)" (P15.4)
+    NPC_LLM_PROVIDER: 'fake',
+    NPC_CLOCK: '10:30',
+    ...livekitEnv,
+  },
+});
+
 export default defineConfig({
   testDir: 'e2e',
   // One progress line instead of one line per test when output is piped (agent runs).
@@ -51,6 +82,8 @@ export default defineConfig({
     },
     permissions: ['camera', 'microphone'],
   },
+  // One project: every spec runs in the 2.5D view, the only world view (ADR-054).
+  projects: [{ name: '2.5d' }],
   webServer: [
     ...(VOICE_E2E
       ? [
@@ -73,27 +106,7 @@ export default defineConfig({
           },
         ]
       : []),
-    {
-      command: `node apps/server/dist/index.js`,
-      url: `http://localhost:${PORT}/healthz`,
-      reuseExistingServer: false,
-      env: {
-        PORT: String(PORT),
-        AUTH_DEV_LOGIN: 'true',
-        NODE_ENV: 'test',
-        LOG_LEVEL: 'warn',
-        BUILDER_IDS: 'dev-alice',
-        // the office cat is off by default until its art is approved (ADR-040);
-        // the characters (ADR-042) at a fixed hour so their schedule puts them in the office
-        FEATURE_FLAGS:
-          'pets=true,npcs=true,npcTalk=true,npcMemory=true,npcSocial=true,npcVoice=true,world25d=true',
-        ...(VOICE_E2E ? { NPC_VOICE_URL: `http://127.0.0.1:${VOICE_PORT}` } : {}),
-        // a stand-in for the cloud model: its replies start with "(fake)" (P15.4)
-        NPC_LLM_PROVIDER: 'fake',
-        NPC_CLOCK: '10:30',
-        ...livekitEnv,
-      },
-    },
+    devServer(PORT),
     // Invite-only accounts with passkeys (e2e/auth.spec.ts)
     {
       command: `node apps/server/dist/index.js`,

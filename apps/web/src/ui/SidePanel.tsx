@@ -1,12 +1,15 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { BellRing, Crosshair, Footprints, Mic, MicOff, Send, Video, X } from 'lucide-react';
+import { ArrowLeftRight, BellRing, Crosshair, Footprints, Mic, MicOff, Send, UserPlus, Video, X } from 'lucide-react';
 import { useCompactLayout } from './layout';
 import type { ChatMsg, NpcMindView } from '@agora/shared';
 import { avatarUrl } from '../game/textures';
 import { zoneName } from '../game/controller';
 import { world } from '../net/client';
 import { store, useStore } from '../state/store';
+import { ShowOffPicker, SkillBadge } from './SkillBadge';
+import { worldSession } from '../worlds/session';
+import { worldPeopleRows } from '../worlds/people';
 
 const NEEDS = ['energy', 'social', 'focus', 'caffeine'] as const;
 const hhmm = (m: number) =>
@@ -85,7 +88,70 @@ function NpcBrain({ mind, name }: { mind: NpcMindView; name: string }) {
   );
 }
 
+/** The people of the world I am in, kept fresh with the world session (P17.15b). */
+function useWorldPeople() {
+  const subscribe = (cb: () => void) =>
+    worldSession.on((change) => {
+      if (change === 'people' || change === 'welcome' || change === 'exit') cb();
+    });
+  // a new array only when the session changed: React compares snapshots
+  const version = useSyncExternalStore(
+    subscribe,
+    () => worldSession.peopleVersion,
+    () => 0,
+  );
+  return useMemo(() => [...worldSession.people.values()], [version]);
+}
+
+/** Inside a personal world: its people only; the office roster and its actions are not shown (P17.15b). */
+function WorldPeople() {
+  const { t } = useTranslation();
+  const people = useWorldPeople();
+  const me = useStore((s) => s.me);
+  const mine = useStore((s) => (s.me ? s.profiles[s.me] : undefined));
+  const rows = worldPeopleRows(people, worldSession.you || me || '', mine);
+  return (
+    <div className="panel-section">
+      <p className="muted small" aria-live="polite">
+        {t('people.worldCount', { count: rows.length })}
+      </p>
+      <ul className="people">
+        {rows.map((p) => (
+          <li key={p.id}>
+            <img src={avatarUrl(p.avatar)} alt="" width={32} height={40} className="pixel" />
+            <div className="person">
+              <div className="person-name">
+                {p.name}
+                {p.you && <span className="muted"> ({t('people.you')})</span>}
+              </div>
+              <div className="muted small">{t('people.inThisWorld')}</div>
+            </div>
+            {!p.you && (
+              <span className="person-actions">
+                <button
+                  type="button"
+                  className="icon-btn"
+                  onClick={() => world.send({ t: 'trade:ask', to: p.id })}
+                  aria-label={t('trade.ask', { name: p.name })}
+                  title={t('trade.ask', { name: p.name })}
+                >
+                  <ArrowLeftRight size={16} aria-hidden />
+                </button>
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function People() {
+  const inWorld = useStore((s) => s.worldId !== null);
+  return inWorld ? <WorldPeople /> : <OfficePeople />;
+}
+
+function OfficePeople() {
   const { t } = useTranslation();
   const profiles = useStore((s) => s.profiles);
   const areas = useStore((s) => s.areas);
@@ -93,6 +159,10 @@ function People() {
   const npcs = useStore((s) => s.npcs);
   const minds = useStore((s) => s.npcMinds);
   const brain = useStore((s) => s.npcBrain);
+  const hearts = useStore((s) => s.hearts);
+  // P17.27: someone with a desk (and so a world) keeps a list of visitors
+  const myWorld = useStore((s) => s.config?.flags.worlds === true && s.myDesk !== null);
+  const worldsOn = useStore((s) => s.config?.flags.worlds === true);
   const compact = useCompactLayout();
   /** on phones the sheet covers the world: close it so you see where you go */
   const hide = compact ? { panelOpen: false } : {};
@@ -135,9 +205,29 @@ function People() {
                 )}
               </div>
               <div className="muted small">
-                {p.online ? zoneName(areas[p.id]) : t('people.reconnecting')}
+                {!p.online
+                  ? t('people.reconnecting')
+                  : p.inWorld
+                    ? t('people.inWorld')
+                    : zoneName(areas[p.id])}
                 {p.statusMsg ? ` · ${p.statusMsg}` : ''}
               </div>
+              {p.badge && (
+                <div className="small">
+                  <SkillBadge badge={p.badge} />
+                </div>
+              )}
+              {p.id === me && <ShowOffPicker badge={p.badge} />}
+              {p.id === me && myWorld && (
+                <button
+                  type="button"
+                  className="linklike small"
+                  aria-haspopup="dialog"
+                  onClick={() => store.set({ visitorsOpen: true, ...hide })}
+                >
+                  {t('visitors.openMine')}
+                </button>
+              )}
             </div>
             <span className="person-icons">
               {p.mic ? (
@@ -147,7 +237,7 @@ function People() {
               )}
               {p.cam && <Video size={14} aria-label={t('people.camOn')} />}
             </span>
-            {p.id !== me && p.online && (
+            {p.id !== me && p.online && !p.inWorld && (
               <span className="person-actions">
                 <button
                   type="button"
@@ -176,6 +266,32 @@ function People() {
                 >
                   <Crosshair size={16} aria-hidden />
                 </button>
+                {worldsOn && (
+                  <button
+                    type="button"
+                    className="icon-btn"
+                    onClick={() => world.send({ t: 'trade:ask', to: p.id })}
+                    aria-label={t('trade.ask', { name: p.name })}
+                    title={t('trade.ask', { name: p.name })}
+                  >
+                    <ArrowLeftRight size={16} aria-hidden />
+                  </button>
+                )}
+                {myWorld && (
+                  <button
+                    type="button"
+                    className="icon-btn"
+                    aria-haspopup="dialog"
+                    onClick={() => {
+                      world.send({ t: 'world:visitors:set', edit: { op: 'list', player: p.id, on: true } });
+                      store.set({ visitorsOpen: true, ...hide });
+                    }}
+                    aria-label={t('visitors.addToList', { name: p.name })}
+                    title={t('visitors.addToList', { name: p.name })}
+                  >
+                    <UserPlus size={16} aria-hidden />
+                  </button>
+                )}
               </span>
             )}
           </li>
@@ -204,7 +320,15 @@ function People() {
                         <span className="sr-only"> ({t('npc.about')})</span>
                       </span>
                     </div>
-                    <div className="muted small">{t(`npc.act.${n.act}`)}</div>
+                    <div className="muted small">
+                      {t(`npc.act.${n.act}`)}
+                      {hearts && hearts[n.id.replace(/^npc:/, '')] !== undefined && (
+                        <span className="hearts">
+                          {' · '}
+                          {t('gift.hearts', { count: hearts[n.id.replace(/^npc:/, '')], max: 10 })}
+                        </span>
+                      )}
+                    </div>
                     {minds[n.id] && <NpcBrain mind={minds[n.id]!} name={n.name} />}
                   </div>
                   <span className="person-actions">
@@ -234,6 +358,8 @@ function Chat() {
   const unread = useStore((s) => s.unread);
   const me = useStore((s) => s.me);
   const myZone = useStore((s) => s.myZone);
+  // FIX-1: inside a personal world both channels reach the people of that world only
+  const inWorld = useStore((s) => s.worldId !== null);
   const [draft, setDraft] = useState('');
   const listRef = useRef<HTMLOListElement>(null);
   const msgs = useMemo(() => chat.filter((m) => m.scope === tab), [chat, tab]);
@@ -256,8 +382,9 @@ function Chat() {
       hour: '2-digit',
       minute: '2-digit',
     }).format(m.at);
-  const hint =
-    tab === 'everyone'
+  const hint = inWorld
+    ? t('worlds.card.hint')
+    : tab === 'everyone'
       ? t('chat.hintEveryone')
       : myZone?.kind === 'private'
         ? t('chat.hintRoom')

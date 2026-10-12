@@ -2,8 +2,9 @@
  * P16.8 (ADR-052): names, status dots, emotes and speech bubbles over people and characters in the
  * 2.5D view, as screen-space HTML so they stay crisp at every zoom.
  *
- * The 2D view draws the same things with Phaser text (`game/WorldScene.ts`, `game/NpcsView.ts`);
- * the rules and numbers are copied from there, and the pure parts live in `overlayLayout.ts`.
+ * The former flat view drew the same things with Phaser text (WorldScene and NpcsView, removed in
+ * P16.20, ADR-054); the rules and numbers were copied from there, and the pure parts live in
+ * `overlayLayout.ts`.
  *
  * DOM, one block per id, inside one `.ov25` container that is aria-hidden (the People panel is
  * the accessible list):

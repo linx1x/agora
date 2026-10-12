@@ -2,6 +2,22 @@ import { existsSync, readFileSync } from 'node:fs';
 import { expect, test, type Browser, type Page } from '@playwright/test';
 import { PASSKEY_PORT, SETUP_LINK_FILE } from '../playwright.config';
 
+/** The pages this file opened: each is left and its context closed after its test (no ghost person in a shared space). */
+const opened: Page[] = [];
+test.afterEach(async () => {
+  for (const p of opened.splice(0)) {
+    await p
+      .evaluate(() =>
+        (window as unknown as { __agoraWorld?: { leave?: () => void } }).__agoraWorld?.leave?.(),
+      )
+      .catch(() => {});
+    await p
+      .context()
+      .close()
+      .catch(() => {});
+  }
+});
+
 /**
  * Invite-only accounts end to end (PLAN P2.13–P2.17, P2.20): the owner is created from
  * the console setup link, invites someone with a PIN, the invitee claims it with a passkey
@@ -32,6 +48,7 @@ async function person(browser: Browser, label: string) {
     }
   });
   const page = await ctx.newPage();
+  opened.push(page);
   page.on('pageerror', (e) => console.log(`[pageerror ${label}]`, e.message));
   const cdp = await ctx.newCDPSession(page);
   await cdp.send('WebAuthn.enable');

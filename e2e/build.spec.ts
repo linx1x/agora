@@ -3,14 +3,17 @@ import { expect, test, type Browser, type Page } from '@playwright/test';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const T = 32;
 
+/**
+ * Build mode in the 2.5D view (the only view, ADR-054). Every check goes through `window.__agora.view`.
+ */
 async function enter(browser: Browser, devUser: number): Promise<Page> {
   const ctx = await browser.newContext();
-  await ctx.addInitScript(() =>
+  await ctx.addInitScript(() => {
     localStorage.setItem(
       'agora.settings',
       JSON.stringify({ lighting: false, sounds: false, autoSit: true, precheck: false }),
-    ),
-  );
+    );
+  });
   const page = await ctx.newPage();
   page.on('pageerror', (e) => console.log(`[pageerror ${devUser}]`, e.message));
   await page.goto('/?hour=13');
@@ -26,6 +29,7 @@ async function enter(browser: Browser, devUser: number): Promise<Page> {
     const s = w.__agora.store.get();
     return s.conn === 'online' && !!s.me && w.__agora.rendered.has(s.me);
   });
+  expect(await page.evaluate(() => (window as any).__agora.view.engine)).toBe('2.5d');
   return page;
 }
 
@@ -152,14 +156,7 @@ test('build mode: a builder places and erases decor live, others see it, undo wo
 
 /** Blend cache key of a furniture cell on this client (null: plain tile). */
 const blendKey = (p: Page, cx: number, cy: number) =>
-  p.evaluate(
-    ([x, y]) => {
-      const sc = (window as any).__agoraGame.scene.getScene('world');
-      const m = (window as any).__agora.store.get().map;
-      return sc.blend?.keyAt('f', y * m.width + x) ?? null;
-    },
-    [cx, cy] as const,
-  );
+  p.evaluate(([x, y]) => (window as any).__agora.view.blendKeyAt(x, y), [cx, cy] as const);
 
 /** Placed props (P9.16) as this client sees them. */
 const propsOf = (p: Page) =>
@@ -174,14 +171,11 @@ const propsOf = (p: Page) =>
         f: boolean;
       }[],
   );
-/** Screen point in the middle of a prop's drawn sprite. */
+/** Screen point in the middle of a prop's drawn sprite (null-checked: the prop must be drawn). */
 async function propPoint(p: Page, id: string) {
-  return p.evaluate((pid) => {
-    // prop boxes are a flat-view (build mode) detail until P16.13
-    const sc = (window as any).__agoraGame.scene.getScene('world');
-    const b = sc.propsView.boxes.find((q: any) => q.id === pid);
-    return (window as any).__agora.view.toClient((b.x0 + b.x1) / 2, (b.y0 + b.baseY) / 2);
-  }, id);
+  const pt = await p.evaluate((pid) => (window as any).__agora.view.propScreen(pid), id);
+  if (!pt) throw new Error(`prop ${id} is not drawn`);
+  return pt as { x: number; y: number };
 }
 /** Screen point of a world pixel. */
 async function screenPx(p: Page, x: number, y: number) {
@@ -199,8 +193,8 @@ test('blended tiles (P9.10–P9.12): joining previews, merges for everyone; prop
   const ben = await enter(browser, 1);
   for (const p of [alice, ben])
     await p.waitForFunction(() => {
-      const sc = (window as any).__agoraGame.scene.getScene('world');
-      return !!sc.blend && !sc.blend.busy;
+      const v = (window as any).__agora.view;
+      return !!v && v.settled();
     });
 
   await alice.getByRole('button', { name: /Mode construction|Build mode/ }).click();
@@ -217,11 +211,7 @@ test('blended tiles (P9.10–P9.12): joining previews, merges for everyone; prop
   await alice.mouse.move(pt.x, pt.y);
   // the preview shows the joined row before anything is sent
   await expect
-    .poll(() =>
-      alice.evaluate(
-        () => (window as any).__agoraGame.scene.getScene('world').build.preview.changed.length,
-      ),
-    )
+    .poll(() => alice.evaluate(() => (window as any).__agora.view.previewCells()))
     .toBeGreaterThan(1);
   expect(await furnAt(ben, bx, by)).toBe(0);
   await alice.mouse.click(pt.x, pt.y);
@@ -360,15 +350,8 @@ test('placement (P9.16–P9.20): several items on a desk, Alt, nudge, stack, str
   await expect.poll(async () => (await propsOf(ben)).length).toBe(5);
   const lamp = (await propsOf(ben))[4]!;
   expect(lamp.y).toBeLessThanOrEqual(books.y);
-  // drawn raised by the books' height on Ben's screen
-  const lampBox = await ben.evaluate(
-    (id) =>
-      (window as any).__agoraGame.scene
-        .getScene('world')
-        .propsView.boxes.find((b: any) => b.id === id),
-    lamp.id,
-  );
-  expect(lampBox.baseY).toBe(lamp.y - 12);
+  // drawn raised by the books' height on Ben's screen: the lamp sits above the books
+  expect((await propPoint(ben, lamp.id)).y).toBeLessThan((await propPoint(ben, books.id)).y);
 
   // stretch: select the first desk's run and lengthen it west with Shift+←
   await alice.keyboard.press('c');
@@ -394,6 +377,79 @@ test('placement (P9.16–P9.20): several items on a desk, Alt, nudge, stack, str
   await expect
     .poll(async () => (await propsOf(ben)).map((p) => p.id).slice(3))
     .toEqual([books.id, lamp.id]);
+
+  // leave the server clean for other specs
+  await alice
+    .getByRole('button', { name: /Revenir à la carte générée|Reset to generated map/ })
+    .click();
+  await alice
+    .getByRole('dialog')
+    .getByRole('button', { name: /Réinitialiser|Reset/ })
+    .click();
+  await expect.poll(async () => (await propsOf(ben)).length).toBe(0);
+  await alice.context().close();
+  await ben.context().close();
+  await new Promise((r) => setTimeout(r, 21_000));
+});
+
+test('placement parity (P16.14): a monitor turns (R), raises (PageUp) and flips (F); a coffee lands on the middle spot', async ({
+  browser,
+}) => {
+  test.setTimeout(180_000);
+  const alice = await enter(browser, 0);
+  const ben = await enter(browser, 1);
+  await alice.getByRole('button', { name: /Mode construction|Build mode/ }).click();
+  await alice.waitForFunction(() => !!(window as any).__agora.store.get().build);
+  await alice.evaluate(() => {
+    (window as any).__agora.view.setZoom(3);
+  });
+
+  // a desk on the open Atrium floor, as the placement test (which leaves it clean)
+  const [cx, cy] = [42, 45];
+  expect(await furnAt(alice, cx, cy)).toBe(0);
+  await look(alice, cx, cy);
+  await alice.getByRole('option', { name: /^Bureau$|^Desk$/ }).click();
+  let pt = await screenOf(alice, cx, cy);
+  await alice.mouse.click(pt.x, pt.y);
+  await expect.poll(() => furnAt(ben, cx, cy)).toBeGreaterThan(0);
+  const X = cx * T;
+  const Y = cy * T;
+
+  // a monitor on the left spot; select it; R turns it to its back
+  await alice.getByRole('tab', { name: /Accessoires|Desk items/ }).click();
+  await alice.getByRole('option', { name: /^Écran$|^Monitor$/ }).click();
+  pt = await screenPx(alice, X + 6, Y + 15);
+  await alice.mouse.click(pt.x, pt.y);
+  await expect.poll(async () => (await propsOf(ben)).length).toBe(1);
+  const monitor = (await propsOf(ben))[0]!;
+  expect([monitor.t, monitor.x - X]).toEqual(['prop.monitorFront', 8]);
+  await alice.keyboard.press('c');
+  pt = await propPoint(alice, monitor.id);
+  await alice.mouse.click(pt.x, pt.y);
+  await expect(alice.locator('.build-sel')).toContainText(/Écran|Monitor/);
+  await alice.keyboard.press('r');
+  await expect
+    .poll(async () => (await propsOf(ben)).find((p) => p.id === monitor.id)!.t)
+    .toBe('prop.monitorBack');
+
+  // PageUp raises it one px (its own raise, on the desk); F mirrors it
+  await alice.keyboard.press('PageUp');
+  await expect.poll(async () => (await propsOf(ben)).find((p) => p.id === monitor.id)!.z).toBe(1);
+  await alice.keyboard.press('f');
+  await expect
+    .poll(async () => (await propsOf(ben)).find((p) => p.id === monitor.id)!.f)
+    .toBe(true);
+
+  // the middle spot: a coffee aimed at the middle of the desk lands on it
+  await alice.keyboard.press('Escape'); // lets go of the selection, stays in build mode
+  await alice.keyboard.press('q'); // the paint tool: the palette shows
+  await alice.getByRole('tab', { name: /Accessoires|Desk items/ }).click();
+  await alice.getByRole('option', { name: /^Café$|^Coffee$/ }).click();
+  pt = await screenPx(alice, X + 16, Y + 15);
+  await alice.mouse.click(pt.x, pt.y);
+  await expect.poll(async () => (await propsOf(ben)).length).toBe(2);
+  const coffee = (await propsOf(ben))[1]!;
+  expect([coffee.t, coffee.x - X]).toEqual(['prop.coffee', 16]);
 
   // leave the server clean for other specs
   await alice

@@ -15,6 +15,15 @@ import type {
   NpcMindView,
   NpcConsentState,
   NpcRefusal,
+  OfficeRefusal,
+  Taste,
+  ActionKind,
+  S2CMsg,
+  VisitorRefusal,
+  ContractRefusal,
+  TradeRefusal,
+  MarketRefusal,
+  ContractView,
 } from '@agora/shared';
 
 export type ConnState =
@@ -44,6 +53,16 @@ export interface RemoteMedia {
 /** SFU connection (ADR-031); 'off' with the peer-to-peer backend. */
 export type SfuState = 'off' | 'connecting' | 'connected' | 'lost';
 
+/** The answer to a gift (P17.26b), as the Talk box shows it. */
+export interface GiftResultView {
+  readonly key: string;
+  readonly npcId: string;
+  readonly ok: boolean;
+  readonly reason?: OfficeRefusal;
+  readonly taste?: Taste;
+  readonly at: number;
+}
+
 export type Prompt =
   | { kind: 'sit' }
   | { kind: 'stand' }
@@ -52,7 +71,17 @@ export type Prompt =
   | { kind: 'closed'; deskId: string; owner: string }
   | { kind: 'teleport'; region: string; to: string }
   /** a character within talking range (P15.4): X opens the Talk box */
-  | { kind: 'talk'; npcId: string; name: string };
+  | { kind: 'talk'; npcId: string; name: string }
+  /** P17.26b: standing at the office shop board: X opens it */
+  | { kind: 'shop' }
+  /** P17.14: standing in a pod I may enter: X goes into the owner's world (`portal:enter`) */
+  | { kind: 'world'; deskId: string; owner: string | null }
+  /** P17.14: standing on the return pad of a world: X goes back to the office desk */
+  | { kind: 'worldExit' }
+  /** P17.32: standing on a cave mouth in a world: X goes into the cave `id` (`portal:enter`) */
+  | { kind: 'cave'; id: string }
+  /** P17.32: standing on the pad of a cave: X comes back out to its world */
+  | { kind: 'caveExit' };
 
 /** One line in a Talk box: mine (kept only in this browser) or a character's (P15.4). */
 export interface NpcLogLine {
@@ -190,6 +219,7 @@ export interface AppState {
     | 'shortcuts'
     | 'settings'
     | 'desk'
+    | 'worldTuning'
     | 'buildReset'
     | 'spaces'
     | 'spaceSettings'
@@ -222,6 +252,11 @@ export interface AppState {
   npcs: NpcState[];
   /** P15.3 brain view (development, space admins): needs and why, per character id */
   npcMinds: Record<string, NpcMindView>;
+  /**
+   * the 2.5D quality rung this session has reached (0 is the full look; a slow device steps down,
+   * ADR-054). Not saved: the next visit starts at the full look again.
+   */
+  qualityLevel: number;
   /** whether the characters' decisions come from Clef right now (null: no brain view) */
   npcBrain: 'off' | 'up' | 'down' | null;
   /** P15.4: the character whose Talk box is open */
@@ -236,7 +271,47 @@ export interface AppState {
   npcRefused: { id: string; reason: NpcRefusal; at: number } | null;
   /** P15.5: what each character told me it remembers about me (undefined: not asked yet) */
   npcMemory: Record<string, string | null>;
+  /** P17.26b: my hearts with each character (null until the server says; only with personal worlds on) */
+  hearts: Record<string, number> | null;
+  /** P17.26b: the answer to my last gift, to show once in the Talk box */
+  giftResult: GiftResultView | null;
+  /** P17.26b: the office shop board is open (standing at it) */
+  officeShop: boolean;
+  /** P17.26b: why the office board refused my last purchase (null: it did not) */
+  officeShopRefused: OfficeRefusal | null;
   myDesk: string | null;
+  /** P17.14: the personal world I am in (null: the office). GameView mounts the world view for it. */
+  worldId: string | null;
+  /** P17.27: the world I am in is my own */
+  worldMine: boolean;
+  /** P17.27: what I may do in the world I am visiting (null: my own world, or not said yet) */
+  worldPerms: ActionKind[] | null;
+  /** P17.27: my world's visitor matrix as the server last sent it (owner only) */
+  worldVisitors: Extract<S2CMsg, { t: 'world:visitors' }> | null;
+  /** P17.28: the open contracts of the world I am in, with my own progress */
+  contracts: ContractView[];
+  /** P17.28: the contracts panel is open */
+  contractsOpen: boolean;
+  /** P17.28: why my last post or cancel did nothing */
+  contractRefused: ContractRefusal | null;
+  /** P17.30: the marketplace board as the server last showed it */
+  market: Extract<S2CMsg, { t: 'market:board' }> | null;
+  /** P17.30: the marketplace panel is open (at the office board) */
+  officeMarket: boolean;
+  /** P17.30: why my last market request did nothing */
+  marketRefused: MarketRefusal | null;
+  /** P17.29: the trade I am in, as the server last described it */
+  trade: Extract<S2CMsg, { t: 'trade:state' }> | null;
+  /** P17.29: someone beside me asks to trade */
+  tradeAsk: { id: string; from: string; name: string } | null;
+  /** P17.29: why my last trade step did nothing */
+  tradeRefused: TradeRefusal | null;
+  /** P17.27: the visitors panel is open */
+  visitorsOpen: boolean;
+  /** P17.27: why my last change to the matrix did nothing */
+  visitorsRefused: VisitorRefusal | null;
+  /** FIX-1: the owner's display name of that world (the card says "Monde de <owner>"); '' when unknown */
+  worldOwner: string;
   admitted: string[];
   prompt: Prompt | null;
   knocks: { from: string; name: string; deskId: string }[];
@@ -325,6 +400,7 @@ const initial: AppState = {
   pets: [],
   npcs: [],
   npcMinds: {},
+  qualityLevel: 0,
   npcBrain: null,
   talkTo: null,
   npcConsent: null,
@@ -332,7 +408,27 @@ const initial: AppState = {
   npcTyping: {},
   npcRefused: null,
   npcMemory: {},
+  hearts: null,
+  giftResult: null,
+  officeShop: false,
+  officeShopRefused: null,
   myDesk: null,
+  worldId: null,
+  worldMine: false,
+  worldPerms: null,
+  worldVisitors: null,
+  visitorsOpen: false,
+  market: null,
+  officeMarket: false,
+  marketRefused: null,
+  trade: null,
+  tradeAsk: null,
+  tradeRefused: null,
+  contracts: [],
+  contractsOpen: false,
+  contractRefused: null,
+  visitorsRefused: null,
+  worldOwner: '',
   admitted: [],
   prompt: null,
   knocks: [],

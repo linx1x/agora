@@ -97,7 +97,7 @@ calls to your own Microsoft 365 tenant).
 
 **Components and licenses.** Node.js app (in-house code), PostgreSQL,
 LiveKit server (Apache-2.0), Caddy (Apache-2.0), Colyseus (MIT), Hocuspocus/Yjs
-(MIT), Excalidraw (MIT), Phaser (MIT). Optional: LiveKit Egress (Apache-2.0),
+(MIT), Excalidraw (MIT). Optional: LiveKit Egress (Apache-2.0),
 faster-whisper (MIT), ClamAV (GPL-2.0).
 
 **Identity.** Entra ID app registration, single tenant, redirect URI

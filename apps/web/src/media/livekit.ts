@@ -89,7 +89,11 @@ export class LiveKitTransport implements MediaTransport {
   private onGrant(g: Grant) {
     if (this.stopped) return;
     this.grant = g;
-    if (!this.floor || this.floor.name !== g.floor.room) {
+    // no floor grant inside a personal world (P17.11): the floor room is left, not joined
+    if (!g.floor) {
+      this.close(this.floor);
+      this.floor = undefined;
+    } else if (!this.floor || this.floor.name !== g.floor.room) {
       this.close(this.floor);
       this.floor = this.open(g.url, g.floor.room, g.floor.token);
     }

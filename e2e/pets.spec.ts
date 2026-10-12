@@ -24,7 +24,7 @@ async function enter(page: Page) {
 }
 
 test.describe('office cat (ADR-040)', () => {
-  test('one cat roams the floor, is drawn, and is not a person', async ({ page }) => {
+  test('one cat roams the floor and is not a person', async ({ page }) => {
     await enter(page);
     await page.waitForFunction(() => (window as any).__agora.store.get().pets.length === 1);
     const first = await page.evaluate(() => ({ ...(window as any).__agora.store.get().pets[0] }));
@@ -40,13 +40,19 @@ test.describe('office cat (ADR-040)', () => {
       { timeout: 40_000 },
     );
 
-    // a sprite is on the canvas, and the cat is nowhere in the people list
-    const drawn = await page.evaluate(() => (window as any).__agora.view.petsDrawn() > 0);
-    expect(drawn).toBe(true);
+    // the cat is nowhere in the people list
     const people = await page.evaluate(() =>
       Object.keys((window as any).__agora.store.get().profiles),
     );
     expect(people.some((id) => id.includes('cat'))).toBe(false);
-    await page.screenshot({ path: 'test-results/pets-office.png' });
+  });
+
+  test('the cat is drawn in the 2.5D view (P16.23)', async ({ page }) => {
+    await enter(page);
+    await page.waitForFunction(() => (window as any).__agora.store.get().pets.length === 1);
+    // the card gets its art on the next frames
+    await page.waitForFunction(() => (window as any).__agora.view.petsDrawn() === 1, undefined, {
+      timeout: 10_000,
+    });
   });
 });

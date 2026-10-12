@@ -54,6 +54,8 @@ export interface Light3D {
   y: number;
   z: number;
   kind: NonNullable<TileDef['light']>;
+  /** the tile's biome, for its lamp colour (hub when it has none) */
+  biome: string;
 }
 
 export interface Scene3D {
@@ -154,7 +156,8 @@ export function buildScene(
       const wt = at('walls', cx, cy);
       if (wt >= 0) {
         const def = TILE_DEFS[wt]!;
-        if (def.light) lights.push({ x: x + 0.5, y: 1, z: z + 1, kind: def.light });
+        if (def.light)
+          lights.push({ x: x + 0.5, y: 1, z: z + 1, kind: def.light, biome: def.biome ?? 'hub' });
         const top = shape3d(def).wallTop === true;
         // a face under its wallTop is drawn by that box
         if (!(isFace(cx, cy) && shapeAt('walls', cx, cy - 1)?.wallTop)) {
@@ -244,6 +247,7 @@ export function buildScene(
             y: def.light === 'fire' ? 0.4 : 1.1,
             z: z + 0.8,
             kind: def.light,
+            biome: def.biome ?? 'hub',
           });
         if (shape.kind === 'none' || e.r1 < 0) {
           /* invisible blocker */

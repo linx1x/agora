@@ -15,9 +15,15 @@ import { Settings } from './ui/Settings';
 import { SidePanel } from './ui/SidePanel';
 import { VideoStrip } from './ui/VideoStrip';
 import { DeskDialog } from './ui/DeskDialog';
+import { WorldTuning } from './worlds/WorldTuning';
+import { WorldHudInWorld } from './worlds/ui/WorldHudInWorld';
 import { Minimap, zoomStep } from './ui/Minimap';
 import { PromptBar } from './ui/PromptBar';
 import { TalkBox } from './ui/TalkBox';
+import { OfficeShop } from './ui/OfficeShop';
+import { VisitorsPanel } from './worlds/ui/VisitorsPanel';
+import { TradePanel } from './ui/TradePanel';
+import { MarketPanel } from './ui/MarketPanel';
 import { BuildPanel, BuildResetDialog } from './ui/BuildPanel';
 import { setBuild } from './game/build';
 import { DEFAULT_SPACE } from '@agora/shared';
@@ -102,7 +108,9 @@ function SpaceApp({ slug }: { slug: string }) {
   const dialog = useStore((s) => s.dialog);
   const conn = useStore((s) => s.conn);
   const me = useStore((s) => (s.me ? s.profiles[s.me] : undefined));
-  const showMinimap = useStore((s) => s.config?.flags.minimap !== false);
+  // FIX-1: the office minimap is the office's floor plan; a personal world has no minimap yet
+  const inWorld = useStore((s) => s.worldId !== null);
+  const showMinimap = useStore((s) => s.config?.flags.minimap !== false) && !inWorld;
   const spaceName = useStore((s) => s.spaceName);
   const compact = useCompactLayout();
   const touch = useTouchControls();
@@ -247,7 +255,7 @@ function SpaceApp({ slug }: { slug: string }) {
 
   return (
     <div
-      className={`app${compact ? ' compact' : ''}${touch ? ' touch' : ''}`}
+      className={`app${compact ? ' compact' : ''}${touch ? ' touch' : ''}${inWorld ? ' in-world' : ''}`}
       onPointerDown={() => media.unlockAudio()}
     >
       <h1 className="sr-only">Agora</h1>
@@ -257,8 +265,13 @@ function SpaceApp({ slug }: { slug: string }) {
       <BuildPanel />
       <ControlBar />
       <Hud />
+      <WorldHudInWorld />
       <PromptBar />
       <TalkBox />
+      <OfficeShop />
+      <VisitorsPanel />
+      <TradePanel />
+      <MarketPanel />
       {showMinimap && <Minimap />}
       {touch && <TouchControls />}
       {conn === 'full' && (
@@ -293,6 +306,7 @@ function SpaceApp({ slug }: { slug: string }) {
       {dialog === 'account' && <Account onClose={() => store.set({ dialog: null })} />}
       {dialog === 'people' && <People onClose={() => store.set({ dialog: null })} />}
       {dialog === 'desk' && <DeskDialog onClose={() => store.set({ dialog: null })} />}
+      {dialog === 'worldTuning' && <WorldTuning onClose={() => store.set({ dialog: null })} />}
       {dialog === 'privacy' && <Privacy onClose={() => store.set({ dialog: null })} />}
       {dialog === 'shortcuts' && <Shortcuts onClose={() => store.set({ dialog: null })} />}
       {dialog === 'buildReset' && <BuildResetDialog onClose={() => store.set({ dialog: null })} />}
@@ -337,7 +351,7 @@ function DeniedDialog({ slug }: { slug: string }) {
   );
 }
 
-/** Mount Phaser only once the map and my id are known. */
+/** Mount the world view only once the map and my id are known. */
 function GameViewWhenReady() {
   const ready = useStore((s) => !!s.map && !!s.me);
   const gen = useStore((s) => s.mapGen);

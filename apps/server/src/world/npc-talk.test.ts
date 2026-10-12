@@ -558,3 +558,24 @@ describe('web lookups in the room (P15.8, ADR-049): nothing is searched or sourc
     expect(conns.flatMap((c) => says(c))).toHaveLength(0);
   });
 });
+
+describe('an open Talk box keeps the character waiting (npc:attend)', () => {
+  it('beside it on the open floor the character holds; from far away or a private room nothing happens', async () => {
+    const { room, players, zoe, spot } = await scene();
+    const until = () => (zoe as unknown as { talkUntil: number }).talkUntil ?? 0;
+    const p = players[0]!;
+    place(room, p, cell(5, 5));
+    room.handle(p, { t: 'npc:attend', npcId: 'npc:zoe' });
+    expect(until()).toBeLessThan(Date.now());
+    place(room, p, cell(41, 16)); // inside "salle-a"
+    zoe.state.x = cell(38, 14).x;
+    zoe.state.y = cell(38, 14).y;
+    room.handle(p, { t: 'npc:attend', npcId: 'npc:zoe' });
+    expect(until()).toBeLessThan(Date.now());
+    zoe.state.x = spot.x;
+    zoe.state.y = spot.y;
+    place(room, p, { x: spot.x + TILE, y: spot.y });
+    room.handle(p, { t: 'npc:attend', npcId: 'npc:zoe' });
+    expect(until()).toBeGreaterThan(Date.now() + 10_000);
+  });
+});

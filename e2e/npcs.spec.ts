@@ -1,5 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
 
+// walking to a character may cross a teleporter and the characters keep moving (see walkToCharacter)
+test.describe.configure({ timeout: 240_000 });
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 async function enter(page: Page) {
@@ -83,29 +86,78 @@ test.describe('characters (ADR-042, P15.2)', () => {
 });
 
 /** Walk beside a character on the open floor until the Talk prompt appears. */
-async function walkToCharacter(page: Page) {
+async function walkToCharacter(page: Page, want?: string) {
   await expect
     .poll(
       async () => {
-        const r = await page.evaluate(() => {
+        const r = await page.evaluate((want) => {
           const st = (window as any).__agora.store.get();
-          if (st.prompt?.kind === 'talk') return 'near';
+          if (st.prompt?.kind === 'talk' && (!want || st.prompt.name === want)) return 'near';
           const me = (window as any).__agora.rendered.get(st.me);
-          const best = [...st.npcs].sort(
-            (a: any, b: any) =>
-              Math.hypot(a.x - me.x, a.y - me.y) - Math.hypot(b.x - me.x, b.y - me.y),
-          )[0];
+          const best = [...st.npcs]
+            .filter((n: any) => !want || n.name === want)
+            .sort(
+              (a: any, b: any) =>
+                Math.hypot(a.x - me.x, a.y - me.y) - Math.hypot(b.x - me.x, b.y - me.y),
+            )[0];
           if (best)
             (window as any).__agora.store.set({
               navRequest: { kind: 'point', x: best.x, y: best.y },
             });
           return 'walking';
-        });
+        }, want);
         return r;
       },
-      { timeout: 45_000, intervals: [1000] },
+      // a route may go through a teleporter (nav.ts), and the characters keep walking
+      { timeout: 90_000, intervals: [1000] },
     )
     .toBe('near');
+}
+
+/**
+ * Walk up to a character (or the one named `want`) and open the Talk box, as one step: the
+ * characters keep walking (P15.3), so the prompt can be gone a moment after it showed. Reads the
+ * name and presses X while the prompt is there, and tries again when the box did not open.
+ */
+async function openTalk(page: Page, want?: string): Promise<string> {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    await walkToCharacter(page, want);
+    const name: string | null = await page.evaluate((want) => {
+      const p = (window as any).__agora.store.get().prompt;
+      return p?.kind === 'talk' && (!want || p.name === want) ? p.name : null;
+    }, want);
+    if (!name) continue;
+    await page.keyboard.press('x');
+    const box = page.getByRole('dialog', { name: `Parler à ${name}` });
+    if (
+      await box.waitFor({ timeout: 3_000 }).then(
+        () => true,
+        () => false,
+      )
+    )
+      return name;
+  }
+  throw new Error('could not open the Talk box with a character');
+}
+
+/**
+ * Open the Talk box and wait until it is usable (the notice or the message field). A character that
+ * heads home cannot be held (it leaves), and its box closes: then walk to one again.
+ */
+async function openTalkReady(page: Page, want?: string): Promise<string> {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const name = await openTalk(page, want);
+    const box = page.getByRole('dialog', { name: `Parler à ${name}` });
+    const ready = await Promise.race([
+      box.getByRole('button', { name: 'J’accepte' }).waitFor({ timeout: 5_000 }),
+      box.getByRole('textbox', { name: `Message pour ${name}` }).waitFor({ timeout: 5_000 }),
+    ]).then(
+      () => true,
+      () => false,
+    );
+    if (ready) return name;
+  }
+  throw new Error('the Talk box did not stay open');
 }
 
 test.describe('talking to a character (P15.4, ADR-045)', () => {
@@ -114,9 +166,7 @@ test.describe('talking to a character (P15.4, ADR-045)', () => {
   }) => {
     await enter(page);
     await page.waitForFunction(() => (window as any).__agora.store.get().npcs.length === 3);
-    await walkToCharacter(page);
-    const name: string = await page.evaluate(() => (window as any).__agora.store.get().prompt.name);
-    await page.keyboard.press('x');
+    const name = await openTalkReady(page);
     const box = page.getByRole('dialog', { name: `Parler à ${name}` });
     await expect(box).toBeVisible();
 
@@ -218,9 +268,7 @@ test.describe('character voices (P15.6)', () => {
     });
     await enter(page);
     await page.waitForFunction(() => (window as any).__agora.store.get().npcs.length === 3);
-    await walkToCharacter(page);
-    const name: string = await page.evaluate(() => (window as any).__agora.store.get().prompt.name);
-    await page.keyboard.press('x');
+    const name = await openTalkReady(page);
     const box = page.getByRole('dialog', { name: `Parler à ${name}` });
     const input = box.getByRole('textbox', { name: `Message pour ${name}` });
     // the notice may already be accepted by an earlier test (the account is shared in this run)
@@ -239,8 +287,7 @@ test.describe('character voices (P15.6)', () => {
     await page.getByRole('button', { name: 'Réglages', exact: true }).click();
     await page.getByRole('checkbox', { name: /Voix des personnages/ }).check();
     await page.keyboard.press('Escape');
-    await walkToCharacter(page);
-    await page.keyboard.press('x');
+    await openTalkReady(page, name);
     await expect(box).toBeVisible();
     await input.fill('Merci beaucoup');
     await input.press('Enter');

@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { BellRing, DoorOpen, Footprints, MessageCircle, Sparkles, X } from 'lucide-react';
+import { BellRing, DoorOpen, Footprints, MessageCircle, Sparkles, X, ArrowLeftRight } from 'lucide-react';
 import { world } from '../net/client';
 import { store, useStore } from '../state/store';
 import { useTouchControls } from './layout';
@@ -11,6 +11,8 @@ export function PromptBar() {
   const knocks = useStore((s) => s.knocks);
   const callover = useStore((s) => s.callover);
   const talking = useStore((s) => s.talkTo !== null);
+  const officeShop = useStore((s) => s.officeShop || s.officeMarket);
+  const tradeAsk = useStore((s) => s.tradeAsk);
   const map = useStore((s) => s.map);
   const fr = i18n.language.startsWith('fr');
   /** no X key on a touch screen: prompts get a button instead (P8.2) */
@@ -54,6 +56,29 @@ export function PromptBar() {
           </button>
         </div>
       ))}
+      {tradeAsk && (
+        <div className="prompt-card" role="alertdialog" aria-label={t('trade.asked', { name: tradeAsk.name })}>
+          <ArrowLeftRight size={16} aria-hidden />
+          <span>{t('trade.asked', { name: tradeAsk.name })}</span>
+          <button
+            type="button"
+            className="btn primary small-btn"
+            onClick={() => world.send({ t: 'trade:answer', id: tradeAsk.id, accept: true })}
+          >
+            {t('trade.accept')}
+          </button>
+          <button
+            type="button"
+            className="btn secondary small-btn"
+            onClick={() => {
+              world.send({ t: 'trade:answer', id: tradeAsk.id, accept: false });
+              store.set({ tradeAsk: null });
+            }}
+          >
+            {t('trade.decline')}
+          </button>
+        </div>
+      )}
       {callover && (
         <div
           className="prompt-card"
@@ -81,7 +106,7 @@ export function PromptBar() {
           </button>
         </div>
       )}
-      {prompt && !(prompt.kind === 'talk' && talking) && (
+      {prompt && !(prompt.kind === 'talk' && talking) && !(prompt.kind === 'shop' && officeShop) && (
         <div className="prompt-card hint">
           {(prompt.kind === 'sit' || prompt.kind === 'stand') &&
             (touch ? (
@@ -126,6 +151,50 @@ export function PromptBar() {
             </>
           )}
           {prompt.kind === 'closed' && <span>{t('prompt.closed', { name: prompt.owner })}</span>}
+          {prompt.kind === 'world' && (
+            <>
+              <span>
+                {prompt.owner
+                  ? t('prompt.worldVisit', { name: prompt.owner })
+                  : t('prompt.world')}
+              </span>
+              <button type="button" className="btn primary small-btn" onClick={act}>
+                {t('prompt.worldBtn')}
+              </button>
+            </>
+          )}
+          {prompt.kind === 'worldExit' && (
+            <>
+              <span>{t('prompt.worldExit')}</span>
+              <button type="button" className="btn primary small-btn" onClick={act}>
+                {t('prompt.worldExitBtn')}
+              </button>
+            </>
+          )}
+          {prompt.kind === 'shop' && (
+            <>
+              <span>{t(touch ? 'prompt.shopTouch' : 'prompt.shop')}</span>
+              <button type="button" className="btn primary small-btn" onClick={act}>
+                {t('prompt.shopBtn')}
+              </button>
+            </>
+          )}
+          {prompt.kind === 'cave' && (
+            <>
+              <span>{t('prompt.cave')}</span>
+              <button type="button" className="btn primary small-btn" onClick={act}>
+                {t('prompt.caveBtn')}
+              </button>
+            </>
+          )}
+          {prompt.kind === 'caveExit' && (
+            <>
+              <span>{t('prompt.caveExit')}</span>
+              <button type="button" className="btn primary small-btn" onClick={act}>
+                {t('prompt.caveExitBtn')}
+              </button>
+            </>
+          )}
           {prompt.kind === 'teleport' && (
             <>
               <span>{t('prompt.teleport')}</span>

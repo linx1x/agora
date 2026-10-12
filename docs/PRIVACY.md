@@ -128,3 +128,4 @@ with your organization's person in charge of the protection of personal informat
   question leave, without first names or character names, never a message that carries personal
   information, at most 30 searches an hour for the whole server. Enabling it changes the AI notice and
   everyone is asked again. Results are treated as untrusted text and their sites are shown under the reply.
+- Personal worlds and caves (2026-10-11, ADR-053, P17.11 and P17.32): each world and each cave is its own SFU room (`prefix:world:<id>`) with its own nearby chat, so a person in a cave hears and sees only the people in that cave. The people in the world the cave opens from do not hear them, and the reverse holds. The server decides every step in and out, from the mouth under the person's feet and the desk's rules as they are at that moment.

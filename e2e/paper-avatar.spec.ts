@@ -1,10 +1,26 @@
 /**
- * P16.7 (ADR-052): the 2.5D paper avatar. With the flag `world25d` on (playwright.config.ts), the
- * avatar editor shows the paper cut-out (140×204) beside the 2D look, a Turn button cycles the
+ * P16.7 (ADR-052): the 2.5D paper avatar. The avatar editor shows the paper cut-out (140×204) beside
+ * the small pixel look, a Turn button cycles the
  * paper preview through four directions, and the catalog choices redraw it. The paper art is
  * also listed in the Credits page with its licence row (ASSETS.md).
  */
 import { expect, test, type Browser, type Page } from '@playwright/test';
+
+/** The pages this file opened: each is left and its context closed after its test (no ghost person in a shared space). */
+const opened: Page[] = [];
+test.afterEach(async () => {
+  for (const p of opened.splice(0)) {
+    await p
+      .evaluate(() =>
+        (window as unknown as { __agoraWorld?: { leave?: () => void } }).__agoraWorld?.leave?.(),
+      )
+      .catch(() => {});
+    await p
+      .context()
+      .close()
+      .catch(() => {});
+  }
+});
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -18,6 +34,7 @@ async function enter(browser: Browser, user: string): Promise<Page> {
     );
   });
   const page = await ctx.newPage();
+  opened.push(page);
   page.on('pageerror', (e) => console.log(`[pageerror ${user}]`, e.message));
   await page.goto('/?hour=13');
   await page.getByRole('button', { name: user }).click();

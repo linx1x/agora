@@ -1,8 +1,24 @@
 import { readFileSync } from 'node:fs';
-import { beforeEach, describe, expect, it } from 'vitest';
-import { C2S, TILE, cellPos, parseMap, remapTmj, type S2CMsg, type Tmj } from '@agora/shared';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  C2S,
+  TILE,
+  WORLDGEN,
+  cellPos,
+  loadGameData,
+  parseMap,
+  remapTmj,
+  worldGenParamsFor,
+  type S2CMsg,
+  type Tmj,
+  CAVE_EXIT,
+  caveIdOf,
+  cellFeet,
+} from '@agora/shared';
 import { MemoryStore, roomStore } from '../db/store';
-import { SpaceRoom, type Player } from './room';
+import { setCells } from '../worlds/testWorld';
+import { SpaceRoom, type Player, type RoomOptions } from './room';
+import type { SfuApi } from '../media/gate';
 
 const tmj = JSON.parse(
   readFileSync(new URL('../../../../packages/maps/hq.tmj', import.meta.url), 'utf8'),
@@ -23,7 +39,12 @@ class FakeConn {
   }
 }
 
-function makeRoom(store = new MemoryStore(), capacity = 4) {
+function makeRoom(
+  store = new MemoryStore(),
+  capacity = 4,
+  sfu?: RoomOptions['sfu'],
+  flags: Record<string, boolean> = { worlds: true },
+) {
   return new SpaceRoom(
     map,
     {
@@ -37,9 +58,10 @@ function makeRoom(store = new MemoryStore(), capacity = 4) {
         connectR: 5,
         disconnectR: 6,
         videoCap: 9,
-        flags: {} as never,
+        flags: flags as never,
       },
       reconnectGraceMs: 50,
+      sfu,
     },
     roomStore(store, 'hq'),
     silent,
@@ -578,5 +600,800 @@ describe('SpaceRoom: build mode', () => {
     expect(room.map.solid[9 * room.map.width + 5]).toBe(0);
     await new Promise((r) => setTimeout(r, 5));
     expect(await store.loadMap('hq')).toBeNull();
+  });
+});
+
+describe('SpaceRoom: portals into worlds (P17.8, ADR-053)', () => {
+  const spot = map.desks.find((d) => d.id === 'jungle-1')!;
+  const OWNER = 'owner-7731';
+  const WORLD = 'world-7f3k';
+  /** the portal handler awaits a world lookup: let it finish */
+  const settle = () => new Promise((r) => setTimeout(r, 0));
+  let store: MemoryStore;
+  let room: SpaceRoom;
+  let co: FakeConn, cc: FakeConn, cb: FakeConn;
+  let owner: Player, c: Player;
+
+  const enter = async (p: Player, id = 'desk:jungle-1') => {
+    room.handle(p, { t: 'portal:enter', id });
+    await settle();
+  };
+  const reasonOf = (conn: FakeConn) => conn.of('portal:refused').at(-1)?.reason;
+
+  beforeEach(async () => {
+    store = new MemoryStore();
+    room = makeRoom(store);
+    await room.init();
+    co = new FakeConn();
+    cc = new FakeConn();
+    cb = new FakeConn();
+    owner = (await room.join(co, { uid: OWNER, name: 'Alice' }))!;
+    c = (await room.join(cc, { uid: 'uc', name: 'Chloé' }))!;
+    await room.join(cb, { uid: 'ub', name: 'Benoît' });
+    place(room, owner, cellPos(map, spot.chair), 'sit');
+    room.handle(owner, { t: 'desk:claim', deskId: 'jungle-1' });
+    await store.worlds.createWorld({
+      id: WORLD,
+      ownerId: OWNER,
+      seed: 3560865791,
+      genVersion: 1,
+      createdAt: 0,
+      lastDay: 0,
+      settings: {},
+    });
+  });
+
+  it('refused as disabled while the worlds flag is off, even for the owner at the desk', async () => {
+    const off = makeRoom(store, 4, undefined, {});
+    await off.init();
+    const conn = new FakeConn();
+    const me = (await off.join(conn, { uid: OWNER, name: 'Alice' }))!;
+    place(off, me, cellPos(map, spot.chair), 'sit');
+    off.handle(me, { t: 'desk:claim', deskId: 'jungle-1' });
+    off.handle(me, { t: 'portal:enter', id: 'desk:jungle-1' });
+    await settle();
+    expect(conn.of('portal:refused').at(-1)?.reason).toBe('disabled');
+    expect(conn.of('portal:go')).toHaveLength(0);
+    expect(off.players.has(me.id)).toBe(true);
+  });
+
+  it('refused outside the trigger, even for the owner, and answered only to the person who asked', async () => {
+    place(room, owner, cellPos(map, spot.entrance));
+    const seen = [cc.msgs.length, cb.msgs.length];
+    await enter(owner);
+    expect(reasonOf(co)).toBe('outside');
+    expect(co.of('portal:go')).toHaveLength(0);
+    expect([cc.msgs.length, cb.msgs.length]).toEqual(seen);
+  });
+
+  it('the owner steps through to their own world; the office lists them as in a world (never which) and no office link stays', async () => {
+    await enter(owner);
+    expect(co.of('portal:go')).toMatchObject([
+      { t: 'portal:go', id: 'desk:jungle-1', worldId: WORLD },
+    ]);
+    expect(co.of('world:welcome')).toHaveLength(1);
+    // FIX-1: the welcome names the owner for the card ("Monde de Alice"), never the user id
+    expect(co.of('world:welcome')[0]).toMatchObject({ owner: 'Alice' });
+    expect(co.of('peers').at(-1)?.peers).toEqual([]);
+    // P17.15b: the office keeps the person in its list with a neutral "in a world" flag, not a leave
+    for (const office of [cc, cb]) {
+      expect(office.of('leave').filter((m) => m.id === owner.id)).toEqual([]);
+      const seen = office
+        .of('profile')
+        .filter((m) => m.profile.id === owner.id)
+        .at(-1)?.profile;
+      expect(seen?.inWorld).toBe(true);
+      // privacy: nothing about which world, where in it, or the owner's user id
+      expect(JSON.stringify(office.msgs)).not.toContain(WORLD);
+      expect(JSON.stringify(office.msgs)).not.toContain(OWNER);
+    }
+    expect(room.players.has(owner.id)).toBe(false);
+    expect([...room.links].filter((key) => key.includes(owner.id))).toEqual([]);
+    // the owner's user id never leaves the server
+    expect(JSON.stringify([co.of('portal:go'), co.of('world:welcome')])).not.toContain(OWNER);
+  });
+
+  it('someone arriving while the owner is in a world sees them listed as in a world, with no position (P17.15b)', async () => {
+    await enter(owner);
+    const cn = new FakeConn();
+    await room.join(cn, { uid: 'un', name: 'Nadia' });
+    const welcome = cn.of('welcome')[0]!;
+    expect(welcome.profiles.find((p) => p.id === owner.id)?.inWorld).toBe(true);
+    expect(welcome.positions.find((q) => q.id === owner.id)).toBeUndefined();
+    expect(JSON.stringify(cn.msgs)).not.toContain(WORLD);
+  });
+
+  it('back from the world: the office sees the flag cleared, and the person gets the office roster as it is now (P17.15b)', async () => {
+    await enter(owner);
+    // while the owner is away, Benoît leaves and Nadia arrives
+    const cbPlayer = [...room.players.values()].find((q) => q.uid === 'ub')!;
+    room.remove(cbPlayer);
+    const cn = new FakeConn();
+    const nadia = (await room.join(cn, { uid: 'un', name: 'Nadia' }))!;
+    room.handle(owner, { t: 'world:leave' });
+    await settle();
+    expect(co.of('world:exit')).toHaveLength(1);
+    const roster = co.of('roster').at(-1)!;
+    const ids = roster.profiles.map((p) => p.id);
+    expect(ids).toContain(nadia.id);
+    expect(ids).not.toContain(cbPlayer.id);
+    expect(roster.profiles.find((p) => p.id === owner.id)?.inWorld).toBeUndefined();
+    expect(roster.desks.length).toBeGreaterThan(0);
+    const seenByNadia = cn
+      .of('profile')
+      .filter((m) => m.profile.id === owner.id)
+      .at(-1)?.profile;
+    expect(seenByNadia?.inWorld).toBeUndefined();
+  });
+
+  it('the owner with no world gets one on the first step through the desk (P17.14)', async () => {
+    await store.worlds.deleteWorldOf(OWNER);
+    await enter(owner);
+    const made = await store.worlds.worldOf(OWNER);
+    expect(made).not.toBeNull();
+    expect(co.of('portal:go')).toMatchObject([
+      { t: 'portal:go', id: 'desk:jungle-1', worldId: made!.id },
+    ]);
+  });
+
+  it('a visitor never creates the owner world: refused with no_world until the owner has one', async () => {
+    await store.worlds.deleteWorldOf(OWNER);
+    place(room, c, cellPos(map, spot.guest));
+    await enter(c);
+    expect(reasonOf(cc)).toBe('no_world');
+    expect(cc.of('portal:go')).toHaveLength(0);
+    expect(await store.worlds.worldOf(OWNER)).toBeNull();
+  });
+
+  it('an unclaimed pod has no world, and ids that name no desk are unknown', async () => {
+    const free = map.desks.find((d) => d.id === 'jungle-2')!;
+    place(room, c, cellPos(map, free.guest));
+    await enter(c, 'desk:jungle-2');
+    expect(reasonOf(cc)).toBe('no_world');
+    await enter(c, 'desk:nope');
+    expect(reasonOf(cc)).toBe('unknown');
+    await enter(c, 'portal-hub-jungle');
+    expect(reasonOf(cc)).toBe('unknown');
+  });
+
+  it('knock: a visitor at the door is refused, then goes through to the world once admitted', async () => {
+    room.handle(owner, { t: 'desk:update', access: 'knock' });
+    place(room, c, cellPos(map, spot.entrance));
+    await enter(c);
+    expect(reasonOf(cc)).toBe('outside');
+    room.handle(c, { t: 'knock', deskId: 'jungle-1' });
+    room.handle(owner, { t: 'knock:answer', visitor: c.id, accept: true });
+    expect(walk(room, c, cellPos(map, spot.guest))).toBe(true);
+    await enter(c);
+    expect(cc.of('portal:go')).toHaveLength(1);
+    expect(room.players.has(c.id)).toBe(false);
+  });
+
+  it('refused without permission inside a knock-only pod for someone not admitted; the refusal carries no world', async () => {
+    place(room, c, cellPos(map, spot.guest)); // standing inside while the pod was open
+    room.handle(owner, { t: 'desk:update', access: 'knock' });
+    await enter(c);
+    expect(reasonOf(cc)).toBe('no_permission');
+    expect(cc.msgs.some((m) => 'worldId' in m)).toBe(false);
+  });
+
+  it('a closed pod takes the owner only: a visitor inside is refused, the owner goes through', async () => {
+    place(room, c, cellPos(map, spot.guest));
+    room.handle(owner, { t: 'desk:update', access: 'closed' });
+    await enter(c);
+    expect(reasonOf(cc)).toBe('no_permission');
+    await enter(owner);
+    expect(co.of('portal:go')).toHaveLength(1);
+    expect(cb.of('portal:go')).toHaveLength(0);
+  });
+});
+
+describe('SpaceRoom: personal worlds (P17.9, ADR-053)', () => {
+  const spot = map.desks.find((d) => d.id === 'jungle-1')!;
+  const OWNER = 'owner-7731';
+  const WORLD = 'world-7f3k';
+  const SEED = 3560865791;
+  const settle = () => new Promise((r) => setTimeout(r, 0));
+  let store: MemoryStore;
+  let room: SpaceRoom;
+  let co: FakeConn, cc: FakeConn, cb: FakeConn;
+  let owner: Player, c: Player;
+
+  const enter = async (p: Player, id = 'desk:jungle-1') => {
+    room.handle(p, { t: 'portal:enter', id });
+    await settle();
+  };
+
+  beforeEach(async () => {
+    store = new MemoryStore();
+    room = makeRoom(store);
+    await room.init();
+    co = new FakeConn();
+    cc = new FakeConn();
+    cb = new FakeConn();
+    owner = (await room.join(co, { uid: OWNER, name: 'Alice' }))!;
+    c = (await room.join(cc, { uid: 'uc', name: 'Chloé' }))!;
+    await room.join(cb, { uid: 'ub', name: 'Benoît' });
+    place(room, owner, cellPos(map, spot.chair), 'sit');
+    room.handle(owner, { t: 'desk:claim', deskId: 'jungle-1' });
+    await store.worlds.createWorld({
+      id: WORLD,
+      ownerId: OWNER,
+      seed: SEED,
+      genVersion: 1,
+      createdAt: 0,
+      lastDay: 0,
+      settings: {},
+    });
+  });
+
+  it('the welcome names the seed and the generator, and lists people without their user ids', async () => {
+    await enter(owner);
+    const welcome = co.of('world:welcome').at(-1)!;
+    expect(welcome).toMatchObject({ worldId: WORLD, you: owner.id, seed: SEED, genVersion: 1 });
+    expect(welcome.params).toEqual(worldGenParamsFor(WORLDGEN, 1));
+    expect(welcome.people).toEqual([expect.objectContaining({ id: owner.id, name: 'Alice' })]);
+    expect(welcome.people[0]).not.toHaveProperty('uid');
+    // the chunks around the person come with the welcome
+    expect(co.of('world:chunks').at(-1)?.add.length).toBe(25);
+  });
+
+  it('people in the same world see each other; office people and other worlds see nothing of it', async () => {
+    await enter(owner);
+    place(room, c, cellPos(map, spot.guest)); // an open pod: the visitor steps in too
+    await enter(c);
+    expect(co.of('world:join').at(-1)?.person.id).toBe(c.id);
+    expect(cc.of('world:welcome')).toHaveLength(1);
+    const before = cb.msgs.length;
+    // the world knows the person at its arrival point (the office position stays the office's)
+    const me = co
+      .of('world:welcome')
+      .at(-1)!
+      .people.find((q) => q.id === owner.id)!;
+    room.handle(owner, {
+      t: 'move',
+      x: me.x,
+      y: me.y,
+      dir: 'down',
+      moving: false,
+      pose: 'stand',
+      seq: 1,
+    });
+    expect(cc.of('world:pos').at(-1)).toMatchObject({ id: owner.id });
+    expect(co.of('world:pos').at(-1)).toMatchObject({ id: owner.id });
+    expect(cb.msgs.slice(before).filter((m) => m.t.startsWith('world:'))).toEqual([]);
+  });
+
+  it('a person in a world hears no office chat, and office people hear nothing said in the world', async () => {
+    await enter(owner);
+    room.handle(c, { t: 'chat', scope: 'everyone', body: 'office only' });
+    expect(co.of('chat').map((m) => m.msg.body)).not.toContain('office only');
+    room.handle(owner, { t: 'chat', scope: 'everyone', body: 'from the world' });
+    expect(cc.of('chat').map((m) => m.msg.body)).not.toContain('from the world');
+    expect(cb.of('chat').map((m) => m.msg.body)).not.toContain('from the world');
+  });
+
+  it('office-only messages do nothing inside a world', async () => {
+    await enter(owner);
+    const seen = cc.msgs.length;
+    room.handle(owner, { t: 'status', status: 'dnd', msg: '' });
+    expect(owner.profile.status).toBe('available');
+    expect(cc.msgs.length).toBe(seen); // nothing is broadcast from inside the world
+  });
+
+  it('world:leave brings the person back to their desk, where the office sees them again', async () => {
+    await enter(owner);
+    room.handle(owner, { t: 'world:leave' });
+    expect(co.of('world:exit')).toHaveLength(1);
+    expect(room.players.has(owner.id)).toBe(true);
+    expect(owner.zone?.id).toBe('jungle-1');
+    expect(cc.of('profile').at(-1)?.profile.id).toBe(owner.id);
+  });
+
+  it('a socket that closes inside a world returns the person to the office seat until the grace ends', async () => {
+    await enter(owner);
+    room.disconnect(owner);
+    expect(room.players.has(owner.id)).toBe(true);
+    expect(owner.conn).toBeNull();
+    expect(owner.world).toBeUndefined();
+  });
+
+  it('peers: people in a world are linked to each other, and the office never lists them (P17.11)', async () => {
+    const start = cb.msgs.length;
+    await enter(owner);
+    // the office heard its own people's links only; the owner is in no link after leaving
+    const linked = (from: number) =>
+      cb.msgs.slice(from).flatMap((m) => (m.t === 'peers' ? m.peers : []));
+    expect(linked(start)).not.toContain(owner.id);
+    place(room, c, cellPos(map, spot.guest));
+    await enter(c);
+    // c stood next to cb while still in the office, so cb was linked to c until c went into the world
+    const after = cb.msgs.length;
+    expect(co.of('peers').at(-1)?.peers).toEqual([c.id]);
+    expect(cc.of('peers').at(-1)?.peers).toEqual([owner.id]);
+    expect(linked(after)).not.toContain(c.id);
+    expect(cb.of('peers').at(-1)?.peers).toEqual([]);
+  });
+
+  it('chat: a line from inside a world reaches its people only and is never stored (P17.11)', async () => {
+    const save = vi.spyOn(store, 'saveMessage');
+    await enter(owner);
+    place(room, c, cellPos(map, spot.guest));
+    await enter(c);
+    room.handle(owner, { t: 'chat', scope: 'nearby', body: 'inside nearby' });
+    room.handle(c, { t: 'chat', scope: 'everyone', body: 'inside everyone' });
+    expect(co.of('chat').map((m) => m.msg.body)).toEqual(['inside nearby', 'inside everyone']);
+    expect(cc.of('chat').map((m) => m.msg.body)).toEqual(['inside nearby', 'inside everyone']);
+    expect(cc.of('chat').every((m) => m.msg.scope === 'nearby')).toBe(true);
+    expect(cb.of('chat').map((m) => m.msg.body)).toEqual([]);
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it('signalling: nobody outside a world reaches a member of it; members reach each other (P17.11)', async () => {
+    await enter(owner);
+    place(room, c, cellPos(map, spot.guest));
+    await enter(c);
+    const benoit = [...room.players.values()].find((p) => p.uid === 'ub')!;
+    const data = { kind: 'offer' as const, sdp: 'v=0' };
+    room.handle(benoit, { t: 'rtc', to: owner.id, data });
+    expect(cb.of('error').at(-1)).toEqual({ t: 'error', code: 'rtc_not_linked' });
+    room.handle(owner, { t: 'rtc', to: benoit.id, data });
+    expect(co.of('error').at(-1)).toEqual({ t: 'error', code: 'rtc_not_linked' });
+    expect(cb.of('rtc')).toEqual([]);
+    room.handle(c, { t: 'rtc', to: owner.id, data });
+    expect(co.of('rtc')).toEqual([{ t: 'rtc', from: c.id, data }]);
+    expect(cb.of('rtc')).toEqual([]);
+  });
+
+  it('leaving the space from inside a world takes the person out of the office as well', async () => {
+    await enter(owner);
+    room.remove(owner);
+    expect(room.players.has(owner.id)).toBe(false);
+    expect(cc.of('leave').at(-1)?.id).toBe(owner.id);
+    expect(owner.world).toBeUndefined();
+  });
+
+  it('the return pad takes the person back to their desk; elsewhere in the world, or another id, is refused', async () => {
+    await enter(owner);
+    room.handle(owner, { t: 'portal:enter', id: 'return' });
+    expect(co.of('portal:refused').at(-1)).toEqual({
+      t: 'portal:refused',
+      id: 'return',
+      reason: 'outside',
+    });
+    expect(owner.world).toBeDefined();
+    room.handle(owner, { t: 'portal:enter', id: 'desk:jungle-1' });
+    expect(co.of('portal:refused').at(-1)).toEqual({
+      t: 'portal:refused',
+      id: 'desk:jungle-1',
+      reason: 'unknown',
+    });
+    expect(owner.world).toBeDefined();
+    // white-box: the walk to the pad is tested in worldRoom.test.ts; here only the room's rule
+    // (the pad is the cell (-1, 3), and the feet point at (-16, 122) is inside it)
+    owner.world!.member.x = -16;
+    owner.world!.member.y = 122;
+    room.handle(owner, { t: 'portal:enter', id: 'return' });
+    expect(owner.world).toBeUndefined();
+    expect(co.of('world:exit')).toHaveLength(1);
+    expect(room.players.has(owner.id)).toBe(true);
+    expect(owner.zone?.id).toBe('jungle-1');
+  });
+});
+
+describe('SpaceRoom: the SFU and a personal world (P17.11, ADR-053)', () => {
+  const spot = map.desks.find((d) => d.id === 'jungle-1')!;
+  const OWNER = 'owner-7731';
+  const WORLD = 'world-7f3k';
+  const SEED = 3560865791;
+  const FLOOR = 'agora:hq:floor';
+  const settle = () => new Promise((r) => setTimeout(r, 0));
+
+  /** A stand-in SFU: records every call and hands out readable tokens. */
+  class RecordingSfu implements SfuApi {
+    calls: string[] = [];
+    async mint(room: string, identity: string, _name: string, canPublish: boolean) {
+      this.calls.push(`mint ${room} ${identity} ${canPublish ? 'pub' : 'sub'}`);
+      return `tok|${room}|${identity}`;
+    }
+    async setPublish(room: string, identity: string, canPublish: boolean) {
+      this.calls.push(`perm ${room} ${identity} ${canPublish ? 'pub' : 'sub'}`);
+    }
+    async remove(room: string, identity: string) {
+      this.calls.push(`remove ${room} ${identity}`);
+    }
+    async rooms(): Promise<string[]> {
+      return [];
+    }
+    async participants(): Promise<{ identity: string; canPublish: boolean }[]> {
+      return [];
+    }
+  }
+
+  let store: MemoryStore;
+  let sfu: RecordingSfu;
+  let room: SpaceRoom;
+  let co: FakeConn;
+  let owner: Player;
+
+  beforeEach(async () => {
+    store = new MemoryStore();
+    sfu = new RecordingSfu();
+    room = makeRoom(store, 4, { api: sfu, url: 'wss://sfu.test', prefix: 'agora' });
+    await room.init();
+    co = new FakeConn();
+    owner = (await room.join(co, { uid: OWNER, name: 'Alice' }))!;
+    place(room, owner, cellPos(map, spot.chair), 'sit');
+    room.handle(owner, { t: 'desk:claim', deskId: 'jungle-1' });
+    await store.worlds.createWorld({
+      id: WORLD,
+      ownerId: OWNER,
+      seed: SEED,
+      genVersion: 1,
+      createdAt: 0,
+      lastDay: 0,
+      settings: {},
+    });
+    await settle();
+  });
+
+  it('the office floor is left on entry; inside the world the person has the world room and no floor', async () => {
+    expect(co.of('media:grant').at(-1)).toMatchObject({
+      floor: { room: FLOOR },
+      zone: null,
+      publish: 'floor',
+    });
+    const mark = sfu.calls.length;
+    room.handle(owner, { t: 'portal:enter', id: 'desk:jungle-1' });
+    await settle();
+    const since = sfu.calls.slice(mark);
+    expect(since).toContain(`remove ${FLOOR} ${owner.id}`);
+    expect(since).toContain(`mint agora:world:${WORLD} ${owner.id} pub`);
+    expect(since.filter((c) => c.startsWith('mint') && c.includes(':floor'))).toEqual([]);
+    expect(co.of('media:grant').at(-1)).toMatchObject({
+      floor: null,
+      zone: { room: `agora:world:${WORLD}` },
+      publish: 'zone',
+    });
+    // signalling is off with an SFU, inside the world as in the office
+    room.handle(owner, { t: 'rtc', to: 'anyone', data: { kind: 'offer', sdp: 'v=0' } });
+    expect(co.of('error').at(-1)).toEqual({ t: 'error', code: 'rtc_off' });
+    // a fresh token on request, still the world's room only
+    room.handle(owner, { t: 'media:token' });
+    await settle();
+    expect(co.of('media:grant').at(-1)?.zone?.room).toBe(`agora:world:${WORLD}`);
+  });
+
+  it('back at the desk the office floor is granted again, and the world room is left', async () => {
+    room.handle(owner, { t: 'portal:enter', id: 'desk:jungle-1' });
+    await settle();
+    const mark = sfu.calls.length;
+    room.handle(owner, { t: 'world:leave' });
+    await settle();
+    expect(sfu.calls.slice(mark)).toContain(`remove agora:world:${WORLD} ${owner.id}`);
+    // the desk's guest spot is inside the pod (a desk zone), so the zone may be granted; never the world room
+    const back = co.of('media:grant').at(-1)!;
+    expect(back.floor?.room).toBe(FLOOR);
+    expect(back.publish).toBe(back.zone ? 'zone' : 'floor');
+    expect(back.zone?.room ?? '').not.toContain('world');
+  });
+});
+
+describe('SpaceRoom: world actions are routed to the world (P17.20)', () => {
+  const spot = map.desks.find((d) => d.id === 'jungle-1')!;
+  const OWNER = 'owner-7731';
+  const settle = () => new Promise((r) => setTimeout(r, 0));
+
+  async function inWorld(flags: Record<string, boolean>) {
+    const store = new MemoryStore();
+    const flagged = { ...flags };
+    const room = makeRoom(store, 4, undefined, flagged);
+    await room.init();
+    const co = new FakeConn();
+    const owner = (await room.join(co, { uid: OWNER, name: 'Alice' }))!;
+    place(room, owner, cellPos(map, spot.chair), 'sit');
+    room.handle(owner, { t: 'desk:claim', deskId: 'jungle-1' });
+    await store.worlds.createWorld({
+      id: 'world-act',
+      ownerId: OWNER,
+      seed: 3560865791,
+      genVersion: 1,
+      createdAt: 0,
+      lastDay: 0,
+      settings: {},
+    });
+    room.handle(owner, { t: 'portal:enter', id: 'desk:jungle-1' });
+    await settle();
+    expect(co.of('world:welcome')).toHaveLength(1);
+    return { room, co, owner, flagged };
+  }
+
+  const act = (op: number, key: string) => ({
+    t: 'world:act' as const,
+    op,
+    kind: 'eat' as const,
+    key,
+  });
+
+  it('reaches the world room: with no rule for the kind the person is refused as invalid', async () => {
+    const { room, co, owner } = await inWorld({ worlds: true });
+    room.handle(owner, act(7, 'k-route-1'));
+    await settle();
+    expect(co.of('world:refused').at(-1)).toEqual({ t: 'world:refused', op: 7, reason: 'invalid' });
+  });
+
+  it('refuses as disabled once the worlds flag is off', async () => {
+    const { room, co, owner, flagged } = await inWorld({ worlds: true });
+    flagged.worlds = false;
+    room.handle(owner, act(8, 'k-route-2'));
+    await settle();
+    expect(co.of('world:refused').at(-1)).toEqual({
+      t: 'world:refused',
+      op: 8,
+      reason: 'disabled',
+    });
+  });
+
+  it('rate-limits a burst of actions, refusing the excess as rate', async () => {
+    const { room, co, owner } = await inWorld({ worlds: true });
+    for (let i = 0; i < 20; i++) room.handle(owner, act(100 + i, `k-burst-${i}`));
+    await settle();
+    // the burst of 12 reaches the rules (refused as invalid here); the rest are refused as rate, at once
+    const rate = co
+      .of('world:refused')
+      .filter((m) => m.reason === 'rate')
+      .map((m) => m.op);
+    expect(rate.length).toBeGreaterThan(0);
+    expect(rate.at(-1)).toBe(119);
+    expect(rate).not.toContain(100);
+  });
+});
+
+describe('SpaceRoom: the badge on the card (P17.31)', () => {
+  const settle = () => new Promise((r) => setTimeout(r, 0));
+
+  it('shows the chosen skill at the level earned, to the space; an unearned level is not shown', async () => {
+    const store = new MemoryStore();
+    const room = makeRoom(store, 3);
+    await room.init();
+    await store.worlds.withTxn((tx) =>
+      tx.saveProgress('ua', { skills: { farming: 100 }, energy: 0, day: 0, rest: null }),
+    );
+    const ca = new FakeConn();
+    const cb = new FakeConn();
+    const a = (await room.join(ca, { uid: 'ua', name: 'A' }))!;
+    await room.join(cb, { uid: 'ub', name: 'B' });
+    const badgeSeenByB = () =>
+      cb
+        .of('profile')
+        .filter((m) => m.profile.id === a.id)
+        .at(-1)?.profile.badge;
+
+    room.handle(a, { t: 'badge', skill: 'mining' });
+    await settle();
+    expect(badgeSeenByB()).toBeUndefined();
+
+    room.handle(a, { t: 'badge', skill: 'farming' });
+    await settle();
+    expect(badgeSeenByB()).toEqual({ skill: 'farming', level: 1 });
+
+    room.handle(a, { t: 'badge', skill: null });
+    await settle();
+    expect(badgeSeenByB()).toBeUndefined();
+  });
+
+  it('a person who joins sees the badge they chose before, in the welcome', async () => {
+    const store = new MemoryStore();
+    const room = makeRoom(store, 3);
+    await room.init();
+    await store.worlds.withTxn((tx) =>
+      tx.saveProgress('uc', { skills: { mining: 300 }, energy: 0, day: 0, rest: null }),
+    );
+    await store.worlds.setShowOff('uc', 'mining', loadGameData().progression);
+    const cc = new FakeConn();
+    const c = (await room.join(cc, { uid: 'uc', name: 'C' }))!;
+    const welcome = cc.of('welcome')[0]!;
+    expect(welcome.profiles.find((p) => p.id === c.id)?.badge).toEqual({
+      skill: 'mining',
+      level: 2,
+    });
+  });
+});
+
+describe('SpaceRoom: caves behind a mouth (P17.32, ADR-053)', () => {
+  const spot = map.desks.find((d) => d.id === 'jungle-1')!;
+  const OWNER = 'owner-7731';
+  const WORLD = 'world-7f3k';
+  const SEED = 3560865791;
+  /** a mouth placed in the world's stored edits, outside the starter clearing */
+  const MOUTH = { x: 20, y: 4 };
+  const CAVE = caveIdOf(WORLD, MOUTH.x, MOUTH.y);
+  const settle = () => new Promise((r) => setTimeout(r, 0));
+  const act = (op: number, key: string) => ({
+    t: 'world:act' as const,
+    op,
+    kind: 'eat' as const,
+    key,
+  });
+  let store: MemoryStore;
+  let room: SpaceRoom;
+  let co: FakeConn, cc: FakeConn, cb: FakeConn;
+  let owner: Player, c: Player;
+
+  /** The walk is tested in worldRoom.test.ts; here the person simply stands on the cell. */
+  const stand = (p: Player, cx: number, cy: number) => {
+    const at = cellFeet(cx, cy);
+    p.world!.member.x = at.x;
+    p.world!.member.y = at.y;
+  };
+  const enter = async (p: Player, id = 'desk:jungle-1') => {
+    room.handle(p, { t: 'portal:enter', id });
+    await settle();
+  };
+  const step = async (p: Player, id: string) => {
+    room.handle(p, { t: 'portal:enter', id });
+    await settle();
+  };
+
+  beforeEach(async () => {
+    store = new MemoryStore();
+    room = makeRoom(store);
+    await room.init();
+    co = new FakeConn();
+    cc = new FakeConn();
+    cb = new FakeConn();
+    owner = (await room.join(co, { uid: OWNER, name: 'Alice' }))!;
+    c = (await room.join(cc, { uid: 'uc', name: 'Chloé' }))!;
+    await room.join(cb, { uid: 'ub', name: 'Benoît' });
+    place(room, owner, cellPos(map, spot.chair), 'sit');
+    room.handle(owner, { t: 'desk:claim', deskId: 'jungle-1' });
+    await store.worlds.createWorld({
+      id: WORLD,
+      ownerId: OWNER,
+      seed: SEED,
+      genVersion: 1,
+      createdAt: 0,
+      lastDay: 0,
+      settings: {},
+    });
+    await setCells(store.worlds, { [`${MOUTH.x},${MOUTH.y}`]: { decor: 'cave_mouth' } }, WORLD);
+  });
+
+  it('a mouth under the feet opens its cave: the cave welcomes the person, and the world sees them go', async () => {
+    await enter(owner);
+    stand(owner, MOUTH.x, MOUTH.y);
+    await step(owner, CAVE);
+    expect(owner.world?.room.id).toBe(CAVE);
+    expect(co.of('world:welcome').at(-1)).toMatchObject({
+      worldId: CAVE,
+      you: owner.id,
+      seed: SEED,
+      genVersion: 1,
+    });
+    expect(room.players.has(owner.id)).toBe(false);
+  });
+
+  it('isolation: the cave and the world it opens from hear nothing of each other, in either direction', async () => {
+    await enter(owner);
+    place(room, c, cellPos(map, spot.guest));
+    await enter(c);
+    stand(owner, MOUTH.x, MOUTH.y);
+    await step(owner, CAVE);
+    room.handle(owner, { t: 'chat', scope: 'nearby', body: 'from the cave' });
+    expect(co.of('chat').map((m) => m.msg.body)).toContain('from the cave');
+    expect(cc.of('chat').map((m) => m.msg.body)).not.toContain('from the cave');
+    expect(cb.of('chat').map((m) => m.msg.body)).not.toContain('from the cave');
+    room.handle(c, { t: 'chat', scope: 'nearby', body: 'from the world' });
+    expect(cc.of('chat').map((m) => m.msg.body)).toContain('from the world');
+    expect(co.of('chat').map((m) => m.msg.body)).not.toContain('from the world');
+  });
+
+  it('isolation: a visitor who goes into the cave too shares only the cave with the owner', async () => {
+    await enter(owner);
+    place(room, c, cellPos(map, spot.guest));
+    await enter(c);
+    stand(owner, MOUTH.x, MOUTH.y);
+    await step(owner, CAVE);
+    stand(c, MOUTH.x, MOUTH.y);
+    await step(c, CAVE);
+    expect(c.world?.room.id).toBe(CAVE);
+    expect(co.of('world:join').at(-1)?.person.id).toBe(c.id);
+    room.handle(owner, { t: 'chat', scope: 'nearby', body: 'inside together' });
+    expect(cc.of('chat').map((m) => m.msg.body)).toContain('inside together');
+    expect(co.of('chat').map((m) => m.msg.body)).toContain('inside together');
+    expect(cb.of('chat').map((m) => m.msg.body)).not.toContain('inside together');
+    expect(co.of('peers').at(-1)?.peers).toEqual([c.id]);
+    expect(cc.of('peers').at(-1)?.peers).toEqual([owner.id]);
+  });
+
+  it('isolation: a forged rtc between the world and its cave is refused, and nothing arrives', async () => {
+    await enter(owner);
+    place(room, c, cellPos(map, spot.guest));
+    await enter(c);
+    stand(owner, MOUTH.x, MOUTH.y);
+    await step(owner, CAVE);
+    const data = { kind: 'offer' as const, sdp: 'v=0' };
+    room.handle(c, { t: 'rtc', to: owner.id, data });
+    expect(cc.of('error').at(-1)).toEqual({ t: 'error', code: 'rtc_not_linked' });
+    room.handle(owner, { t: 'rtc', to: c.id, data });
+    expect(co.of('error').at(-1)).toEqual({ t: 'error', code: 'rtc_not_linked' });
+    expect(co.of('rtc')).toEqual([]);
+    expect(cc.of('rtc')).toEqual([]);
+  });
+
+  it('the cave refuses every world action as forbidden, and nothing changes', async () => {
+    await enter(owner);
+    stand(owner, MOUTH.x, MOUTH.y);
+    await step(owner, CAVE);
+    room.handle(owner, act(9, 'k-cave-0001'));
+    await settle();
+    expect(co.of('world:refused').at(-1)).toEqual({
+      t: 'world:refused',
+      op: 9,
+      reason: 'forbidden',
+    });
+    expect(co.of('world:acted')).toEqual([]);
+  });
+
+  it('the cave pad takes the person back into the world beside the mouth, and not to the office', async () => {
+    await enter(owner);
+    stand(owner, MOUTH.x, MOUTH.y);
+    await step(owner, CAVE);
+    stand(owner, CAVE_EXIT.x, CAVE_EXIT.y);
+    await step(owner, 'return');
+    expect(owner.world?.room.id).toBe(WORLD);
+    const m = owner.world!.member;
+    expect(
+      Math.max(Math.abs(Math.floor(m.x / 32) - MOUTH.x), Math.abs(Math.floor(m.y / 32) - MOUTH.y)),
+    ).toBe(1);
+    expect(co.of('world:exit')).toEqual([]);
+    expect(room.players.has(owner.id)).toBe(false);
+  });
+
+  it('the mouth opens only under the feet of the person: elsewhere, or another mouth, is refused as outside', async () => {
+    await enter(owner);
+    await step(owner, CAVE);
+    expect(co.of('portal:refused').at(-1)).toEqual({
+      t: 'portal:refused',
+      id: CAVE,
+      reason: 'outside',
+    });
+    expect(owner.world?.room.id).toBe(WORLD);
+    stand(owner, MOUTH.x, MOUTH.y);
+    await step(owner, caveIdOf(WORLD, MOUTH.x + 1, MOUTH.y));
+    expect(co.of('portal:refused').at(-1)).toMatchObject({ reason: 'outside' });
+    expect(owner.world?.room.id).toBe(WORLD);
+  });
+
+  it('visitors follow the desk rules: once the owner closes the desk, a visitor in the world cannot enter the cave', async () => {
+    await enter(owner);
+    place(room, c, cellPos(map, spot.guest));
+    await enter(c);
+    // the owner steps out to the desk, closes it, and goes back in
+    room.handle(owner, { t: 'world:leave' });
+    room.handle(owner, { t: 'desk:update', access: 'closed' });
+    await enter(owner);
+    stand(c, MOUTH.x, MOUTH.y);
+    await step(c, CAVE);
+    expect(cc.of('portal:refused').at(-1)).toEqual({
+      t: 'portal:refused',
+      id: CAVE,
+      reason: 'no_permission',
+    });
+    expect(c.world?.room.id).toBe(WORLD);
+    stand(owner, MOUTH.x, MOUTH.y);
+    await step(owner, CAVE);
+    expect(owner.world?.room.id).toBe(CAVE);
+  });
+
+  it('a person in the office cannot open a cave: the portal names no desk, so it is unknown', async () => {
+    room.handle(c, { t: 'portal:enter', id: CAVE });
+    await settle();
+    expect(cc.of('portal:refused').at(-1)).toEqual({
+      t: 'portal:refused',
+      id: CAVE,
+      reason: 'unknown',
+    });
+    expect(c.world).toBeUndefined();
   });
 });

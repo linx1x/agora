@@ -1,5 +1,21 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
 
+/** The pages this file opened: each is left and its context closed after its test (no ghost person in a shared space). */
+const opened: Page[] = [];
+test.afterEach(async () => {
+  for (const p of opened.splice(0)) {
+    await p
+      .evaluate(() =>
+        (window as unknown as { __agoraWorld?: { leave?: () => void } }).__agoraWorld?.leave?.(),
+      )
+      .catch(() => {});
+    await p
+      .context()
+      .close()
+      .catch(() => {});
+  }
+});
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const T = 32;
 const NAMES = ['Alice Tremblay', 'Benoît Gagnon', 'Chloé Roy'];
@@ -33,19 +49,23 @@ async function signIn(browser: Browser, devUser: number, precheck = false, tone 
         return s;
       };
     });
-  await ctx.addInitScript((pc) => {
-    try {
-      localStorage.setItem(
-        'agora.settings',
-        JSON.stringify({ lighting: false, sounds: false, autoSit: true, precheck: pc }),
-      );
-    } catch {
-      /* about:blank */
-    }
-  }, precheck);
+  await ctx.addInitScript(
+    ([pc]) => {
+      try {
+        localStorage.setItem(
+          'agora.settings',
+          JSON.stringify({ lighting: false, sounds: false, autoSit: true, precheck: pc }),
+        );
+      } catch {
+        /* about:blank */
+      }
+    },
+    [precheck] as const,
+  );
   const page = await ctx.newPage();
+  opened.push(page);
   page.on('pageerror', (e) => console.log(`[pageerror ${devUser}]`, e.message));
-  await page.goto('/');
+  await page.goto('/?hour=13');
   await page.getByRole('button', { name: NAMES[devUser]! }).click();
   const enterBtn = page
     .getByRole('dialog')
@@ -55,7 +75,10 @@ async function signIn(browser: Browser, devUser: number, precheck = false, tone 
     : page.locator('.control-bar').waitFor();
   await Promise.race([enterBtn.click().catch(() => {}), ready]);
   await ready;
-  if (!precheck) await online(page);
+  if (!precheck) {
+    await online(page);
+    expect(await page.evaluate(() => (window as any).__agora.view.engine)).toBe('2.5d');
+  }
   return page;
 }
 

@@ -16,7 +16,7 @@
 ```
 Browser (staff)
  ├─ React UI chrome (panels, chat, settings, video tiles)  ─┐
- ├─ Phaser 4 world canvas (tilemap, avatars, interactions) ─┤ apps/web
+ ├─ Three.js 2.5D world canvas (tiles, avatars, clicks)    ─┤ apps/web
  ├─ livekit-client (A/V, screen share)                      │
  ├─ Excalidraw + Yjs (whiteboard, notes, kanban)            ─┘
  │
@@ -41,8 +41,10 @@ can be split into processes later (Colyseus supports Redis presence if needed).
 
 ```
 apps/
-  web/            Vite + React + Phaser
-    src/game/       Phaser scenes, avatar renderer, input, interpolation
+  web/            Vite + React + Three.js
+    src/game/       world controller, navigation, input, pure blend and build maths
+    src/game3d/     the 2.5D office view (Three.js): scene, figures, camera, quality ladder
+    src/worlds/     personal worlds (ADR-053): walking, farming, and their 2.5D view
     src/ui/         React components (panels, dialogs, video strip)
     src/media/      LiveKit wrapper, proximity subscriber, audio graph
     src/collab/     Yjs providers, whiteboard, kanban, notes
@@ -107,6 +109,87 @@ around furniture. Same code on client (prediction) and server (validation).
   interpolation buffer. Depth sorting by y.
 - Zone membership is computed **on the server** after each accepted move and stored
   in player state (`zoneId`). This drives media access and chat scope.
+
+### Rendering: the 2.5D view (ADR-052, ADR-054, Phase 16)
+
+The client draws the world with Three.js behind one seam. `WorldController`
+(`apps/web/src/game/controller.ts`) owns movement, paths, sitting, prompts, the drawn
+positions and the presence tick. The view implements `WorldView` (`game/view.ts`: draw the path,
+teleport, pan, follow me, where a character is drawn, whether build mode owns the pointer) and
+runs its own frame loop. It publishes `window.__agora.view` (`ViewTestApi`), which the e2e specs
+drive, and `window.__agora.view3d` for the hooks of the 2.5D office.
+
+- **Office**: `World3DView` (`apps/web/src/game3d/World3DView.ts`, Three.js). Its chunk loads when
+  the game view mounts. The camera is fixed: perspective, tilted 35°, facing north, never rotating.
+  Zoom moves the camera closer and keeps the angle.
+- **Personal worlds**: `WorldRoom3DView` (`apps/web/src/worlds/view3d/`), the same camera rules,
+  drawn as one merged mesh per chunk of 32 × 32 cells.
+
+The e2e suite runs one Playwright project, `2.5d` (`playwright.config.ts`), and every spec asserts
+`view.engine === '2.5d'` at entry.
+
+Only presentation changes. Positions, collision, zones, proximity, media, `planEdit`, the map
+format and the server do not depend on the view. Height is client metadata: `shape3d`
+(`packages/shared/src/shape3d.ts`) gives every tile a shape (`flat`, `wall`, `box`, `card`,
+`decal`, `none`), and a tile may override it with `TileDef.d3`.
+
+**One view** (ADR-054). The 2.5D view is the only world view: there is no setting, no `?view=`
+and no flag (`world25d` is retired). A device whose WebGL or view chunk fails gets a notice, and
+the People list still works (`GameView.tsx`).
+
+**Device tiers and the quality ladder** (`game3d/tier.ts`, pure and tested). Desktop: 8 point
+lights, a 2048 px sun shadow, tilt-shift and bloom. Phone: 3 point lights, no shadow, no
+post-processing. A touch screen starts as phone. A 3 s probe after 600 ms of warm-up then sets the
+tier: under 40 fps is phone; a software renderer (SwiftShader, llvmpipe) or a probe under 8 fps
+starts at the bottom rung. Under 20 fps for 15 s in a row steps the ladder down one rung: render
+scale 1 → 0.75 → 0.5, post-processing off, two point lights, lights off (no lamps, shadows or
+night blobs). The first step down says so once (a toast in the live region). The rung lasts for the
+visit (`store.qualityLevel`); a reload starts at the full look. A personal world steps only its
+render scale. The thresholds are first guesses until the mid-range phone run.
+
+**Scene pipeline** (`game3d/scene.ts`, pure). One map region becomes faces: 1 unit is one tile,
+x is east, y up, z south, and the camera never sees north-facing faces. Floors lie flat, walls
+are boxes (a `wallTop` with its face south of it is one box two cells deep, so collision matches),
+desks, tables and counters are extruded from their 3/4 art, other furniture stands up as a card
+on its lowest opaque row, and vines hang on the wall north of them. Faces of blended ground and
+joined furniture keep their ADR-037 key. `meshes.ts` builds one merged mesh per region and one
+texture atlas (tileset, animation strips, blend slots); shade is a vertex colour. Animated tiles
+(water, pond, waterfall, fire, portal) move the UVs of their faces (`RegionAnim`). Only the
+region the player is in is built, and it is rebuilt on a portal.
+
+**People and labels.** Avatars are paper cut-outs (`paperFigures.ts`, `paperLayout.ts`,
+`figureMath.ts`): 64×96 smooth art, one upright card per figure facing the camera, shared sheets
+per look, a 120 ms card flip on a left↔right turn (at once under reduced motion). Names, status,
+emotes and bubbles are HTML over the canvas (`overlays.ts`, aria-hidden; the People panel is the
+accessible list). Props keep their ground base point; `props3d.ts` places them on a surface and maps
+back.
+
+**Occlusion** (`occlusion.ts`, `occlusionMath.ts`). Cells whose faces are walls, vines or cards at
+least 0.9 tiles tall fade when they hide my figure (or the figure under the mouse; touch has no
+hover). The fade is a 4×4 ordered dither in the shader, one float per vertex, not alpha: the mesh
+stays opaque, needs no sorting and stays one draw call. 30 % is kept while hidden; 160 ms each way;
+reduced motion jumps.
+
+**Lighting** (`lightRig.ts`, `lightingMath.ts`, `blobs.ts`, `postfx.ts`). The hemisphere takes the
+Québec hour's ambient tint from `timeOfDay` (`game/lighting.ts`), the curve the flat view used. A sun runs an arc from
+6 h to 20 h (46° at noon, east through south to west). A fixed pool of point lights (8 desktop,
+3 phone) holds the lamps, windows, fires, portals and desk lamps nearest the camera, re-picked
+at 3 Hz. Trees have blob shadows. Lighting off: plain midday light, no point lights, no shadows,
+no blobs, no post-processing.
+
+**Build mode in 3D** (`BuildMode3D.ts`, `pick3d.ts`, `ghost3d.ts`, `propFaces.ts`,
+`buildOverlay.ts`). The edits, rules and keys are the 2.5D build mode's own; the pure helpers it
+shares with the tests live in `game/buildMath.ts`. The pointer picks the nearest opaque face under
+it along a ray (props are hit anywhere in their card), else the floor. The ground point the server
+checks is the image of that hit (`aimOf`). The preview runs the server's own plan on a copy of the
+map and draws the changed cells, translucent and red when the server would refuse. One region is
+edited at a time: the focus follows the build cursor. The server still gets cells and ground
+points.
+
+**Status (2026-10-11).** P16.1–P16.14 and P16.16–P16.17 are built. P16.15 (builder uploads in
+2.5D) waits for P9.15. The flat 2D view is removed (ADR-054: P16.19 one view, P16.20 the Phaser
+office view, P16.21 `view2d/`, P16.22 e2e on one view): the 2.5D view is the only view, and personal
+worlds draw in 2.5D too (P17.15). Pets are not drawn in 2.5D yet (ADR-040 cat, checkpoint K).
 
 ## 5. Proximity media design (LiveKit)
 
@@ -265,3 +348,93 @@ CSP with explicit `frame-src` allowlist for embeds; rate limits on chat, emotes,
 moves, uploads, knocks; zod validation on every inbound message; CSRF protection on
 cookie-auth POSTs; server-side permission check on every mutation; dependency audit
 (`pnpm audit`) in CI; no user HTML rendered (markdown subset with sanitizer).
+
+## 13. Personal worlds (ADR-053, Phase 17)
+
+A claimed desk is a portal to its owner's own world. The flag `worlds` is off until checkpoint O.
+Each world is a procedural map with four biomes (Meadow, Jungle, Desert, Taiga), rivers that run to
+the sea, and Stardew-style farming. The rules are in `packages/shared/src/worlds/`, the server in
+`apps/server/src/worlds/`, the client in `apps/web/src/worlds/`.
+
+**Generation (shared, deterministic).** Seeded simplex noise (`noise.ts`) with no dependency and
+only `+ - × ÷` and integer operations, so every JavaScript engine gives the same bits. Layers are
+elevation, temperature and humidity (fBm). A cell's biome is a weighted blend of four biome centres
+in (temperature, humidity), dithered at the borders (`biomes.ts`). Sea level is an elevation
+threshold. Rivers are steepest-descent traces over cached 8×8-chunk regions (`rivers.ts`), each
+ending in the sea or a lake. Chunks are 32×32 cells of level 0 to 7 (`LEVEL_MAX`), a block and
+decor (`terrain.ts`). The seed is `worldSeedFor(userId)`. `worldgen.json` holds `genVersion` and
+the params for each version: a terrain change bumps the version and keeps the old params under
+`versions`, so saved deltas still match.
+
+**State: deltas only.** The database keeps only what a person changed, in
+`world_chunks(world_id, cx, cy, delta, cells, rev)`. The base is recomputed from the seed. A delta
+is sparse (`{level?, block?, decor?}` per local cell index, `delta.ts`), capped at
+`WORLD_DELTA_CELL_CAP` (40 000 cells per world). The starter is a stamp under the stored edits
+(`packages/maps/worlds/starter.json`, `starter.ts`, `mergeDeltas`), so the generator never changes
+for it. Farm state is one row per world, `world_sim(world_id, day, state, rev)`: plots, animals
+and machines (`WorldSimState`). Account data is not world data: `inventories`, `progress` (skills,
+unlocks, energy, day, rest) and `ledger` (key UNIQUE) belong to the person.
+
+**Server room** (`worldRoom.ts`). `WorldRoom` holds the people in one world. `WorldHub` opens it on
+the first arrival (concurrent arrivals share one load: the world row, the generator params for its
+`genVersion`, every stored chunk) and closes it when the last person leaves. The server decides
+every position with `validateWorldMove` on the base plus the deltas; a refused move gets
+`world:correction`. A person gets the 5×5 chunks around them (`world:chunks {add, drop}`) and the
+farm plots in view (`world:farm`). Messages go only to the people in that world, and `WorldPerson`
+carries no user id.
+
+**Clock** (`clock.ts`). One clock per world. A game day runs from 06:00 to 02:00 (1200 game minutes);
+the default day is 20 minutes (`DEFAULT_DAY_MS`) and a season is 28 days. The server catches a
+world up on load and at each day change, one year at most (`simulateDays`). The night order is:
+withering at a season change, growth (only on watered days), water retention, sprinklers, animals,
+machines. The client gets `world:time`. Worlds keep running while nobody is in them.
+
+**Actions** (`actions.ts`, skill `agora-world-action`). A person sends `world:act {op, kind, at,
+item, key}`. The server checks, in order: permission (`canDo`), reach (1.5 cells), that a planner
+exists, and then one transaction (`withTxn`) that locks the world row, replays the ledger row for
+`key` or refuses `key_taken`, reads the account, sim and chunks, runs the pure planner
+(`packages/shared/src/worlds/actions/`), checks inventory and energy, writes the ledger row and the
+changes. A refusal writes nothing. Refusal reasons are a closed list (`WORLD_REFUSALS`, i18n
+`worlds.refused.<reason>`). The memory store (dev only) runs transactions one at a time.
+
+**Energy and the day** (`energy.ts`, `rest.ts`). Energy's maximum is 270 (`progression.json`). A
+bed restores energy by the game clock. Passing out at the rollover restores half of the maximum.
+Away from home, a pass-out costs 10 % of money (capped at 1000), charged once a day through the
+ledger.
+
+**Portals** (`packages/shared/src/portals.ts`). A portal is `{id, trigger, access, target}` with a
+pixel rectangle as its trigger, the same way zones work. A desk uses its pod's access rule
+(`portalAllows` equals `podAllows`). The first step through a desk creates the owner's world
+(`ownerWorld.ts`), and a visitor is refused `no_world` until then. Each world has one portal
+inside it, the return pad, which leads back to the owner's desk. The owner's uid never reaches a
+visitor.
+
+**Media and chat scope.** A world is its own scope, `world:<id>`. Everyone in it is linked to
+everyone else at any distance (`peers` for P2P; for LiveKit, a room named from the world id, never
+from a user id, through `media:grant {floor: null, zone: {room: 'prefix:world:<id>'}}`). Nearby chat
+reaches only the members of that world and is never stored. Signalling relays only within the
+world. Nobody outside the world hears or signals into it. The office rules (`isPrivate`,
+`isQuiet`, `podAllows`, `mediaLinked`, `chatReaches`) are unchanged. The isolation tests are in
+`apps/server/src/worlds/worldRoom.test.ts` and `apps/server/src/world/room.test.ts` ("personal
+worlds").
+
+**Content is data.** Blocks, biomes, worldgen params, items, crops, tools, recipes, animals, fish
+and NPC gifts are JSON in `packages/shared/data/worlds/`, each checked by zod at load
+(`loadGameData()` also checks cross-references). Adding content is adding rows
+(`agora-add-world-content`). Art: every block is a placeholder drawn in code from its biome's
+palette until a sprite file exists under its key (`apps/web/src/worlds/placeholders.ts`). The
+art manifest is in `docs/ASSETS.md` § Worlds.
+
+**Rendering.** Cells lift 12 px per level with a darker side strip under each step (`worlds/cellMath.ts`),
+and the farm layer is drawn over the ground. Personal worlds are drawn in 2.5D by
+`worlds/view3d/WorldRoom3DView.ts`, on the same `WorldView` seam as the office (section 4). The flat
+view was removed in P16.21.
+
+**Progression (P17.31).** Five skills (`SKILLS`: farming, foraging, mining, fishing, combat), one
+xp curve (`levelXp`) for all of them. Each action earns the xp its `progression.xp` row names
+(harvest, chop and mine today). `progressionStep` (`packages/shared/src/worlds/progression.ts`) runs
+once inside `transact`, after the rule: it refuses a held tool whose unlock the actor has not earned
+(`locked`) and writes the xp from the table. Unlocks are derived from the actor's own levels, never
+from the owner's levels or grants, so a visitor's action is judged by the visitor's xp. The badge is
+a skill the person chose (`show_off` table, `badge` message); its level is computed from their xp,
+so an unearned level never shows.

@@ -15,6 +15,7 @@ import {
   cellOf,
   cellPos,
   chairAt,
+  deskPortalId,
   deskSpotAt,
   distTiles,
   distToPod,
@@ -202,6 +203,11 @@ export class WorldController {
     else if (p.kind === 'knock') world.send({ t: 'knock', deskId: p.deskId });
     else if (p.kind === 'teleport') world.send({ t: 'teleport', to: p.to });
     else if (p.kind === 'talk') store.set({ talkTo: p.npcId });
+    else if (p.kind === 'shop') {
+      store.set({ officeShop: true, officeShopRefused: null });
+      world.send({ t: 'office:inv' });
+    }
+    else if (p.kind === 'world') world.send({ t: 'portal:enter', id: deskPortalId(p.deskId) });
   }
 
   /** Walk to a clicked world point (map px); sit when it is a chair. */
@@ -362,6 +368,8 @@ export class WorldController {
     const out: AvatarState[] = [];
     const renderT = now - INTERP_MS;
     for (const id of Object.keys(s.profiles)) {
+      // P17.15b: someone inside a personal world is listed, but not on the floor
+      if (id !== s.me && s.profiles[id]!.inWorld) continue;
       let x: number, y: number, dir: Dir, moving: boolean, pose: Pose;
       if (id === s.me && this.me.ready) ({ x, y, dir, moving, pose } = this.me);
       else {
@@ -379,7 +387,7 @@ export class WorldController {
       out.push({ id, x, y, dir, moving, pose, poseAt: ps.at });
     }
     for (const id of [...rendered.keys()])
-      if (!s.profiles[id]) {
+      if (!s.profiles[id] || (id !== s.me && s.profiles[id]!.inWorld)) {
         rendered.delete(id);
         this.poses.delete(id);
       }
@@ -389,6 +397,8 @@ export class WorldController {
   /** ~3 Hz: presence areas, nearest list, my zone and region, the contextual prompt. */
   slowTick() {
     const s = store.get();
+    // inside a personal world the office prompts are not ours (P17.14): the world view owns them
+    if (s.worldId !== null) return;
     const map = s.map!;
     const areas: Record<string, string | null> = {};
     for (const id of Object.keys(s.profiles)) {
@@ -418,6 +428,18 @@ export class WorldController {
             ? { kind: 'claim', deskId: spotHere!.id, moving: !!s.myDesk }
             : { kind: 'stand' };
       } else if (chairAt(map, meR.x, meR.y)) prompt = { kind: 'sit' };
+      else if (
+        spotHere &&
+        deskHere?.ownerId &&
+        s.config?.flags.worlds === true &&
+        podAllows(deskHere, deskHere.ownerId === s.me, s.admitted.includes(spotHere.id))
+      )
+        // P17.14: the owner's world, from inside a pod I may enter (the server checks the same rule)
+        prompt = {
+          kind: 'world',
+          deskId: spotHere.id,
+          owner: deskHere.ownerId === s.me ? null : (deskHere.ownerName ?? null),
+        };
       else if (myZone?.kind === 'portal') {
         const to = String(myZone.props.to ?? 'hub');
         prompt = { kind: 'teleport', region: myRegion ?? 'hub', to: to === myRegion ? 'hub' : to };
@@ -436,11 +458,15 @@ export class WorldController {
           break;
         }
     }
+    // P17.26b: the office shop board (its zone in front of it; the server checks again)
+    if (!prompt && myZone?.kind === 'shop' && s.config?.flags.worlds === true) prompt = { kind: 'shop' };
+    if ((s.officeShop || s.officeMarket) && myZone?.kind !== 'shop')
+      store.set({ officeShop: false, officeShopRefused: null, officeMarket: false, marketRefused: null });
     // a character within talking range, on the open floor (the server checks again)
     if (
       !prompt &&
       meR &&
-      s.config?.flags.npcTalk === true &&
+      (s.config?.flags.npcTalk === true || s.config?.flags.worlds === true) &&
       !NPC_FORBIDDEN.includes(myZone?.kind as never)
     ) {
       const reach = NPC_TALK_TILES * TILE;

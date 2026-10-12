@@ -26,6 +26,7 @@ COPY --from=build /out/node_modules ./node_modules
 COPY --from=build /src/apps/server/dist ./dist
 COPY --from=build /src/apps/web/dist ./public
 COPY --from=build /src/packages/maps/hq.tmj ./maps/hq.tmj
+COPY --from=build /src/packages/maps/worlds/starter.json ./maps/worlds/starter.json
 RUN mkdir -p /app/data && chown -R node:node /app/data
 USER node
 EXPOSE 3000

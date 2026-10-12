@@ -1259,20 +1259,6 @@ export function makeTilesetCanvas(): HTMLCanvasElement {
   return cv;
 }
 
-/** Overlay drawn over a seated avatar facing up (chair back in front of them). */
-export function makeChairBackCanvas(): HTMLCanvasElement {
-  const cv = document.createElement('canvas');
-  cv.width = T;
-  cv.height = T;
-  const c = cv.getContext('2d')!;
-  // lower part of the chair back, drawn over a seated avatar's legs
-  if (!drawArt(c, 'chairBackOverlay') && !drawSprite(c, ['ind', 1, 8], 0, 0, 2, 9, 7)) {
-    rect(c, 8, 18, 16, 8, '#2b333b');
-    rect(c, 10, 20, 12, 4, '#3a4550');
-  }
-  return cv;
-}
-
 let tilesetCache: HTMLCanvasElement | null = null;
 /** The tileset canvas, drawn once per page (sprite sheets must be loaded first). */
 export function tilesetCanvas(): HTMLCanvasElement {

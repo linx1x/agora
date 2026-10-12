@@ -1,0 +1,641 @@
+{
+  "version": 1,
+  "blocks": [
+    {
+      "id": "stone",
+      "layer": "ground",
+      "sprite": "worlds/shared/stone",
+      "solid": false,
+      "liquid": false,
+      "height": 0,
+      "placeable": false,
+      "light": 0,
+      "biomes": []
+    },
+    {
+      "id": "gravel",
+      "layer": "ground",
+      "sprite": "worlds/shared/gravel",
+      "solid": false,
+      "liquid": false,
+      "height": 0,
+      "placeable": false,
+      "light": 0,
+      "biomes": []
+    },
+    {
+      "id": "sand",
+      "layer": "ground",
+      "sprite": "worlds/shared/sand",
+      "solid": false,
+      "liquid": false,
+      "height": 0,
+      "placeable": false,
+      "light": 0,
+      "biomes": []
+    },
+    {
+      "id": "water",
+      "layer": "ground",
+      "sprite": "worlds/shared/water",
+      "solid": false,
+      "liquid": true,
+      "height": 0,
+      "placeable": false,
+      "light": 0,
+      "biomes": []
+    },
+    {
+      "id": "meadow_grass",
+      "layer": "ground",
+      "sprite": "worlds/meadow/grass",
+      "solid": false,
+      "liquid": false,
+      "height": 0,
+      "placeable": false,
+      "tillable": true,
+      "light": 0,
+      "biomes": [
+        "meadow"
+      ]
+    },
+    {
+      "id": "meadow_dirt",
+      "layer": "ground",
+      "sprite": "worlds/meadow/dirt",
+      "solid": false,
+      "liquid": false,
+      "height": 0,
+      "placeable": false,
+      "tillable": true,
+      "light": 0,
+      "biomes": [
+        "meadow"
+      ]
+    },
+    {
+      "id": "jungle_grass",
+      "layer": "ground",
+      "sprite": "worlds/jungle/grass",
+      "solid": false,
+      "liquid": false,
+      "height": 0,
+      "placeable": false,
+      "tillable": true,
+      "light": 0,
+      "biomes": [
+        "jungle"
+      ]
+    },
+    {
+      "id": "jungle_mud",
+      "layer": "ground",
+      "sprite": "worlds/jungle/mud",
+      "solid": false,
+      "liquid": false,
+      "height": 0,
+      "placeable": false,
+      "tillable": true,
+      "light": 0,
+      "biomes": [
+        "jungle"
+      ]
+    },
+    {
+      "id": "desert_sand",
+      "layer": "ground",
+      "sprite": "worlds/desert/sand",
+      "solid": false,
+      "liquid": false,
+      "height": 0,
+      "placeable": false,
+      "light": 0,
+      "biomes": [
+        "desert"
+      ]
+    },
+    {
+      "id": "desert_sandstone",
+      "layer": "ground",
+      "sprite": "worlds/desert/sandstone",
+      "solid": false,
+      "liquid": false,
+      "height": 0,
+      "placeable": false,
+      "light": 0,
+      "biomes": [
+        "desert"
+      ]
+    },
+    {
+      "id": "taiga_moss",
+      "layer": "ground",
+      "sprite": "worlds/taiga/moss",
+      "solid": false,
+      "liquid": false,
+      "height": 0,
+      "placeable": false,
+      "light": 0,
+      "biomes": [
+        "taiga"
+      ]
+    },
+    {
+      "id": "taiga_podzol",
+      "layer": "ground",
+      "sprite": "worlds/taiga/podzol",
+      "solid": false,
+      "liquid": false,
+      "height": 0,
+      "placeable": false,
+      "tillable": true,
+      "light": 0,
+      "biomes": [
+        "taiga"
+      ]
+    },
+    {
+      "id": "taiga_snow",
+      "layer": "ground",
+      "sprite": "worlds/taiga/snow",
+      "solid": false,
+      "liquid": false,
+      "height": 0,
+      "placeable": false,
+      "light": 0,
+      "biomes": [
+        "taiga"
+      ]
+    },
+    {
+      "id": "tilled_soil",
+      "layer": "ground",
+      "sprite": "worlds/shared/tilled",
+      "solid": false,
+      "liquid": false,
+      "height": 0,
+      "placeable": false,
+      "tillable": true,
+      "light": 0,
+      "biomes": [],
+      "states": [
+        "dry",
+        "wet"
+      ]
+    },
+    {
+      "id": "tall_grass",
+      "layer": "decor",
+      "sprite": "worlds/meadow/tall_grass",
+      "solid": false,
+      "liquid": false,
+      "height": 0,
+      "placeable": false,
+      "light": 0,
+      "biomes": [
+        "meadow"
+      ]
+    },
+    {
+      "id": "flower",
+      "layer": "decor",
+      "sprite": "worlds/meadow/flower",
+      "solid": false,
+      "liquid": false,
+      "height": 0,
+      "placeable": false,
+      "light": 0,
+      "biomes": [
+        "meadow"
+      ]
+    },
+    {
+      "id": "fern",
+      "layer": "decor",
+      "sprite": "worlds/jungle/fern",
+      "solid": false,
+      "liquid": false,
+      "height": 0,
+      "placeable": false,
+      "light": 0,
+      "biomes": [
+        "jungle"
+      ]
+    },
+    {
+      "id": "dead_bush",
+      "layer": "decor",
+      "sprite": "worlds/desert/dead_bush",
+      "solid": false,
+      "liquid": false,
+      "height": 0,
+      "placeable": false,
+      "light": 0,
+      "biomes": [
+        "desert"
+      ]
+    },
+    {
+      "id": "oak_tree",
+      "layer": "decor",
+      "sprite": "worlds/meadow/oak",
+      "solid": true,
+      "liquid": false,
+      "height": 3,
+      "placeable": false,
+      "light": 0,
+      "biomes": [
+        "meadow"
+      ],
+      "harvest": {
+        "tool": "axe",
+        "minTier": 0,
+        "hits": 4,
+        "drops": [
+          {
+            "item": "softwood",
+            "min": 2,
+            "max": 4
+          }
+        ]
+      }
+    },
+    {
+      "id": "jungle_tree",
+      "layer": "decor",
+      "sprite": "worlds/jungle/tree",
+      "solid": true,
+      "liquid": false,
+      "height": 4,
+      "placeable": false,
+      "light": 0,
+      "biomes": [
+        "jungle"
+      ],
+      "harvest": {
+        "tool": "axe",
+        "minTier": 2,
+        "hits": 6,
+        "drops": [
+          {
+            "item": "hardwood",
+            "min": 3,
+            "max": 5
+          }
+        ]
+      }
+    },
+    {
+      "id": "palm",
+      "layer": "decor",
+      "sprite": "worlds/desert/palm",
+      "solid": true,
+      "liquid": false,
+      "height": 3,
+      "placeable": false,
+      "light": 0,
+      "biomes": [
+        "desert"
+      ],
+      "harvest": {
+        "tool": "axe",
+        "minTier": 0,
+        "hits": 3,
+        "drops": [
+          {
+            "item": "softwood",
+            "min": 1,
+            "max": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "spruce",
+      "layer": "decor",
+      "sprite": "worlds/taiga/spruce",
+      "solid": true,
+      "liquid": false,
+      "height": 4,
+      "placeable": false,
+      "light": 0,
+      "biomes": [
+        "taiga"
+      ],
+      "harvest": {
+        "tool": "axe",
+        "minTier": 0,
+        "hits": 4,
+        "drops": [
+          {
+            "item": "softwood",
+            "min": 2,
+            "max": 4
+          }
+        ]
+      }
+    },
+    {
+      "id": "cactus",
+      "layer": "decor",
+      "sprite": "worlds/desert/cactus",
+      "solid": true,
+      "liquid": false,
+      "height": 2,
+      "placeable": false,
+      "light": 0,
+      "biomes": [
+        "desert"
+      ]
+    },
+    {
+      "id": "boulder",
+      "layer": "decor",
+      "sprite": "worlds/shared/boulder",
+      "solid": true,
+      "liquid": false,
+      "height": 1,
+      "placeable": false,
+      "light": 0,
+      "biomes": [],
+      "harvest": {
+        "tool": "pick",
+        "minTier": 0,
+        "hits": 5,
+        "drops": [
+          {
+            "item": "stone",
+            "min": 1,
+            "max": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "wood_wall",
+      "layer": "decor",
+      "sprite": "worlds/shared/wood_wall",
+      "solid": true,
+      "liquid": false,
+      "height": 1,
+      "placeable": true,
+      "light": 0,
+      "biomes": [],
+      "harvest": {
+        "tool": "axe",
+        "minTier": 0,
+        "hits": 3,
+        "drops": [
+          {
+            "item": "softwood",
+            "min": 1,
+            "max": 1
+          }
+        ]
+      }
+    },
+    {
+      "id": "torch",
+      "layer": "decor",
+      "sprite": "worlds/shared/torch",
+      "solid": false,
+      "liquid": false,
+      "height": 1,
+      "placeable": true,
+      "light": 14,
+      "biomes": []
+    },
+    {
+      "id": "stone_stairs",
+      "layer": "decor",
+      "sprite": "worlds/shared/stone_stairs",
+      "solid": false,
+      "liquid": false,
+      "height": 1,
+      "placeable": true,
+      "ramp": true,
+      "light": 0,
+      "biomes": []
+    },
+    {
+      "id": "wood_floor",
+      "layer": "ground",
+      "sprite": "worlds/shared/wood_floor",
+      "solid": false,
+      "liquid": false,
+      "height": 0,
+      "placeable": true,
+      "light": 0,
+      "biomes": []
+    },
+    {
+      "id": "return_pad",
+      "layer": "ground",
+      "sprite": "worlds/shared/return_pad",
+      "solid": false,
+      "liquid": false,
+      "height": 0,
+      "placeable": false,
+      "light": 0,
+      "biomes": []
+    },
+    {
+      "id": "bed",
+      "layer": "decor",
+      "sprite": "worlds/shared/bed",
+      "solid": true,
+      "liquid": false,
+      "height": 1,
+      "placeable": true,
+      "light": 0,
+      "biomes": []
+    },
+    {
+      "id": "shipping_bin",
+      "layer": "decor",
+      "sprite": "worlds/shared/shipping_bin",
+      "solid": true,
+      "liquid": false,
+      "height": 1,
+      "placeable": true,
+      "light": 0,
+      "biomes": [],
+      "shipping": true
+    },
+    {
+      "id": "shop_board",
+      "layer": "decor",
+      "sprite": "worlds/shared/shop_board",
+      "solid": true,
+      "liquid": false,
+      "height": 1,
+      "placeable": true,
+      "light": 0,
+      "biomes": [],
+      "shop": true
+    },
+    {
+      "id": "chest",
+      "layer": "decor",
+      "sprite": "worlds/shared/chest",
+      "solid": true,
+      "liquid": false,
+      "height": 1,
+      "placeable": true,
+      "container": true,
+      "light": 0,
+      "biomes": []
+    },
+    {
+      "id": "coop",
+      "layer": "decor",
+      "sprite": "worlds/shared/coop",
+      "solid": true,
+      "liquid": false,
+      "height": 1,
+      "placeable": true,
+      "light": 0,
+      "biomes": [],
+      "housing": "coop",
+      "capacity": 4
+    },
+    {
+      "id": "barn",
+      "layer": "decor",
+      "sprite": "worlds/shared/barn",
+      "solid": true,
+      "liquid": false,
+      "height": 1,
+      "placeable": true,
+      "light": 0,
+      "biomes": [],
+      "housing": "barn",
+      "capacity": 6
+    },
+    {
+      "id": "workbench",
+      "layer": "decor",
+      "sprite": "worlds/shared/workbench",
+      "solid": true,
+      "liquid": false,
+      "height": 1,
+      "placeable": true,
+      "light": 0,
+      "biomes": [],
+      "station": "bench"
+    },
+    {
+      "id": "stove",
+      "layer": "decor",
+      "sprite": "worlds/shared/stove",
+      "solid": true,
+      "liquid": false,
+      "height": 1,
+      "placeable": true,
+      "light": 0,
+      "biomes": [],
+      "station": "kitchen"
+    },
+    {
+      "id": "furnace",
+      "layer": "decor",
+      "sprite": "worlds/shared/furnace",
+      "solid": true,
+      "liquid": false,
+      "height": 1,
+      "placeable": true,
+      "light": 0,
+      "biomes": [],
+      "station": "furnace",
+      "machine": true
+    },
+    {
+      "id": "fence",
+      "layer": "decor",
+      "sprite": "worlds/shared/fence",
+      "solid": true,
+      "liquid": false,
+      "height": 1,
+      "placeable": true,
+      "light": 0,
+      "biomes": []
+    },
+    {
+      "id": "door",
+      "layer": "decor",
+      "sprite": "worlds/shared/door",
+      "solid": false,
+      "liquid": false,
+      "height": 1,
+      "placeable": true,
+      "light": 0,
+      "biomes": []
+    },
+    {
+      "id": "cave_floor",
+      "layer": "ground",
+      "sprite": "worlds/shared/cave_floor",
+      "solid": false,
+      "liquid": false,
+      "height": 0,
+      "placeable": false,
+      "light": 0,
+      "biomes": []
+    },
+    {
+      "id": "cave_rock",
+      "layer": "ground",
+      "sprite": "worlds/shared/cave_rock",
+      "solid": false,
+      "liquid": false,
+      "height": 0,
+      "placeable": false,
+      "light": 0,
+      "biomes": []
+    },
+    {
+      "id": "cave_mouth",
+      "layer": "decor",
+      "sprite": "worlds/shared/cave_mouth",
+      "solid": false,
+      "liquid": false,
+      "height": 0,
+      "placeable": false,
+      "light": 0,
+      "biomes": []
+    },
+    {
+      "id": "ore_copper",
+      "layer": "decor",
+      "sprite": "worlds/shared/ore_copper",
+      "solid": true,
+      "liquid": false,
+      "height": 1,
+      "placeable": false,
+      "light": 0,
+      "biomes": []
+    },
+    {
+      "id": "ore_iron",
+      "layer": "decor",
+      "sprite": "worlds/shared/ore_iron",
+      "solid": true,
+      "liquid": false,
+      "height": 1,
+      "placeable": false,
+      "light": 0,
+      "biomes": []
+    },
+    {
+      "id": "ore_gold",
+      "layer": "decor",
+      "sprite": "worlds/shared/ore_gold",
+      "solid": true,
+      "liquid": false,
+      "height": 1,
+      "placeable": false,
+      "light": 0,
+      "biomes": []
+    }
+  ]
+}

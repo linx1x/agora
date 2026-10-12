@@ -803,7 +803,7 @@ textarea {
 .avatar-preview img {
   image-rendering: pixelated;
 }
-/* P16.7: 2.5D paper preview beside the small 2D view (flag world25d). The preview card is light in
+/* P16.7: 2.5D paper preview beside the small 2D view (ADR-054: always on). The preview card is light in
    both themes, so its text is set dark here. */
 .avatar-previews {
   display: flex;
@@ -1914,6 +1914,17 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/*
+ * P17.15c: inside a world the hint is the privacy promise ("only the people in this world hear you"):
+ * never cut it. The world has no office minimap, so the card may use the width the minimap left.
+ */
+.app.compact .room-name.in-world {
+  max-width: calc(100% - 16px - var(--safe-l) - var(--safe-r));
+}
+.app.compact .room-name.in-world .room-hint {
+  white-space: normal;
+  overflow: visible;
+}
 .app.compact .room-title {
   white-space: nowrap;
   overflow: hidden;
@@ -2191,6 +2202,30 @@ body {
 .talk-hint {
   margin: 0;
 }
+/* P17.26b: a gift from the bag to the character */
+.talk-gift summary {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.talk-gift summary:focus-visible {
+  outline: 3px solid var(--focus, #2c5a85);
+  outline-offset: 2px;
+}
+.gift-list {
+  list-style: none;
+  margin: 6px 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-height: 120px;
+  overflow-y: auto;
+}
+.hearts {
+  white-space: nowrap;
+}
 .talk-notice .row {
   display: flex;
   gap: 8px;
@@ -2216,7 +2251,7 @@ body {
 }
 /* P16.8 2.5D overlays */
 /* Names, status dots, emotes and speech bubbles over people and characters (ADR-052), the same
-   look as the 2D view's Phaser text. Sizes are CSS px at every zoom: nothing here is scaled. */
+   look as the former flat view's Phaser text. Sizes are CSS px at every zoom: nothing here is scaled. */
 .ov25 {
   position: absolute;
   inset: 0;
@@ -2299,4 +2334,15 @@ body {
   .ov25-row--bubble:not([hidden]) .ov25-bubble {
     animation: none;
   }
+}
+
+/* P17.15c: in a personal world the farming HUD sits above the dock; the joystick and hold-to-talk rise above it */
+.app.in-world {
+  --world-hud-h: 118px;
+}
+.app.in-world .joystick,
+.app.in-world .hold-talk,
+.app.compact.in-world .joystick,
+.app.compact.in-world .hold-talk {
+  bottom: calc(var(--dock-space) + var(--world-hud-h) + 10px);
 }

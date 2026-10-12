@@ -96,7 +96,7 @@ describe('overlay stacking (P16.8)', () => {
   });
 
   it('matches the 2D numbers for a 16 px label (bubble 6 + label above the head)', () => {
-    // 2D NpcsView: bubble bottom at -AV_H - 6 - label.height, emote at -AV_H - 10 - label - bubble
+    // the former NpcsView: bubble bottom at -AV_H - 6 - label.height, emote at -AV_H - 10 - label - bubble
     expect(stack(heights, { bubble: true, emote: false }).bubble).toBe(6 + 16);
     expect(stack(heights, { bubble: true, emote: true }).emote).toBe(10 + 16 + 20);
   });

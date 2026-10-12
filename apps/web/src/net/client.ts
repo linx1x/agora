@@ -284,6 +284,73 @@ export class WorldClient {
         store.set({ npcMemory: {} });
         toast('talk.memory.forgot');
         break;
+      case 'market:board':
+        store.set({ market: m });
+        break;
+      case 'market:result':
+        store.set({ marketRefused: m.ok ? null : (m.reason ?? 'invalid') });
+        break;
+      case 'market:sold':
+        toast('market.sold', { price: String(m.price) }, 6000);
+        break;
+      case 'trade:asked':
+        store.set({ tradeAsk: { id: m.id, from: m.from, name: m.name } });
+        break;
+      case 'trade:state':
+        store.set((s) => ({
+          trade: m,
+          tradeAsk: s.tradeAsk?.id === m.id ? null : s.tradeAsk,
+          tradeRefused: s.trade?.id === m.id ? s.tradeRefused : null,
+        }));
+        break;
+      case 'trade:closed':
+        store.set((s) => ({
+          trade: s.trade?.id === m.id ? null : s.trade,
+          tradeAsk: s.tradeAsk?.id === m.id ? null : s.tradeAsk,
+          tradeRefused: null,
+        }));
+        toast(`trade.closed.${m.reason}`, undefined, 4000);
+        break;
+      case 'trade:refused':
+        store.set({ tradeRefused: m.reason });
+        if (!store.get().trade) toast(`trade.refused.${m.reason}`, undefined, 4000);
+        break;
+      case 'world:contracts':
+        store.set({ contracts: m.contracts });
+        break;
+      case 'contract:result':
+        store.set({ contractRefused: m.ok ? null : (m.reason ?? 'invalid') });
+        break;
+      case 'contract:paid':
+        toast('contracts.paid', { reward: String(m.reward) }, 6000);
+        break;
+      case 'world:perms':
+        store.set({ worldPerms: m.kinds });
+        break;
+      case 'world:visitors':
+        store.set({ worldVisitors: m, visitorsRefused: null });
+        break;
+      case 'world:visitors:refused':
+        store.set({ visitorsRefused: m.reason });
+        break;
+      case 'friendship':
+        store.set({ hearts: m.hearts });
+        break;
+      case 'gift:result':
+        store.set({
+          giftResult: {
+            key: m.key,
+            npcId: m.npcId,
+            ok: m.ok,
+            ...(m.reason ? { reason: m.reason } : {}),
+            ...(m.taste ? { taste: m.taste } : {}),
+            at: Date.now(),
+          },
+        });
+        break;
+      case 'office:bought':
+        store.set({ officeShopRefused: m.ok ? null : (m.reason ?? 'invalid') });
+        break;
       case 'npc:consent':
         store.set({ npcConsent: m.consent });
         break;
@@ -294,8 +361,18 @@ export class WorldClient {
         });
         break;
       case 'profile':
+        // P17.15b: someone who stepped into a world stays listed but is no longer on the floor
+        if (m.profile.inWorld) this.samples.delete(m.profile.id);
         store.set((s) => ({ profiles: { ...s.profiles, [m.profile.id]: m.profile } }));
         break;
+      case 'roster': {
+        // back from a world: the office as it is now (who left, who arrived, the desks)
+        const profiles = Object.fromEntries(m.profiles.map((p) => [p.id, p]));
+        for (const id of [...this.samples.keys()])
+          if (!profiles[id] || profiles[id]!.inWorld) this.samples.delete(id);
+        store.set({ profiles, desks: m.desks });
+        break;
+      }
       case 'leave': {
         this.samples.delete(m.id);
         store.set((s) => {
