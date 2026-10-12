@@ -990,7 +990,28 @@
     }
   },
   "worlds": {
+    "wildlifeWatching": "The animal pauses to watch you.",
+    "weather": {
+      "title": "Weather forecast",
+      "kinds": {
+        "clear": "Clear",
+        "cloudy": "Cloudy",
+        "rain": "Rain",
+        "thunderstorm": "Thunderstorm",
+        "snow": "Snow"
+      },
+      "summary": "Weather: {{today}}. Tomorrow: {{tomorrow}}. Open forecast",
+      "today": "Today: {{weather}}",
+      "tomorrow": "Tomorrow: {{weather}}",
+      "watering": "Rain waters outdoor crops today. They grow at the next dawn.",
+      "manualWater": "Crops need watering today. Snow does not water the soil.",
+      "shelter": "Animals are sheltering in their housing. Feed and collect from the coop or barn as usual.",
+      "outside": "Animals can be seen outside their housing. Remember their daily feed.",
+      "shared": "Everyone in this world shares the same forecast. Weather changes at dawn and follows the seasons."
+    },
     "hud": {
+      "bedAxis": {"vertical":"Vertical bed", "horizontal":"Horizontal bed"},
+      "turnBed": "Turn (R)",
       "hotbar": "Hotbar",
       "slot": "Slot {{n}}: {{item}}, {{count}}",
       "slotEmpty": "Slot {{n}}: empty",

@@ -990,7 +990,28 @@
     }
   },
   "worlds": {
+    "wildlifeWatching": "L’animal s’arrête pour vous observer.",
+    "weather": {
+      "title": "Prévisions météo",
+      "kinds": {
+        "clear": "Ciel dégagé",
+        "cloudy": "Nuageux",
+        "rain": "Pluie",
+        "thunderstorm": "Orage",
+        "snow": "Neige"
+      },
+      "summary": "Météo : {{today}}. Demain : {{tomorrow}}. Ouvrir les prévisions",
+      "today": "Aujourd’hui : {{weather}}",
+      "tomorrow": "Demain : {{weather}}",
+      "watering": "La pluie arrose les cultures extérieures aujourd’hui. Elles pousseront à la prochaine aube.",
+      "manualWater": "Les cultures ont besoin d’arrosage aujourd’hui. La neige n’arrose pas le sol.",
+      "shelter": "Les animaux restent à l’abri. Nourrissez-les et ramassez leurs produits au poulailler ou à la grange comme d’habitude.",
+      "outside": "Les animaux sont visibles devant leur abri. Pensez à leur ration quotidienne.",
+      "shared": "Tout le monde partage les mêmes prévisions dans ce monde. La météo change à l’aube et suit les saisons."
+    },
     "hud": {
+      "bedAxis": {"vertical":"Lit vertical", "horizontal":"Lit horizontal"},
+      "turnBed": "Tourner (R)",
       "hotbar": "Barre d'outils",
       "slot": "Emplacement {{n}} : {{item}}, {{count}}",
       "slotEmpty": "Emplacement {{n}} : vide",

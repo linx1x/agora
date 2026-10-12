@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { baseItemOf, randomAvatar, type S2CMsg } from '@agora/shared';
+import { baseItemOf, randomAvatar, rainWaters, weatherForDay, type S2CMsg } from '@agora/shared';
 import { PG_URL, memory, postgres } from './testStores';
 import type { WorldStore } from './worldStore';
 import { WorldHub, type WorldActRequest, type WorldMember, type WorldRoom } from './worldRoom';
-import { FakeConn, NEIGHBOUR, OWNER, feetCell, openWorld, setCells, waitFor } from './testWorld';
+import { FakeConn, NEIGHBOUR, OWNER, SEED, feetCell, openWorld, setCells, waitFor } from './testWorld';
 
 /**
  * The farm through the room (P17.22): plant, water and harvest over real nights. The clock is
@@ -62,7 +62,11 @@ for (const backend of [memory, postgres]) {
       for (let day = 1; day <= 8; day++) {
         clock.t = inDay(day);
         act(room, m, op, `k-water-${day}`, 'water', 'can_1', spot);
-        expect((await reply(c, op)).t).toBe('world:acted');
+        const answer = await reply(c, op);
+        if (rainWaters(weatherForDay(SEED, day))) {
+          expect(answer).toMatchObject({ t: 'world:refused', reason: 'invalid' });
+          expect((await plotOf(store, spot.x, spot.y))?.wateredOn).toBe(day + 1);
+        } else expect(answer.t).toBe('world:acted');
         op++;
         clock.t = inDay(day + 1, 1_000);
         room.tick();

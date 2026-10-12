@@ -13,6 +13,7 @@ export * from './view';
 export * from './starter';
 export * from './tuning';
 export * from './clock';
+export * from './weather';
 export * from './gamedata/index';
 export * from './actions/index';
 export * from './progression';

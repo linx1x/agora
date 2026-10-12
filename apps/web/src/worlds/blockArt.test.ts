@@ -1,7 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { BLOCKS } from '@agora/shared';
+import { BLOCKS, loadGameData } from '@agora/shared';
 import { placeholderTiles, TILE_PX, renderTile } from './placeholders';
-import { CROP_HUES, SIDE_PX, allBlockFrames, cropFrameName, cropFrameSet, cropPixels, cropVariant, sidePixels, sprinklerPixels, topPixels } from './blockArt';
+import {
+  CROP_HUES,
+  SIDE_PX,
+  allBlockFrames,
+  cropFrameName,
+  cropFrameSet,
+  cropPixels,
+  cropVariant,
+  sidePixels,
+  sprinklerPixels,
+  topPixels,
+} from './blockArt';
 import { RIPE_FRAME } from './cellMath';
 
 const tile = (id: string) => renderTile(BLOCKS.byId.get(id)!);
@@ -16,13 +27,15 @@ describe('block frames (P17.14)', () => {
     const top = topPixels(t);
     expect(top.length).toBe(TILE_PX * TILE_PX * 4);
     for (let y = 0; y < 24; y++)
-      for (let x = 0; x < TILE_PX; x++) expect(px(top, TILE_PX, x, y)).toEqual(px(t.pixels, TILE_PX, x, y));
+      for (let x = 0; x < TILE_PX; x++)
+        expect(px(top, TILE_PX, x, y)).toEqual(px(t.pixels, TILE_PX, x, y));
   });
 
   it('repeats the face above the side band in the bottom rows, so no side shows on a flat top', () => {
     const t = tile('meadow_grass');
     const top = topPixels(t);
-    for (let y = 24; y < TILE_PX; y++) expect(px(top, TILE_PX, 5, y)).toEqual(px(t.pixels, TILE_PX, 5, y - 8));
+    for (let y = 24; y < TILE_PX; y++)
+      expect(px(top, TILE_PX, 5, y)).toEqual(px(t.pixels, TILE_PX, 5, y - 8));
   });
 
   it('makes a side strip as tall as seven levels and repeats the side band down it', () => {
@@ -63,9 +76,12 @@ describe('crop and sprinkler frames (P17.14, code placeholders)', () => {
 
   it('gives each crop a fruit colour from its id, the same every time', () => {
     expect(cropVariant('dawn_radish')).toBe(cropVariant('dawn_radish'));
-    expect(cropFrameName('dawn_radish', 2)).toBe(`crop:${cropVariant('dawn_radish')}:2`);
+    expect(cropFrameName('dawn_radish', 2)).toBe('crop:dawn_radish:2');
     const set = cropFrameSet();
-    expect(set.size).toBe(CROP_HUES.length * 5);
+    expect(set.size).toBe(loadGameData().crops.length * 5);
+    expect(new Set(loadGameData().crops.map((c) => cropFrameName(c.id, 4))).size).toBe(
+      loadGameData().crops.length,
+    );
     expect(set.has(cropFrameName('dawn_radish', RIPE_FRAME))).toBe(true);
   });
 

@@ -22,6 +22,13 @@ function withSim(view: ActionView, sim: Partial<ActionView['sim']>): ActionView 
 }
 
 describe('placing a block from the bag (P17.24)', () => {
+  it('places the same bed item in either axis, defaulting old requests to vertical',()=> {
+    for(const bedAxis of [undefined,'vertical','horizontal'] as const) {
+      const out=planPlaceBlock(viewOf({items:{bed:1}}),{kind:'place',at,item:'bed',bedAxis},env);
+      expect(out).toMatchObject({ok:true,plan:{changes:{items:{bed:-1}},edits:[{patch:{decor:'bed',bedAxis:bedAxis??'vertical'}}]}});
+    }
+    expect(planPlaceBlock(viewOf({items:{chest:1}}),{kind:'place',at,item:'chest',bedAxis:'horizontal'},env)).toEqual({ok:false,reason:'invalid'});
+  });
   it('a wall stands on the cell and one wall leaves the bag', () => {
     const out = planPlaceBlock(viewOf({ items: { wood_wall: 2 } }), { kind: 'place', at, item: 'wood_wall' }, env);
     expect(out).toMatchObject({ ok: true, plan: { changes: { items: { wood_wall: -1 } }, edits: [{ x: 5, y: 5, patch: { decor: 'wood_wall' } }] } });

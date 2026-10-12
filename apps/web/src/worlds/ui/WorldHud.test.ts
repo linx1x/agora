@@ -5,6 +5,27 @@ import { HOTBAR_SLOTS, createHudStore } from './hudState';
 import { WorldHud, clockText } from './WorldHud';
 
 describe('WorldHud (P17.20)', () => {
+  it('shows a forecast button and forgets it when leaving or entering another world', () => {
+    const store = createHudStore();
+    store.dispatch({ t: 'world:time', time: { day: 5, season: 'spring', year: 1, hour: 6, minute: 0, dayOfSeason: 5 },
+      weather: { day: 5, today: 'rain', tomorrow: 'cloudy' } });
+    const html = renderToStaticMarkup(createElement(WorldHud, { store }));
+    expect(html).toContain('data-weather="rain"');
+    expect(html).toContain('worlds.weather.tomorrow');
+    store.dispatch({ t: 'world:exit' });
+    expect(store.get().weather).toBeNull();
+    expect(renderToStaticMarkup(createElement(WorldHud, { store }))).not.toContain('wh-weather');
+  });
+  it('offers a turn control only while holding a bed and displays the selected axis',()=> {
+    const store=createHudStore();
+    store.dispatch({t:'world:inv',items:{bed:1,hoe_1:1},money:0,energy:100,maxEnergy:100});
+    store.pick('bed');
+    expect(renderToStaticMarkup(createElement(WorldHud,{store}))).toContain('worlds.hud.bedAxis.vertical');
+    store.turnBed();
+    expect(renderToStaticMarkup(createElement(WorldHud,{store}))).toContain('worlds.hud.bedAxis.horizontal');
+    store.pick('hoe_1');
+    expect(renderToStaticMarkup(createElement(WorldHud,{store}))).not.toContain('worlds.hud.turnBed');
+  });
   it('labels every hotbar slot, and marks the item in hand as pressed', () => {
     const store = createHudStore();
     store.dispatch({ t: 'world:inv', items: { hoe_1: 1, dawn_radish_seed: 6 }, money: 500, energy: 270, maxEnergy: 270 });

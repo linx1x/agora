@@ -1,0 +1,101 @@
+{
+  "generator": "OpenAI built-in image_gen",
+  "styleReference": "apps/web/public/assets/art-review/crops.png",
+  "scope": "Review art: all 18 existing crops, 6 new flowers, 6 orchard trees, 4 existing forest trees. Production gameplay unchanged.",
+  "referenceUrls": [
+    "https://stardewvalleywiki.com/Crops",
+    "https://stardewvalleywiki.com/Flowers"
+  ],
+  "entries": [
+    {
+      "file": "crops-1.png",
+      "ids": [
+        "clover_bulb",
+        "pearl_onion",
+        "ember_pepper"
+      ],
+      "kind": "crop",
+      "prompt": "Use case: stylized-concept\nOriginal Agora pixel-art sprite atlas, true transparent alpha. Use attached approved crop atlas as STYLE REFERENCE ONLY. Beautiful deliberate crisp 16-bit pixel clusters, olive/sage foliage, cool teal shadows, warm upper-left highlights, selective dark colored outline. Match reference detail, no smooth vector shapes, no blur, no white sticker border, no text, no grid, no backgrounds, ground patches or shadows. Upright front view with visible top surfaces for a 35-degree tilted 2.5D world. EXACT equal-width 5 columns by 3 rows, 15 fully separated sprites. Wide gutters, no cell overlap, at least 12% padding each side. Common baseline near bottom of each cell. Each row same species with consistent scale and evolving silhouette; early sprouts much smaller than maturity. Landscape 5:3 atlas.\nEach ROW shows five growth stages left to right: 1 tiny two-leaf sprout; 2 small distinctive seedling; 3 leafy juvenile without fruit; 4 near mature flowering or forming produce; 5 harvest-ready mature plant with clearly visible produce. Distinct developmental art, not scaled copies. Roots stay very short for planting into soil. No pots or supports.\nROW 1: Clover bulb: round creamy-lilac edible bulb with trifoliate clover leaves.\nROW 2: Pearl onion: ivory onion bulb with slim upright tubular sage-green leaves.\nROW 3: Ember pepper: branching compact plant, pointed leaves, cream blossoms and slender scarlet peppers."
+    },
+    {
+      "file": "crops-2.png",
+      "ids": [
+        "river_melon",
+        "gold_maize",
+        "sun_tomato"
+      ],
+      "kind": "crop",
+      "prompt": "Use case: stylized-concept\nOriginal Agora pixel-art sprite atlas, true transparent alpha. Use attached approved crop atlas as STYLE REFERENCE ONLY. Beautiful deliberate crisp 16-bit pixel clusters, olive/sage foliage, cool teal shadows, warm upper-left highlights, selective dark colored outline. Match reference detail, no smooth vector shapes, no blur, no white sticker border, no text, no grid, no backgrounds, ground patches or shadows. Upright front view with visible top surfaces for a 35-degree tilted 2.5D world. EXACT equal-width 5 columns by 3 rows, 15 fully separated sprites. Wide gutters, no cell overlap, at least 12% padding each side. Common baseline near bottom of each cell. Each row same species with consistent scale and evolving silhouette; early sprouts much smaller than maturity. Landscape 5:3 atlas.\nEach ROW shows five growth stages left to right: 1 tiny two-leaf sprout; 2 small distinctive seedling; 3 leafy juvenile without fruit; 4 near mature flowering or forming produce; 5 harvest-ready mature plant with clearly visible produce. Distinct developmental art, not scaled copies. Roots stay very short for planting into soil. No pots or supports.\nROW 1: River melon: low sprawling lobed-leaf vine, yellow flower, round striped blue-green melon.\nROW 2: Gold maize: tall corn stalk, long arching blades, tassels, golden ears in green husks.\nROW 3: Sun tomato: branching tomato plant with serrated leaves, yellow blossoms, warm red round tomato clusters."
+    },
+    {
+      "file": "crops-3.png",
+      "ids": [
+        "silk_squash",
+        "amber_pumpkin",
+        "mist_grape"
+      ],
+      "kind": "crop",
+      "prompt": "Use case: stylized-concept\nOriginal Agora pixel-art sprite atlas, true transparent alpha. Use attached approved crop atlas as STYLE REFERENCE ONLY. Beautiful deliberate crisp 16-bit pixel clusters, olive/sage foliage, cool teal shadows, warm upper-left highlights, selective dark colored outline. Match reference detail, no smooth vector shapes, no blur, no white sticker border, no text, no grid, no backgrounds, ground patches or shadows. Upright front view with visible top surfaces for a 35-degree tilted 2.5D world. EXACT equal-width 5 columns by 3 rows, 15 fully separated sprites. Wide gutters, no cell overlap, at least 12% padding each side. Common baseline near bottom of each cell. Each row same species with consistent scale and evolving silhouette; early sprouts much smaller than maturity. Landscape 5:3 atlas.\nEach ROW shows five growth stages left to right: 1 tiny two-leaf sprout; 2 small distinctive seedling; 3 leafy juvenile without fruit; 4 near mature flowering or forming produce; 5 harvest-ready mature plant with clearly visible produce. Distinct developmental art, not scaled copies. Roots stay very short for planting into soil. No pots or supports.\nROW 1: Silk squash: low broad-leaf vine with golden flowers and pale buttery oblong squash.\nROW 2: Amber pumpkin: broad lobed-leaf vine with yellow flower and squat deeply ribbed amber pumpkin.\nROW 3: Mist grape: self-supporting compact arching woody vine, lobed leaves, hanging dusty purple grape bunches, no trellis."
+    },
+    {
+      "file": "crops-4.png",
+      "ids": [
+        "rust_yam",
+        "plum_bean",
+        "reed_rice"
+      ],
+      "kind": "crop",
+      "prompt": "Use case: stylized-concept\nOriginal Agora pixel-art sprite atlas, true transparent alpha. Use attached approved crop atlas as STYLE REFERENCE ONLY. Beautiful deliberate crisp 16-bit pixel clusters, olive/sage foliage, cool teal shadows, warm upper-left highlights, selective dark colored outline. Match reference detail, no smooth vector shapes, no blur, no white sticker border, no text, no grid, no backgrounds, ground patches or shadows. Upright front view with visible top surfaces for a 35-degree tilted 2.5D world. EXACT equal-width 5 columns by 3 rows, 15 fully separated sprites. Wide gutters, no cell overlap, at least 12% padding each side. Common baseline near bottom of each cell. Each row same species with consistent scale and evolving silhouette; early sprouts much smaller than maturity. Landscape 5:3 atlas.\nEach ROW shows five growth stages left to right: 1 tiny two-leaf sprout; 2 small distinctive seedling; 3 leafy juvenile without fruit; 4 near mature flowering or forming produce; 5 harvest-ready mature plant with clearly visible produce. Distinct developmental art, not scaled copies. Roots stay very short for planting into soil. No pots or supports.\nROW 1: Rust yam: low heart-shaped leaves on creeping stems, small rust-purple tuber shoulder near stem base.\nROW 2: Plum bean: upright curling green vine, trifoliate leaves, pale mauve blossoms and hanging deep plum-purple bean pods.\nROW 3: Reed rice: dense slender upright green blades becoming arching stalks heavy with pale golden rice grains."
+    },
+    {
+      "file": "crops-5.png",
+      "ids": [
+        "frost_cabbage",
+        "snow_lettuce",
+        "ice_berry"
+      ],
+      "kind": "crop",
+      "prompt": "Use case: stylized-concept\nOriginal Agora pixel-art sprite atlas, true transparent alpha. Use attached approved crop atlas as STYLE REFERENCE ONLY. Beautiful deliberate crisp 16-bit pixel clusters, olive/sage foliage, cool teal shadows, warm upper-left highlights, selective dark colored outline. Match reference detail, no smooth vector shapes, no blur, no white sticker border, no text, no grid, no backgrounds, ground patches or shadows. Upright front view with visible top surfaces for a 35-degree tilted 2.5D world. EXACT equal-width 5 columns by 3 rows, 15 fully separated sprites. Wide gutters, no cell overlap, at least 12% padding each side. Common baseline near bottom of each cell. Each row same species with consistent scale and evolving silhouette; early sprouts much smaller than maturity. Landscape 5:3 atlas.\nEach ROW shows five growth stages left to right: 1 tiny two-leaf sprout; 2 small distinctive seedling; 3 leafy juvenile without fruit; 4 near mature flowering or forming produce; 5 harvest-ready mature plant with clearly visible produce. Distinct developmental art, not scaled copies. Roots stay very short for planting into soil. No pots or supports.\nROW 1: Frost cabbage: low broad blue-green waxy leaves surrounding a pale icy-green tightly wrapped cabbage head.\nROW 2: Snow lettuce: low open rosette of soft pale-green ruffled loose leaves, ivory-green heart, not a closed cabbage.\nROW 3: Ice berry: compact bush with small pointed green leaves, white bell blossoms, clusters of frosted blue berries."
+    },
+    {
+      "file": "flowers-1.png",
+      "ids": [
+        "sunflower",
+        "rose",
+        "lavender"
+      ],
+      "kind": "flower",
+      "prompt": "Use case: stylized-concept\nOriginal Agora pixel-art sprite atlas, true transparent alpha. Use attached approved crop atlas as STYLE REFERENCE ONLY. Beautiful deliberate crisp 16-bit pixel clusters, olive/sage foliage, cool teal shadows, warm upper-left highlights, selective dark colored outline. Match reference detail, no smooth vector shapes, no blur, no white sticker border, no text, no grid, no backgrounds, ground patches or shadows. Upright front view with visible top surfaces for a 35-degree tilted 2.5D world. EXACT equal-width 5 columns by 3 rows, 15 fully separated sprites. Wide gutters, no cell overlap, at least 12% padding each side. Common baseline near bottom of each cell. Each row same species with consistent scale and evolving silhouette; early sprouts much smaller than maturity. Landscape 5:3 atlas.\nEach row five developmental stages left to right: tiny sprout; small leafy seedling; taller leafy stems; closed buds and first flower; fully blooming mature plant. Gracefully varied stems, botanical silhouettes, beautifully detailed flowers, coherent single rooted plant per cell, no bouquets, pots, bulbs out of the ground or detached petals.\nROW 1: Sunflower: tall stalk with heart-shaped leaves, large golden petal disc and dark brown seed center.\nROW 2: Rose: compact upright rose bush, serrated dark green leaves, rich coral pink layered rose blossoms.\nROW 3: Lavender: silver sage narrow leaves, slender stems, purple lavender flower spikes."
+    },
+    {
+      "file": "flowers-2.png",
+      "ids": [
+        "tulip",
+        "poppy",
+        "bluebell"
+      ],
+      "kind": "flower",
+      "prompt": "Use case: stylized-concept\nOriginal Agora pixel-art sprite atlas, true transparent alpha. Use attached approved crop atlas as STYLE REFERENCE ONLY. Beautiful deliberate crisp 16-bit pixel clusters, olive/sage foliage, cool teal shadows, warm upper-left highlights, selective dark colored outline. Match reference detail, no smooth vector shapes, no blur, no white sticker border, no text, no grid, no backgrounds, ground patches or shadows. Upright front view with visible top surfaces for a 35-degree tilted 2.5D world. EXACT equal-width 5 columns by 3 rows, 15 fully separated sprites. Wide gutters, no cell overlap, at least 12% padding each side. Common baseline near bottom of each cell. Each row same species with consistent scale and evolving silhouette; early sprouts much smaller than maturity. Landscape 5:3 atlas.\nEach row five developmental stages left to right: tiny sprout; small leafy seedling; taller leafy stems; closed buds and first flower; fully blooming mature plant. Gracefully varied stems, botanical silhouettes, beautifully detailed flowers, coherent single rooted plant per cell, no bouquets, pots, bulbs out of the ground or detached petals.\nROW 1: Tulip: upright smooth strap leaves with coral and cream cup-shaped flowers.\nROW 2: Poppy: delicate branched ferny green foliage, vivid orange-red papery petals and dark centers.\nROW 3: Bluebell: arching slender stalks, narrow leaves, hanging clusters of blue-violet bell flowers."
+    },
+    {
+      "file": "orchard-1.png",
+      "ids": [
+        "orchard_apple",
+        "orchard_cherry",
+        "orchard_peach"
+      ],
+      "kind": "tree",
+      "prompt": "Use case: stylized-concept\nOriginal Agora pixel-art sprite atlas, true transparent alpha. Use attached approved crop atlas as STYLE REFERENCE ONLY. Beautiful deliberate crisp 16-bit pixel clusters, olive/sage foliage, cool teal shadows, warm upper-left highlights, selective dark colored outline. Match reference detail, no smooth vector shapes, no blur, no white sticker border, no text, no grid, no backgrounds, ground patches or shadows. Upright front view with visible top surfaces for a 35-degree tilted 2.5D world. EXACT equal-width 5 columns by 3 rows, 15 fully separated sprites. Wide gutters, no cell overlap, at least 12% padding each side. Common baseline near bottom of each cell. Each row same species with consistent scale and evolving silhouette; early sprouts much smaller than maturity. Landscape 5:3 atlas.\nThis sheet shows ORCHARD TREES, detailed logical 96px mature sprites. FIVE columns: 1 tiny rooted seedling with two or three leaves; 2 sapling with thin woody stem and a few branches; 3 young tree with branching small canopy; 4 fully grown tree in blossom; 5 SAME fully grown tree full of ripe fruit. Mature trees have honest branched trunks, irregular clusters of leaves, visible root collar but NO ground patch. Full crown and roots contained in cell. Maintain same mature trunk position and canopy dimensions in last two columns. Trees are much larger in-game than vegetables.\nROW 1: Apple tree: broad rounded spreading crown, fresh green leaves, warm brown trunk; white-pink spring blossom, bright red apples.\nROW 2: Cherry tree: graceful spreading branching crown, deep green leaves, textured reddish-brown trunk; pink blossoms, small paired crimson cherries.\nROW 3: Peach tree: airy open crown, long narrow pointed sage leaves, slender honey-brown trunk; rose pink blossoms, warm coral-gold peaches."
+    },
+    {
+      "file": "orchard-2.png",
+      "ids": [
+        "orchard_orange",
+        "orchard_pear",
+        "orchard_plum"
+      ],
+      "kind": "tree",
+      "prompt": "Use case: stylized-concept\nOriginal Agora pixel-art sprite atlas, true transparent alpha. Use attached approved crop atlas as STYLE REFERENCE ONLY. Beautiful deliberate crisp 16-bit pixel clusters, olive/sage foliage, cool teal shadows, warm upper-left highlights, selective dark colored outline. Match reference detail, no smooth vector shapes, no blur, no white sticker border, no text, no grid, no backgrounds, ground patches or shadows. Upright front view with visible top surfaces for a 35-degree tilted 2.5D world. EXACT equal-width 5 columns by 3 rows, 15 fully separated sprites. Wide gutters, no cell overlap, at least 12% padding each side. Common baseline near bottom of each cell. Each row same species with consistent scale and evolving silhouette; early sprouts much smaller than maturity. Landscape 5:3 atlas.\nThis sheet shows ORCHARD TREES, detailed logical 96px mature sprites. FIVE columns: 1 tiny rooted seedling with two or three leaves; 2 sapling with thin woody stem and a few branches; 3 young tree with branching small canopy; 4 fully grown tree in blossom; 5 SAME fully grown tree full of ripe fruit. Mature trees have honest branched trunks, irregular clusters of leaves, visible root collar but NO ground patch. Full crown and roots contained in cell. Maintain same mature trunk position and canopy dimensions in last two columns. Trees are much larger in-game than vegetables.\nROW 1: Orange tree: dense rounded crown, glossy deep emerald oval leaves, sturdy warm trunk; ivory blossoms, bright golden-orange oranges.\nROW 2: Pear tree: upright oval crown, fresh olive-green leaves, forked brown trunk; cream blossoms, pale golden-green pear-shaped fruit.\nROW 3: Plum tree: spreading low-branched crown, muted teal-green leaves, dark brown trunk; pale pink blossoms, dusty purple oval plums."
+    }
+  ]
+}

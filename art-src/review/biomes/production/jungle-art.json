@@ -1,0 +1,113 @@
+{
+  "ready": true,
+  "atlasSize": [
+    2048,
+    4096
+  ],
+  "wildlife": {
+    "ready": true,
+    "count": 14,
+    "props": 33,
+    "animals": [
+      {
+        "id": "shaggy_sheep",
+        "biome": "taiga",
+        "x": 13.85,
+        "z": -3.5,
+        "state": "grazing"
+      },
+      {
+        "id": "shaggy_sheep",
+        "biome": "taiga",
+        "x": 23.84725052345433,
+        "z": -5.442706020790366,
+        "state": "walking"
+      },
+      {
+        "id": "pig",
+        "biome": "meadow",
+        "x": 2.5,
+        "z": -4.5,
+        "state": "grazing"
+      },
+      {
+        "id": "taiga_hare",
+        "biome": "taiga",
+        "x": 28.823110847243015,
+        "z": -4.109563131484475,
+        "state": "walking"
+      },
+      {
+        "id": "parrot",
+        "biome": "jungle",
+        "x": 15.5,
+        "z": 4.5,
+        "state": "resting"
+      },
+      {
+        "id": "capybara",
+        "biome": "jungle",
+        "x": 16.5,
+        "z": 3.5,
+        "state": "resting"
+      },
+      {
+        "id": "capybara",
+        "biome": "jungle",
+        "x": 9.614761154485214,
+        "z": 11.576230498250684,
+        "state": "walking"
+      },
+      {
+        "id": "parrot",
+        "biome": "jungle",
+        "x": 17.271942741430085,
+        "z": 11.922194255779367,
+        "state": "walking"
+      },
+      {
+        "id": "turtle",
+        "biome": "jungle",
+        "x": 6.823110847243017,
+        "z": 1.8904368685155246,
+        "state": "walking"
+      },
+      {
+        "id": "capybara",
+        "biome": "jungle",
+        "x": 28.27194274143007,
+        "z": 3.9221942557793628,
+        "state": "walking"
+      },
+      {
+        "id": "parrot",
+        "biome": "jungle",
+        "x": 5.15,
+        "z": 13.5,
+        "state": "grazing"
+      },
+      {
+        "id": "turtle",
+        "biome": "jungle",
+        "x": 23.46771285053157,
+        "z": 10.943496235763563,
+        "state": "walking"
+      },
+      {
+        "id": "turtle",
+        "biome": "jungle",
+        "x": 10.85,
+        "z": 23.5,
+        "state": "grazing"
+      },
+      {
+        "id": "turtle",
+        "biome": "jungle",
+        "x": 18.93600931433928,
+        "z": 16.77509549869984,
+        "state": "walking"
+      }
+    ]
+  },
+  "shadows": 6
+}

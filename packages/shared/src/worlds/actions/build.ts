@@ -67,6 +67,7 @@ export const planPlaceBlock: ActionPlanner = (view, req, env) => {
   const blockId = env.data.itemsById.get(baseItemOf(req.item))?.block;
   const block = blockId === undefined ? undefined : getBlock(BLOCKS, blockId);
   if (!block?.placeable) return refuse('invalid');
+  if (req.bedAxis !== undefined && (block.id !== 'bed' || !['vertical','horizontal'].includes(req.bedAxis))) return refuse('invalid');
   if (countOf(view.inventory, req.item) < 1) return refuse('missing');
   const { x, y } = req.at;
   if (view.occupied(x, y)) return refuse('occupied');
@@ -79,7 +80,7 @@ export const planPlaceBlock: ActionPlanner = (view, req, env) => {
     return built(view, req.item, { x, y, patch: { block: block.id } });
   }
   if (cell.decor !== '') return refuse('gone');
-  return built(view, req.item, { x, y, patch: { decor: block.id } }, block.container ? withChest(view.sim.chests, key, {}) : undefined);
+  return built(view, req.item, { x, y, patch: { decor: block.id, ...(block.id === 'bed' ? {bedAxis: req.bedAxis ?? 'vertical'} : {}) } }, block.container ? withChest(view.sim.chests, key, {}) : undefined);
 };
 
 /**

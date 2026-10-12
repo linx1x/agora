@@ -7,7 +7,7 @@
  * repeats down a cliff strip. Decor is the whole placeholder tile. Crops and the sprinkler are
  * drawn here, one frame per growth stage.
  */
-import { LEVEL_MAX, hash32 } from '@agora/shared';
+import { LEVEL_MAX, hash32, loadGameData } from '@agora/shared';
 import { placeholderTiles, TILE_PX, type Tile } from './placeholders';
 import { CROP_FRAMES, LEVEL_PX, RIPE_FRAME } from './cellMath';
 
@@ -36,7 +36,16 @@ class Canvas {
     this.data[i + 2] = c[2];
     this.data[i + 3] = a;
   }
-  copyFrom(src: Rgba, sw: number, sx: number, sy: number, dx: number, dy: number, w: number, h: number): void {
+  copyFrom(
+    src: Rgba,
+    sw: number,
+    sx: number,
+    sy: number,
+    dx: number,
+    dy: number,
+    w: number,
+    h: number,
+  ): void {
     for (let y = 0; y < h; y++)
       for (let x = 0; x < w; x++) {
         const si = ((sy + y) * sw + (sx + x)) * 4;
@@ -51,7 +60,8 @@ export function topPixels(tile: Tile): Rgba {
   const c = new Canvas(TILE_PX, TILE_PX);
   c.copyFrom(tile.pixels, TILE_PX, 0, 0, 0, 0, TILE_PX, TOP_ROWS);
   // the bottom 8 rows of the top would be the side band; repeat the rows just above them instead
-  for (let y = TOP_ROWS; y < TILE_PX; y++) c.copyFrom(tile.pixels, TILE_PX, 0, y - 8, 0, y, TILE_PX, 1);
+  for (let y = TOP_ROWS; y < TILE_PX; y++)
+    c.copyFrom(tile.pixels, TILE_PX, 0, y - 8, 0, y, TILE_PX, 1);
   return c.data;
 }
 
@@ -86,8 +96,7 @@ export function cropPixels(frame: number, fruit: Rgb): Rgba {
   }
   if (ripe) {
     for (let y = -3; y <= 3; y++)
-      for (let x = -3; x <= 3; x++)
-        if (x * x + y * y <= 9) c.put(16 + x, top + y - 1, fruit);
+      for (let x = -3; x <= 3; x++) if (x * x + y * y <= 9) c.put(16 + x, top + y - 1, fruit);
     c.put(15, top - 3, [255, 255, 255], 160);
   }
   return c.data;
@@ -97,7 +106,9 @@ export function cropPixels(frame: number, fruit: Rgb): Rgba {
 export function sprinklerPixels(): Rgba {
   const c = new Canvas(TILE_PX, TILE_PX);
   for (let y = 22; y <= 28; y++) for (let x = 15; x <= 17; x++) c.put(x, y, [120, 130, 140]);
-  for (let y = 14; y <= 18; y++) for (let x = 13; x <= 19; x++) if ((x - 16) ** 2 + (y - 16) ** 2 <= 9) c.put(x, y, [92, 160, 214]);
+  for (let y = 14; y <= 18; y++)
+    for (let x = 13; x <= 19; x++)
+      if ((x - 16) ** 2 + (y - 16) ** 2 <= 9) c.put(x, y, [92, 160, 214]);
   return c.data;
 }
 
@@ -128,14 +139,15 @@ export function cropVariant(cropId: string): number {
 
 /** The frame name of a crop at an art frame, as the atlas names it. */
 export function cropFrameName(cropId: string, frame: number): string {
-  return `crop:${cropVariant(cropId)}:${frame}`;
+  return `crop:${cropId}:${frame}`;
 }
 
-/** Every crop frame: each fruit colour at each art frame, by frame name. */
+/** Every crop has its own key, so distinct approved species never alias by fallback colour. */
 export function cropFrameSet(): Map<string, Rgba> {
   const out = new Map<string, Rgba>();
-  CROP_HUES.forEach((hue, v) => {
-    for (let f = 0; f < CROP_FRAMES; f++) out.set(`crop:${v}:${f}`, cropPixels(f, hue));
+  loadGameData().crops.forEach((crop) => {
+    const hue = CROP_HUES[cropVariant(crop.id)]!;
+    for (let f = 0; f < CROP_FRAMES; f++) out.set(cropFrameName(crop.id, f), cropPixels(f, hue));
   });
   return out;
 }

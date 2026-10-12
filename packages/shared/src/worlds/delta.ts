@@ -13,6 +13,7 @@ import { chunkIndex, type Chunk } from './terrain';
 export const CHUNK_CELLS = CHUNK_SIZE * CHUNK_SIZE;
 
 const PatchSchema = z.strictObject({
+  bedAxis: z.enum(['vertical', 'horizontal']).optional(),
   level: z.number().int().min(0).max(LEVEL_MAX).optional(),
   block: z.string().regex(CONTENT_ID, 'block id must be lower_snake').optional(),
   decor: z.union([z.string().regex(CONTENT_ID, 'decor id must be lower_snake'), z.literal('')]).optional(),
@@ -60,14 +61,16 @@ export function applyDelta(base: Chunk, delta: ChunkDelta): Chunk {
   const level = base.level.slice();
   const block = base.block.slice();
   const decor = base.decor.slice();
+  const bedAxis = base.bedAxis?.slice() ?? [];
   for (const [key, patch] of Object.entries(delta)) {
     const k = Number(key);
     if (!Number.isInteger(k) || k < 0 || k >= CHUNK_CELLS) continue;
     if (patch.level !== undefined) level[k] = patch.level;
     if (patch.block !== undefined) block[k] = patch.block;
     if (patch.decor !== undefined) decor[k] = patch.decor;
+    if (patch.bedAxis !== undefined) bedAxis[k] = patch.bedAxis;
   }
-  return { cx: base.cx, cy: base.cy, level, block, decor };
+  return { cx: base.cx, cy: base.cy, level, block, decor, ...(bedAxis.length ? {bedAxis} : {}) };
 }
 
 /**

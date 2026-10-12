@@ -1,4 +1,5 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
+import { readFileSync } from 'node:fs';
 
 /**
  * Personal worlds (P17.14, ADR-053): a claimed desk is a door to its owner's world. The owner
@@ -27,6 +28,59 @@ test.afterEach(async () => {
 });
 
 const T = 32;
+
+test('weather: forecast, precipitation, reduced motion and phone layout', async ({ browser }, testInfo) => {
+  test.setTimeout(180_000);
+  const page = await enter(browser, 0);
+  const errors: string[] = [];
+  page.on('pageerror', e => errors.push(e.message));
+  page.on('console', m => { if (m.type() === 'error' && /THREE|shader|WebGL/i.test(m.text())) errors.push(m.text()); });
+  // An isolated world fixture keeps visual checks independent of office pathfinding.
+  // WorldRoom tests separately verify the actual forecast sent to multiple people.
+  const generator = JSON.parse(readFileSync('packages/shared/data/worlds/worldgen.json', 'utf8'));
+  await page.evaluate(gen => {
+    const ws = (window as any).__agoraWorld.ws as WebSocket;
+    const receive = ws.onmessage!;
+    const s = (window as any).__agora.store.get();
+    const deliver = (msg: unknown) => receive.call(ws, new MessageEvent('message', { data: JSON.stringify(msg) }));
+    (window as any).__weatherReceive = deliver;
+    ws.onmessage = () => {};
+    deliver({ t: 'world:welcome', worldId: 'weather-fixture', owner: 'Alice Tremblay', mine: true, you: s.me,
+      seed: 3560865791, genVersion: gen.genVersion, params: gen.params,
+      people: [{ id: s.me, name: 'Alice Tremblay', avatar: s.profiles[s.me].avatar, x: 16, y: 144, d: 'down' }] });
+    deliver({ t: 'world:time', time: { day: 1, year: 1, season: 'spring', dayOfSeason: 1, hour: 12, minute: 0 },
+      weather: { day: 1, today: 'clear', tomorrow: 'cloudy' } });
+  }, generator);
+  await waitWorld(page);
+  await expect(page.locator('.wh-weather')).toHaveAttribute('data-weather', 'clear');
+  await page.locator('.wh-weather').click();
+  await expect(page.getByRole('dialog')).toContainText('Prévisions météo');
+  await page.keyboard.press('Escape');
+
+  // Replay server-shaped weather messages through the real client receive path.
+  // Production authority and rollover are checked independently by WorldRoom tests.
+  for (const kind of ['cloudy', 'rain', 'thunderstorm', 'snow']) {
+    await page.evaluate(weather => {
+      (window as any).__weatherReceive({
+        t: 'world:time', time: { day: 1, year: 1, season: 'spring', dayOfSeason: 1, hour: 12, minute: 0 },
+        weather: { day: 1, today: weather, tomorrow: 'cloudy' },
+      });
+    }, kind);
+    await expect(page.locator('.wh-weather')).toHaveAttribute('data-weather', kind);
+    await page.waitForTimeout(3500);
+    await page.screenshot({ path: testInfo.outputPath(`weather-${kind}.png`) });
+  }
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.evaluate(() => (window as any).__agora.store.set({ panelOpen: false }));
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForTimeout(400);
+  await expect(page.locator('.wh-weather')).toBeVisible();
+  await page.locator('.wh-weather').click();
+  await expect(page.getByRole('dialog')).toContainText('Les animaux restent à l’abri');
+  await page.screenshot({ path: testInfo.outputPath('weather-phone.png') });
+  expect(errors).toEqual([]);
+});
+
 const A = (p: Page) => p.evaluate.bind(p);
 const st = (p: Page) => A(p)(() => (window as unknown as AgoraWindow).__agora.store.get());
 const view = (p: Page) => A(p)(() => (window as unknown as AgoraWindow).__agora.view);

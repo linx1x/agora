@@ -146,7 +146,7 @@ for (const backend of [memory, postgres]) {
       const clock = { t: inDay(1, at(6)) };
       const room = (await hubAt(store, clock).enter('w1'))!;
       const { c, m } = await join(room, 'owner', OWNER, HOME);
-      expect(c.of('world:time')).toEqual([{ t: 'world:time', time: expect.objectContaining({ day: 1, hour: 6, minute: 0 }) }]);
+      expect(c.of('world:time')).toEqual([expect.objectContaining({ t: 'world:time', time: expect.objectContaining({ day: 1, hour: 6, minute: 0 }) })]);
 
       clock.t = inDay(1, at(6, 9));
       room.tick();

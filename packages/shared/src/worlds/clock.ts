@@ -12,6 +12,7 @@ import {
   type WorldSimState,
 } from './gamedata';
 import { hash32 } from './noise';
+import { rainWaters, weatherForDay, waterFromWeather } from './weather';
 
 /** A game day runs from 06:00 to 02:00 the next morning: 20 clock hours. */
 export const GAME_MINUTES_PER_DAY = 20 * 60;
@@ -164,10 +165,12 @@ function stepAnimal(animal: AnimalState, day: number, rows: Map<string, { produc
  * fromDay. Order each day: season change (withering), crop growth (needs water
  * that day), water retention (fertilizer), sprinklers (water for tomorrow),
  * animals, machines. `seed` is the world's seed: it drives the retention rolls.
+ * With `outdoorWeather`, yesterday's rain is credited before growth and today's
+ * rain waters for tomorrow. Indoor/isolated rule simulations leave it disabled.
  * At most one year (MAX_SIM_DAYS) is simulated; earlier days in a longer gap are skipped.
  * Pure: the input state is not changed.
  */
-export function simulateDays(state: WorldSimState, fromDay: number, toDay: number, data: GameData, seed = 0): WorldSimState {
+export function simulateDays(state: WorldSimState, fromDay: number, toDay: number, data: GameData, seed = 0, outdoorWeather = false): WorldSimState {
   if (!Number.isInteger(fromDay) || !Number.isInteger(toDay)) throw new RangeError('days must be integers');
   if (state.day !== fromDay) throw new RangeError(`state is at day ${state.day}, not ${fromDay}`);
   if (toDay <= fromDay) return state;
@@ -180,11 +183,18 @@ export function simulateDays(state: WorldSimState, fromDay: number, toDay: numbe
   for (let day = first; day <= toDay; day++) {
     const dayOfSeason = ((day - 1) % SEASON_DAYS) + 1;
     if (dayOfSeason === 1 && day > 1) witherOutOfSeason(plots, seasonOfDay(day), cropRows);
+    // Rain during day D pays for growth at dawn D+1, including offline days.
+    if (outdoorWeather && day > 1 && rainWaters(weatherForDay(seed, day - 1))) {
+      for (const [key, plot] of Object.entries(plots)) {
+        if (plot.tilled) plots[key] = { ...plot, wateredOn: day };
+      }
+    }
     growCrops(plots, day);
     retainWater(plots, day, seed, data.itemsById);
     waterFromSprinklers(plots, day, data.itemsById);
     animals = animals.map((animal) => stepAnimal(animal, day, animalRows));
     machines = machines.map((machine) => (machine.daysLeft > 0 ? { ...machine, daysLeft: machine.daysLeft - 1 } : machine));
   }
-  return { ...state, day: toDay, plots, animals, machines };
+  const next = { ...state, day: toDay, plots, animals, machines };
+  return outdoorWeather ? waterFromWeather(next, seed) : next;
 }

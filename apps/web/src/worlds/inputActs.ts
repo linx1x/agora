@@ -131,6 +131,7 @@ export function actionFor(item: string | null, data: GameData, facts: CellFacts 
 
 /** The request one intent sends (without its key and op). */
 export interface ActItem {
+  readonly bedAxis?: 'vertical' | 'horizontal';
   readonly kind: ActionKind;
   readonly at: CellRef;
   /** the held stack key, when the action needs an item (a tool, a seed, a building, an animal, feed) */
@@ -214,6 +215,7 @@ export class ActQueue {
       at: { x: act.at.x, y: act.at.y },
       ...(act.item !== undefined ? { item: act.item } : {}),
       ...(act.target !== undefined ? { target: act.target } : {}),
+      ...(act.bedAxis !== undefined ? { bedAxis: act.bedAxis } : {}),
       key: entry.key,
     });
   }

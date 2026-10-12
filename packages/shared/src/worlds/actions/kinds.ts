@@ -82,6 +82,7 @@ export function changesAreEmpty(c: ActionChanges): boolean {
 
 /** A player's request, as the rules see it (the protocol adds `op` and `key`). */
 export interface ActionRequest {
+  readonly bedAxis?: 'vertical' | 'horizontal';
   readonly kind: ActionKind;
   /** The cell the action is aimed at (world cells, not pixels). */
   readonly at?: { readonly x: number; readonly y: number };

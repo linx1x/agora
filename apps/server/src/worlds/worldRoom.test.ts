@@ -16,6 +16,8 @@ import {
   caveIdOf,
   cellFeet,
   parseCaveId,
+  DEFAULT_DAY_MS,
+  weatherForecast,
 } from '@agora/shared';
 import { MemoryWorldStore, type WorldStore } from './worldStore';
 import { setCells } from './testWorld';
@@ -71,6 +73,24 @@ function walkTo(room: WorldRoom, m: WorldMember, x: number, y: number, seq: { n:
 }
 
 describe('WorldHub: lazy load and unload', () => {
+  it('sends everyone the same daily forecast, including visitors arriving after rollover', async () => {
+    let now = 4 * DEFAULT_DAY_MS;
+    const hub = new WorldHub(await storeWith('w1'), undefined, undefined, undefined, { now: () => now, autoTick: false });
+    const room = (await hub.enter('w1'))!;
+    const a = new FakeConn();
+    const b = new FakeConn();
+    const ma = room.join(a, who('a'));
+    const mb = room.join(b, who('b'));
+    expect(a.of('world:time')[0]?.weather).toEqual(weatherForecast(SEED, 5));
+    expect(b.of('world:time')[0]?.weather).toEqual(a.of('world:time')[0]?.weather);
+    now += DEFAULT_DAY_MS;
+    room.tick();
+    expect(a.of('world:time').at(-1)?.weather).toEqual(weatherForecast(SEED, 6));
+    const c = new FakeConn();
+    const mc = room.join(c, who('c'));
+    expect(c.of('world:time')[0]?.weather).toEqual(a.of('world:time').at(-1)?.weather);
+    room.leave(ma); room.leave(mb); room.leave(mc);
+  });
   it('loads a world once for everyone who arrives together, and closes it when the last person leaves', async () => {
     const store = await storeWith('w1');
     let loads = 0;
@@ -475,6 +495,7 @@ describe('WorldRoom: a cave room (P17.32, ADR-053)', () => {
     const conn = new FakeConn();
     const m = cave.join(conn, who('p1'));
     expect(conn.of('world:welcome')[0]).toMatchObject({ worldId: CAVE, seed: SEED, genVersion: 1, you: 'p1' });
+    expect(conn.of('world:time')[0]?.weather).toBeUndefined();
     expect({ x: m.x, y: m.y }).toEqual(cellFeet(CAVE_ARRIVAL.x, CAVE_ARRIVAL.y));
     expect(cave.atReturn(m)).toBe(false);
     const exit = cellFeet(CAVE_EXIT.x, CAVE_EXIT.y);

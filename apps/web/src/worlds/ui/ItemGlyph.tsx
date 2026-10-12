@@ -1,4 +1,6 @@
-import type { ReactNode } from 'react';
+import { useSyncExternalStore, type ReactNode } from 'react';
+import { baseItemOf } from '@agora/shared';
+import { itemIconUrl, subscribeItemIcons } from '../art/itemIcons';
 import { glyphOf, type Glyph } from './glyphs';
 
 /** The ink every glyph is outlined in: it reads on the light HUD and on the dark theme alike. */
@@ -12,7 +14,27 @@ const WOOD_EDGE = '#8a5a2b';
  * screen readers.
  */
 export function ItemGlyph({ item, size = 22 }: { item: string; size?: number }) {
+  const id = baseItemOf(item);
+  const artwork = useSyncExternalStore(
+    subscribeItemIcons,
+    () => itemIconUrl(id),
+    () => undefined,
+  );
   const { glyph, tint } = glyphOf(item);
+  if (artwork)
+    return (
+      <img
+        className="wh-icon"
+        src={artwork}
+        width={size}
+        height={size}
+        alt=""
+        aria-hidden="true"
+        data-glyph={glyph}
+        data-art="approved"
+        style={{ imageRendering: 'pixelated', objectFit: 'contain' }}
+      />
+    );
   return (
     <svg
       className="wh-icon"
@@ -67,8 +89,20 @@ function shape(glyph: Glyph, tint: string): ReactNode {
     case 'fiber':
       return (
         <>
-          <path d="M4 13.5L6 2.5M7.8 13.5L9.8 2.5M11.6 13.5L13.6 2.5" fill="none" stroke={INK} strokeWidth={2.8} strokeLinecap="round" />
-          <path d="M4 13.5L6 2.5M7.8 13.5L9.8 2.5M11.6 13.5L13.6 2.5" fill="none" stroke={tint} strokeWidth={1.4} strokeLinecap="round" />
+          <path
+            d="M4 13.5L6 2.5M7.8 13.5L9.8 2.5M11.6 13.5L13.6 2.5"
+            fill="none"
+            stroke={INK}
+            strokeWidth={2.8}
+            strokeLinecap="round"
+          />
+          <path
+            d="M4 13.5L6 2.5M7.8 13.5L9.8 2.5M11.6 13.5L13.6 2.5"
+            fill="none"
+            stroke={tint}
+            strokeWidth={1.4}
+            strokeLinecap="round"
+          />
         </>
       );
     case 'gem':
@@ -86,7 +120,12 @@ function shape(glyph: Glyph, tint: string): ReactNode {
         </>
       );
     case 'drop':
-      return <path d="M8 2C10.6 5.6 12.6 7.6 12.6 10.2A4.6 4.6 0 0 1 3.4 10.2C3.4 7.6 5.4 5.6 8 2Z" {...o} />;
+      return (
+        <path
+          d="M8 2C10.6 5.6 12.6 7.6 12.6 10.2A4.6 4.6 0 0 1 3.4 10.2C3.4 7.6 5.4 5.6 8 2Z"
+          {...o}
+        />
+      );
     case 'sack':
       return (
         <>
@@ -107,7 +146,15 @@ function shape(glyph: Glyph, tint: string): ReactNode {
     case 'gear':
       return (
         <>
-          <circle cx="8" cy="8" r="6" fill="none" stroke={INK} strokeWidth={2.4} strokeDasharray="2 1.6" />
+          <circle
+            cx="8"
+            cy="8"
+            r="6"
+            fill="none"
+            stroke={INK}
+            strokeWidth={2.4}
+            strokeDasharray="2 1.6"
+          />
           <circle cx="8" cy="8" r="4.8" {...o} />
           <circle cx="8" cy="8" r="1.8" fill={INK} />
         </>
@@ -115,7 +162,13 @@ function shape(glyph: Glyph, tint: string): ReactNode {
     case 'house':
       return (
         <>
-          <path d="M8 2L14.2 7.6H1.8Z" fill="#9b4a32" stroke={INK} strokeWidth={1} strokeLinejoin="round" />
+          <path
+            d="M8 2L14.2 7.6H1.8Z"
+            fill="#9b4a32"
+            stroke={INK}
+            strokeWidth={1}
+            strokeLinejoin="round"
+          />
           <rect x="3.4" y="7.4" width="9.2" height="6.4" {...o} />
           <rect x="6.8" y="9.8" width="2.4" height="4" fill={INK} />
         </>
@@ -138,8 +191,20 @@ function shape(glyph: Glyph, tint: string): ReactNode {
     case 'hoe':
       return (
         <>
-          <path d="M3.4 13.6L9.8 5.2" fill="none" stroke={WOOD_EDGE} strokeWidth={2.6} strokeLinecap="round" />
-          <path d="M3.4 13.6L9.8 5.2" fill="none" stroke={WOOD} strokeWidth={1.4} strokeLinecap="round" />
+          <path
+            d="M3.4 13.6L9.8 5.2"
+            fill="none"
+            stroke={WOOD_EDGE}
+            strokeWidth={2.6}
+            strokeLinecap="round"
+          />
+          <path
+            d="M3.4 13.6L9.8 5.2"
+            fill="none"
+            stroke={WOOD}
+            strokeWidth={1.4}
+            strokeLinecap="round"
+          />
           <path d="M8.6 3.2L13.8 2L14.4 6.4L9.6 6.8Z" {...o} />
         </>
       );
@@ -154,33 +219,87 @@ function shape(glyph: Glyph, tint: string): ReactNode {
     case 'axe':
       return (
         <>
-          <path d="M3.4 13.6L9.8 5.6" fill="none" stroke={WOOD_EDGE} strokeWidth={2.6} strokeLinecap="round" />
-          <path d="M3.4 13.6L9.8 5.6" fill="none" stroke={WOOD} strokeWidth={1.4} strokeLinecap="round" />
+          <path
+            d="M3.4 13.6L9.8 5.6"
+            fill="none"
+            stroke={WOOD_EDGE}
+            strokeWidth={2.6}
+            strokeLinecap="round"
+          />
+          <path
+            d="M3.4 13.6L9.8 5.6"
+            fill="none"
+            stroke={WOOD}
+            strokeWidth={1.4}
+            strokeLinecap="round"
+          />
           <path d="M6.8 3Q13.8 2 14.2 7.6L9.8 8.6Z" {...o} />
         </>
       );
     case 'pick':
       return (
         <>
-          <path d="M8 4V14.2" fill="none" stroke={WOOD_EDGE} strokeWidth={2.6} strokeLinecap="round" />
+          <path
+            d="M8 4V14.2"
+            fill="none"
+            stroke={WOOD_EDGE}
+            strokeWidth={2.6}
+            strokeLinecap="round"
+          />
           <path d="M8 4V14.2" fill="none" stroke={WOOD} strokeWidth={1.4} strokeLinecap="round" />
-          <path d="M1.6 6.2Q8 0.4 14.4 6.2" fill="none" stroke={INK} strokeWidth={3.4} strokeLinecap="round" />
-          <path d="M1.6 6.2Q8 0.4 14.4 6.2" fill="none" stroke={tint} strokeWidth={1.8} strokeLinecap="round" />
+          <path
+            d="M1.6 6.2Q8 0.4 14.4 6.2"
+            fill="none"
+            stroke={INK}
+            strokeWidth={3.4}
+            strokeLinecap="round"
+          />
+          <path
+            d="M1.6 6.2Q8 0.4 14.4 6.2"
+            fill="none"
+            stroke={tint}
+            strokeWidth={1.8}
+            strokeLinecap="round"
+          />
         </>
       );
     case 'shovel':
       return (
         <>
-          <path d="M4.2 2.6L9.2 10" fill="none" stroke={WOOD_EDGE} strokeWidth={2.6} strokeLinecap="round" />
-          <path d="M4.2 2.6L9.2 10" fill="none" stroke={WOOD} strokeWidth={1.4} strokeLinecap="round" />
+          <path
+            d="M4.2 2.6L9.2 10"
+            fill="none"
+            stroke={WOOD_EDGE}
+            strokeWidth={2.6}
+            strokeLinecap="round"
+          />
+          <path
+            d="M4.2 2.6L9.2 10"
+            fill="none"
+            stroke={WOOD}
+            strokeWidth={1.4}
+            strokeLinecap="round"
+          />
           <path d="M8.2 9.4L12.6 8.4L13.6 12.4Q10.6 15 8.2 13.2Z" {...o} />
         </>
       );
     case 'rod':
       return (
         <>
-          <path d="M2.4 13.6L12 3" fill="none" stroke={WOOD_EDGE} strokeWidth={2.2} strokeLinecap="round" />
-          <path d="M2.4 13.6L12 3" fill="none" stroke={WOOD} strokeWidth={1} strokeLinecap="round" />
+          <path
+            d="M2.4 13.6L12 3"
+            fill="none"
+            stroke={WOOD_EDGE}
+            strokeWidth={2.2}
+            strokeLinecap="round"
+          />
+          <path
+            d="M2.4 13.6L12 3"
+            fill="none"
+            stroke={WOOD}
+            strokeWidth={1}
+            strokeLinecap="round"
+          />
           <path d="M12 3V10.2" fill="none" stroke={INK} strokeWidth={0.7} />
           <circle cx="12" cy="10.8" r="1.2" {...o} />
         </>

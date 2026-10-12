@@ -1,0 +1,113 @@
+{
+  "ready": true,
+  "atlasSize": [
+    2048,
+    4096
+  ],
+  "wildlife": {
+    "ready": true,
+    "count": 14,
+    "props": 30,
+    "animals": [
+      {
+        "id": "cow",
+        "biome": "meadow",
+        "x": 15.38597837750826,
+        "z": 4.575742802680404,
+        "state": "walking"
+      },
+      {
+        "id": "deer",
+        "biome": "meadow",
+        "x": 16.385978377508263,
+        "z": 3.5757428026804035,
+        "state": "walking"
+      },
+      {
+        "id": "pig",
+        "biome": "meadow",
+        "x": 9.958293655324622,
+        "z": 11.787385085004532,
+        "state": "walking"
+      },
+      {
+        "id": "deer",
+        "biome": "meadow",
+        "x": 17.531808691293023,
+        "z": 11.943579787458939,
+        "state": "walking"
+      },
+      {
+        "id": "shaggy_sheep",
+        "biome": "taiga",
+        "x": 13.85,
+        "z": -3.5,
+        "state": "grazing"
+      },
+      {
+        "id": "shaggy_sheep",
+        "biome": "taiga",
+        "x": 23.80470610602889,
+        "z": -5.276583254456607,
+        "state": "walking"
+      },
+      {
+        "id": "cow",
+        "biome": "meadow",
+        "x": 7.063463903128322,
+        "z": 1.7753890870923958,
+        "state": "walking"
+      },
+      {
+        "id": "cow",
+        "biome": "meadow",
+        "x": 28.531808691293023,
+        "z": 3.943579787458939,
+        "state": "walking"
+      },
+      {
+        "id": "hen",
+        "biome": "meadow",
+        "x": 5.15,
+        "z": 13.5,
+        "state": "grazing"
+      },
+      {
+        "id": "deer",
+        "biome": "meadow",
+        "x": 23.2780324074943,
+        "z": 10.846279963204541,
+        "state": "walking"
+      },
+      {
+        "id": "pig",
+        "biome": "meadow",
+        "x": 2.5,
+        "z": -4.5,
+        "state": "grazing"
+      },
+      {
+        "id": "deer",
+        "biome": "meadow",
+        "x": 10.85,
+        "z": 23.5,
+        "state": "grazing"
+      },
+      {
+        "id": "pig",
+        "biome": "meadow",
+        "x": 18.678925637857695,
+        "z": 16.618231436103482,
+        "state": "walking"
+      },
+      {
+        "id": "taiga_hare",
+        "biome": "taiga",
+        "x": 29.063463903128323,
+        "z": -4.224610912907604,
+        "state": "walking"
+      }
+    ]
+  },
+  "shadows": 6
+}

@@ -10,6 +10,7 @@ import { BLOCKS, WORLD_BIOMES, getBlock, type BlockRegistry, type WorldBiomeRegi
 
 /** What a walker sees on one cell. Unknown block ids make a cell non-walkable (fail closed). */
 export interface WorldCell {
+  readonly bedAxis?: 'vertical' | 'horizontal';
   readonly level: number;
   /** Top block id. */
   readonly block: string;
@@ -26,6 +27,7 @@ export interface WorldCell {
 
 /** A stored change to one cell, applied over the generated base (P17.7 deltas). */
 export interface CellPatch {
+  readonly bedAxis?: 'vertical' | 'horizontal';
   readonly level?: number;
   readonly block?: string;
   readonly decor?: string;
@@ -114,11 +116,13 @@ export class WorldTerrain {
     const chunk = this.chunkAt(cx, cy);
     const k = chunkIndex(x - cx * CHUNK_SIZE, y - cy * CHUNK_SIZE);
     const patch = this.overlay?.(x, y);
-    return describeCell(
+    const cell = describeCell(
       patch?.level ?? chunk.level[k] ?? 0,
       patch?.block ?? chunk.block[k] ?? '',
       patch?.decor ?? chunk.decor[k] ?? '',
       this.blocks,
     );
+    const bedAxis = patch?.bedAxis ?? chunk.bedAxis?.[k];
+    return cell.decor === 'bed' && bedAxis ? { ...cell, bedAxis } : cell;
   }
 }

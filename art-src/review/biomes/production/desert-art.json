@@ -1,0 +1,113 @@
+{
+  "ready": true,
+  "atlasSize": [
+    2048,
+    4096
+  ],
+  "wildlife": {
+    "ready": true,
+    "count": 14,
+    "props": 33,
+    "animals": [
+      {
+        "id": "shaggy_sheep",
+        "biome": "taiga",
+        "x": 13.85,
+        "z": -3.5,
+        "state": "grazing"
+      },
+      {
+        "id": "shaggy_sheep",
+        "biome": "taiga",
+        "x": 23.85,
+        "z": -5.5,
+        "state": "grazing"
+      },
+      {
+        "id": "pig",
+        "biome": "meadow",
+        "x": 2.5,
+        "z": -4.5,
+        "state": "grazing"
+      },
+      {
+        "id": "taiga_hare",
+        "biome": "taiga",
+        "x": 28.61657194453154,
+        "z": -4.054660257508681,
+        "state": "walking"
+      },
+      {
+        "id": "camel",
+        "biome": "desert",
+        "x": 15.5,
+        "z": 4.5,
+        "state": "resting"
+      },
+      {
+        "id": "fennec",
+        "biome": "desert",
+        "x": 16.5,
+        "z": 3.5,
+        "state": "resting"
+      },
+      {
+        "id": "fennec",
+        "biome": "desert",
+        "x": 9.5,
+        "z": 11.5,
+        "state": "resting"
+      },
+      {
+        "id": "camel",
+        "biome": "desert",
+        "x": 16.97282410407294,
+        "z": 11.795250272239706,
+        "state": "walking"
+      },
+      {
+        "id": "desert_tortoise",
+        "biome": "desert",
+        "x": 6.616571944531538,
+        "z": 1.945339742491319,
+        "state": "walking"
+      },
+      {
+        "id": "fennec",
+        "biome": "desert",
+        "x": 27.97282410407294,
+        "z": 3.7952502722397052,
+        "state": "walking"
+      },
+      {
+        "id": "camel",
+        "biome": "desert",
+        "x": 5.15,
+        "z": 13.5,
+        "state": "grazing"
+      },
+      {
+        "id": "desert_tortoise",
+        "biome": "desert",
+        "x": 23.716012645957296,
+        "z": 10.925493586013515,
+        "state": "walking"
+      },
+      {
+        "id": "desert_tortoise",
+        "biome": "desert",
+        "x": 10.85,
+        "z": 23.5,
+        "state": "grazing"
+      },
+      {
+        "id": "desert_tortoise",
+        "biome": "desert",
+        "x": 19.167302908073825,
+        "z": 16.88672083757955,
+        "state": "walking"
+      }
+    ]
+  },
+  "shadows": 6
+}

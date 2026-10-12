@@ -1,0 +1,201 @@
+{
+  "id": "jungle",
+  "label": "Jungle",
+  "description": "Layered jade foliage, damp moss, broad roots and a lively riverside understory.",
+  "colors": {
+    "grass": "#729751",
+    "dirt": "#776042",
+    "stone": "#718175",
+    "water": "#367E78",
+    "edge": "#345B49",
+    "accent": "#E47F4D"
+  },
+  "propsImage": "jungle-props.png",
+  "animalsImage": "jungle-animals.png",
+  "propsImageSize": [
+    1536,
+    1024
+  ],
+  "animalsImageSize": [
+    1536,
+    1024
+  ],
+  "props": [
+    {
+      "id": "jungle_tree",
+      "label": "Giant jungle tree",
+      "rect": [
+        38,
+        61,
+        471,
+        477
+      ],
+      "width": 4.2,
+      "height": 4.3
+    },
+    {
+      "id": "jungle_fern",
+      "label": "Broad fern",
+      "rect": [
+        561,
+        150,
+        454,
+        387
+      ],
+      "width": 1.35,
+      "height": 1.15
+    },
+    {
+      "id": "banana_understory",
+      "label": "Banana understory",
+      "rect": [
+        1076,
+        78,
+        429,
+        467
+      ],
+      "width": 1.75,
+      "height": 1.9
+    },
+    {
+      "id": "mossy_boulder",
+      "label": "Mossy boulder",
+      "rect": [
+        20,
+        624,
+        499,
+        337
+      ],
+      "width": 1.25,
+      "height": 0.84
+    },
+    {
+      "id": "fallen_moss_log",
+      "label": "Fallen moss log",
+      "rect": [
+        539,
+        668,
+        488,
+        284
+      ],
+      "width": 1.8,
+      "height": 1.05
+    },
+    {
+      "id": "bromeliad",
+      "label": "Coral bromeliad",
+      "rect": [
+        1072,
+        593,
+        442,
+        359
+      ],
+      "width": 1,
+      "height": 0.81
+    }
+  ],
+  "animals": [
+    {
+      "id": "parrot",
+      "label": "Parrot",
+      "kind": "wild",
+      "rects": [
+        [
+          25,
+          84,
+          360,
+          273
+        ],
+        [
+          409,
+          84,
+          360,
+          273
+        ],
+        [
+          785,
+          84,
+          360,
+          273
+        ],
+        [
+          1153,
+          84,
+          360,
+          273
+        ]
+      ],
+      "width": 0.54,
+      "height": 0.41,
+      "behavior": "Walk between shade patches, pause to peck seeds, then return to the trees."
+    },
+    {
+      "id": "capybara",
+      "label": "Capybara",
+      "kind": "wild",
+      "rects": [
+        [
+          24,
+          407,
+          360,
+          290
+        ],
+        [
+          408,
+          407,
+          360,
+          290
+        ],
+        [
+          787,
+          407,
+          360,
+          290
+        ],
+        [
+          1164,
+          407,
+          360,
+          290
+        ]
+      ],
+      "width": 1.03,
+      "height": 0.83,
+      "behavior": "Amble along the riverbank, graze near broad leaves and rest beside water."
+    },
+    {
+      "id": "turtle",
+      "label": "Jungle turtle",
+      "kind": "wild",
+      "rects": [
+        [
+          32,
+          775,
+          338,
+          194
+        ],
+        [
+          419,
+          775,
+          338,
+          194
+        ],
+        [
+          804,
+          775,
+          338,
+          194
+        ],
+        [
+          1175,
+          775,
+          338,
+          194
+        ]
+      ],
+      "width": 0.58,
+      "height": 0.33,
+      "behavior": "Crawl slowly beside shallow water, pause in sunlight and nibble low plants."
+    }
+  ]
+}

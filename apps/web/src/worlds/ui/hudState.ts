@@ -3,12 +3,13 @@
  * last said them, and the item in hand. The server owns every number; this module only keeps the
  * last `world:inv` and the player's hand choice. Pure reducer plus a small store that React reads.
  */
-import type { AnimalState, CellRef, MachineState, S2CMsg, WorldRefusal, WorldTime } from '@agora/shared';
+import type { AnimalState, CellRef, MachineState, S2CMsg, WorldRefusal, WorldTime, WeatherForecast } from '@agora/shared';
 
 /** Hotbar slots, selected with keys 1 to 9. */
 export const HOTBAR_SLOTS = 9;
 
 export interface HudState {
+  readonly bedAxis: 'vertical' | 'horizontal';
   /** stack key to quantity, as the server sent it */
   readonly items: Readonly<Record<string, number>>;
   readonly money: number;
@@ -20,6 +21,7 @@ export interface HudState {
   readonly notice: WorldRefusal | null;
   /** the game clock as the server last sent it (every 10 game minutes); null until the first `world:time` */
   readonly time: WorldTime | null;
+  readonly weather: WeatherForecast | null;
   /** the chest I opened (P17.24): its cell and contents as the server last sent them; null when closed */
   readonly chest: ChestView | null;
   /** the animals of the world, whole, as the server last sent them (P17.25) */
@@ -40,6 +42,7 @@ export interface ChestView {
 export type PanelView = { readonly kind: 'shop'; readonly at: CellRef } | { readonly kind: 'craft'; readonly at: CellRef; readonly block: string };
 
 export const initialHud = (): HudState => ({
+  bedAxis: 'vertical',
   items: {},
   money: 0,
   energy: 0,
@@ -47,6 +50,7 @@ export const initialHud = (): HudState => ({
   inHand: null,
   notice: null,
   time: null,
+  weather: null,
   chest: null,
   animals: [],
   machines: [],
@@ -69,9 +73,10 @@ export function slotForKey(key: string): number | null {
  * farm's animals and machines (`world:farm`, whole lists, when they changed) and the notices.
  */
 export function reduceHud(state: HudState, msg: S2CMsg): HudState {
+  if (msg.t === 'world:welcome' || msg.t === 'world:exit' || msg.t === 'welcome') return { ...state, time: null, weather: null };
   if (msg.t === 'world:refused') return { ...state, notice: msg.reason };
   if (msg.t === 'world:acted') return state.notice === null ? state : { ...state, notice: null };
-  if (msg.t === 'world:time') return { ...state, time: msg.time };
+  if (msg.t === 'world:time') return { ...state, time: msg.time, weather: msg.weather ?? null };
   if (msg.t === 'world:chest') return { ...state, chest: { at: { x: msg.at.x, y: msg.at.y }, items: { ...msg.items } } };
   if (msg.t === 'world:farm') {
     if (msg.animals === undefined && msg.machines === undefined) return state;
@@ -83,6 +88,7 @@ export function reduceHud(state: HudState, msg: S2CMsg): HudState {
 }
 
 export interface HudStore {
+  turnBed(): void;
   get(): HudState;
   subscribe(listener: () => void): () => void;
   /** Feed a server message. Returns true when it changed the HUD (the clock, an inventory, money, energy, the farm, a notice). */
@@ -102,6 +108,10 @@ export function createHudStore(): HudStore {
   const listeners = new Set<() => void>();
   const emit = () => listeners.forEach((listener) => listener());
   return {
+    turnBed() {
+      state = {...state, bedAxis: state.bedAxis === 'vertical' ? 'horizontal' : 'vertical'};
+      emit();
+    },
     get: () => state,
     subscribe(listener) {
       listeners.add(listener);

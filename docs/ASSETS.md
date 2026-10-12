@@ -3,6 +3,12 @@
 Rule: use existing free-licensed art; do not draw new sprites. Every file is
 recorded in `apps/web/public/assets/registry.json` and shown on the Credits page.
 
+**Art review, 2026-10-12:** Vincent explicitly requested a complete original redraw,
+with one sample approved before rollout. That request supersedes the no-new-sprites
+rule above for this work. The review assets and full provenance are documented in
+[`art-src/review/README.md`](../art-src/review/README.md). They are used only by the
+separate development preview at `/art-review.html`; existing game assets remain active.
+
 ## Allowed licenses
 
 - **CC0** — no obligations (credit appreciated).

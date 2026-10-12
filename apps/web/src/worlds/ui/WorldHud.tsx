@@ -7,6 +7,7 @@ import { ChestPanel } from './ChestPanel';
 import { ItemGlyph } from './ItemGlyph';
 import { CraftPanel, batchAt } from './CraftPanel';
 import { ShopPanel } from './ShopPanel';
+import { WeatherForecast } from './WeatherForecast';
 import type { WorldAsk } from '../inputActs';
 import './worldHud.css';
 
@@ -68,6 +69,7 @@ export function WorldHud({
               </p>
             )}
             {state.maxEnergy > 0 && <EnergyBar energy={state.energy} max={state.maxEnergy} />}
+            {state.weather && <WeatherForecast forecast={state.weather} />}
           </div>
         )}
         <p className="wh-money">{t('worlds.hud.money', { amount: state.money })}</p>
@@ -111,6 +113,9 @@ export function WorldHud({
             : t('worlds.hud.inHand', { item: t(`worlds.item.${state.inHand}`) })}
         </p>
         <p className="wh-hint">{t('worlds.hud.keys')}</p>
+        {state.inHand === 'bed' && <button type="button" className="wh-open" onClick={()=>store.turnBed()}>
+          {t(`worlds.hud.bedAxis.${state.bedAxis}`)} · {t('worlds.hud.turnBed')}
+        </button>}
         <button type="button" className="wh-open" aria-haspopup="dialog" onClick={() => setInventoryOpen(true)}>
           {t('worlds.hud.inventory')}
         </button>

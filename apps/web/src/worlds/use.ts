@@ -20,6 +20,7 @@ import type { PanelView } from './ui/hudState';
 
 /** What the input needs from the world around it. */
 export interface UseEnv {
+  readonly bedAxis?: 'vertical' | 'horizontal';
   /** the world I am in; null outside one, where nothing is asked */
   readonly world: string | null;
   /** the item in hand (its stack key), or null for an empty hand */
@@ -86,6 +87,7 @@ export function useOn(env: UseEnv, at: CellRef, shift = false): boolean {
     kind,
     at: { x: at.x, y: at.y },
     ...(env.hand !== null ? { item: env.hand } : {}),
+    ...(kind === 'place' && env.hand !== null && env.data.itemsById.get(baseItemOf(env.hand))?.block === 'bed' ? {bedAxis: env.bedAxis ?? 'vertical'} : {}),
   });
   const tool = env.hand === null ? undefined : toolOf(env.data, baseItemOf(env.hand));
   if (tool) env.swing({ x: at.x, y: at.y }, tool.tier, tool.speed);

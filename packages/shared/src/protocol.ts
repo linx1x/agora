@@ -21,6 +21,7 @@ import { PORTAL_ID, type PortalRefusal } from './portals';
 import type { WorldGenParams } from './worlds/gen';
 import type { ChunkDelta } from './worlds/delta';
 import type { WorldTime } from './worlds/clock';
+import type { WeatherForecast } from './worlds/weather';
 import type { OfficeRefusal } from './worlds/office';
 import type { Taste } from './worlds/friendship';
 import type { AnimalState, MachineState, PlotState } from './worlds/gamedata/state';
@@ -99,6 +100,7 @@ export const C2S = z.discriminatedUnion('t', [
    */
   z.object({
     t: z.literal('world:act'),
+    bedAxis: z.enum(['vertical', 'horizontal']).optional(),
     op: z.number().int().nonnegative().max(2 ** 31 - 1),
     kind: z.enum(ACTION_KINDS),
     at: z
@@ -536,7 +538,7 @@ export type S2CMsg =
       machines?: readonly MachineState[];
     }
   /** P17.19/P17.23: the world clock, sent on welcome and every 10 game minutes */
-  | { t: 'world:time'; time: WorldTime }
+  | { t: 'world:time'; time: WorldTime; weather?: WeatherForecast }
   /** P17.20: an approved action (or a resend of one) and what it changed for you. Only you get it. */
   | { t: 'world:acted'; op: number; changes: ActionChanges }
   /** P17.20: a refused action and why. Nothing changed. Only you get it. */

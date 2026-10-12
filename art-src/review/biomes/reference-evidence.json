@@ -1,0 +1,177 @@
+{
+  "observed_on": "2026-10-12",
+  "minecraft": {
+    "evidence_id": "ev_623a99153e801fbeafbefe993b80a2f1f5b37f88797229dff1fd418f42646427",
+    "inventory_evidence_id": "ev_0fee8d5b421090ae4ab88605f23806f15f51bba9196bdd87a2028e73a6ee6c11",
+    "method": "REA inspect_artifact / inventory_artifact; ZIP central-directory inventory only",
+    "local_artifact": "C:/Users/vince/curseforge/minecraft/Install/versions/1.21.1/1.21.1.jar",
+    "artifact_sha256": "499f6897d1837516680f3114072d8106e11c9adcd933fe5cf051b551089b0c99",
+    "raw_evidence_path": "test-results/biome-research/minecraft-rea.json",
+    "raw_evidence_sha256": "cffa3ba5753c6bb4565933cff98f983e7e5d63a2553cbeaf6f91094cf5048b47",
+    "inventory": {
+      "manifest_id": "agm_11b6a4889e7ad8e7cd41ae0006caf4e6ac78555476074b380f2b2c0333665648",
+      "artifact_nodes": 22817,
+      "occurrences_including_root": 23520,
+      "archive_member_occurrences": 23519,
+      "png_member_names": 3071,
+      "java_class_member_names": 8269,
+      "json_member_names": 10762
+    },
+    "selected_members": [
+      {
+        "category": "animal",
+        "name": "assets/minecraft/textures/entity/camel/camel.png",
+        "declared_size_bytes": 2218,
+        "occurrence_id": "occ_601116a2f82bd0514919245bf8807f74eea95b3a6d74635c783511756e859892",
+        "hash_status": "verified"
+      },
+      {
+        "category": "animal",
+        "name": "assets/minecraft/textures/entity/fox/fox.png",
+        "declared_size_bytes": 526,
+        "occurrence_id": "occ_68aaa4b9001ad82d7be9f0954a8886faf966ab8948af50139f235fbd7c4d2513",
+        "hash_status": "verified"
+      },
+      {
+        "category": "animal",
+        "name": "assets/minecraft/textures/entity/turtle/big_sea_turtle.png",
+        "declared_size_bytes": 1205,
+        "occurrence_id": "occ_57950acd2dcf1ccc5a946353e6490d419b65bb8532b6da41dbdece0331f17105",
+        "hash_status": "verified"
+      },
+      {
+        "category": "animal",
+        "name": "assets/minecraft/textures/entity/sheep/sheep.png",
+        "declared_size_bytes": 665,
+        "occurrence_id": "occ_acc63e1c967ee50ae7e3c26741902582541b2a3803374c75ab39dc98be9e8e04",
+        "hash_status": "verified"
+      },
+      {
+        "category": "animal",
+        "name": "assets/minecraft/textures/entity/chicken.png",
+        "declared_size_bytes": 366,
+        "occurrence_id": "occ_20c9b0c49748e5b81ffdb9f36c3e49fbc44efad22ceba3a07e55da57097ae9c3",
+        "hash_status": "verified"
+      },
+      {
+        "category": "plant",
+        "name": "assets/minecraft/textures/block/cactus_side.png",
+        "declared_size_bytes": 227,
+        "occurrence_id": "occ_6da7b77ec33800d80b9a94c7838bfd43dd7580bffab2871e58956dcc6c62f5db",
+        "hash_status": "verified"
+      },
+      {
+        "category": "plant",
+        "name": "assets/minecraft/textures/block/dead_bush.png",
+        "declared_size_bytes": 180,
+        "occurrence_id": "occ_9893b0c2a9d2165467d29c8f46fbfa3c7c96c0de70fb3d9dfe79f6a2ceab8792",
+        "hash_status": "verified"
+      },
+      {
+        "category": "plant",
+        "name": "assets/minecraft/textures/block/spruce_leaves.png",
+        "declared_size_bytes": 212,
+        "occurrence_id": "occ_13c7b0585b20066bed06e01aab1f9bcf284bc72d9e6475d50f39c457bf569b11",
+        "hash_status": "verified"
+      },
+      {
+        "category": "plant",
+        "name": "assets/minecraft/textures/block/jungle_leaves.png",
+        "declared_size_bytes": 238,
+        "occurrence_id": "occ_b4c1d22571a4df0a737b981a2b934883a542f079b19ac4e6d92efa5074b63711",
+        "hash_status": "verified"
+      },
+      {
+        "category": "plant",
+        "name": "assets/minecraft/textures/block/bamboo_stage0.png",
+        "declared_size_bytes": 241,
+        "occurrence_id": "occ_0f6633271bb1a8e65971b42f873c55ab8f0b6fee8d0bd1698a99267aecd2745b",
+        "hash_status": "verified"
+      },
+      {
+        "category": "block",
+        "name": "assets/minecraft/textures/block/sandstone.png",
+        "declared_size_bytes": 210,
+        "occurrence_id": "occ_ac9e06d2d774a77278dfc8743df90cb839b23d0b9790d95aa5db2d6b16c09255",
+        "hash_status": "verified"
+      },
+      {
+        "category": "block",
+        "name": "assets/minecraft/textures/block/snow.png",
+        "declared_size_bytes": 166,
+        "occurrence_id": "occ_dae52bf2094811f31d65a234733a2638b43a87c4456b4d86bac816c8d5a59231",
+        "hash_status": "verified"
+      }
+    ],
+    "limitations": [
+      "Inspection derives bounded static hypotheses and next probes; it does not execute the artifact or claim format-specific semantics.",
+      "ZIP inventory lists central-directory entries only. Bytes after the central directory, including an APK Signing Block or a ZIP comment, are not occurrences.",
+      "Names demonstrate packaged asset availability, not rendered appearances, animation poses, AI behaviors, biome spawn rules, or semantic correctness of automatic file-format guesses.",
+      "No archive members were extracted, decoded, copied into Agora, or executed for this evidence pass."
+    ]
+  },
+  "stardew_valley": {
+    "method": "Read-only filesystem catalog and file sizes; no XNB decoding",
+    "content_directory": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Stardew Valley\\Content",
+    "selected_entries": [
+      {
+        "name": "Animals/White Cow.xnb",
+        "size_bytes": 2234
+      },
+      {
+        "name": "Animals/White Chicken.xnb",
+        "size_bytes": 1466
+      },
+      {
+        "name": "Animals/Sheep.xnb",
+        "size_bytes": 2076
+      },
+      {
+        "name": "Animals/Pig.xnb",
+        "size_bytes": 2400
+      },
+      {
+        "name": "Animals/Goat.xnb",
+        "size_bytes": 2420
+      },
+      {
+        "name": "Animals/Duck.xnb",
+        "size_bytes": 1674
+      },
+      {
+        "name": "Data/FarmAnimals.xnb",
+        "size_bytes": 1938
+      },
+      {
+        "name": "Data/WildTrees.xnb",
+        "size_bytes": 1516
+      },
+      {
+        "name": "TileSheets/fruitTrees.xnb",
+        "size_bytes": 44528
+      },
+      {
+        "name": "Maps/DesertTiles.xnb",
+        "size_bytes": 25096
+      }
+    ],
+    "limitations": [
+      "File names only; no claims about image content, frames, runtime behavior, game version, or biome rules."
+    ]
+  },
+  "inspiration_sources": [
+    {
+      "title": "Minecraft: Desert",
+      "url": "https://www.minecraft.net/en-us/article/desert"
+    },
+    {
+      "title": "Minecraft biome guide",
+      "url": "https://help.minecraft.net/hc/en-us/articles/360046470431-Minecraft-Types-of-Biomes"
+    },
+    {
+      "title": "Minecraft: Camel",
+      "url": "https://www.minecraft.net/es-mx/article/camel"
+    }
+  ],
+  "design_status": "Agora artwork is original; animal behavior and placement are new review implementations, not reverse-engineered behavioral claims."
+}

@@ -1,0 +1,248 @@
+.biome-navigation {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 20px;
+  padding: 12px 25px;
+  background: #e7eadb;
+  border-bottom: 1px solid #ccd2b9;
+}
+.biome-navigation label {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+.biome-navigation select,
+.biome-field select {
+  font: inherit;
+  color: #344b3c;
+  background: #faf8ed;
+  border: 1px solid #aebd95;
+  border-radius: 5px;
+  padding: 8px 30px 8px 10px;
+  max-width: 100%;
+  min-width: 0;
+}
+.biome-navigation select {
+  min-width: 150px;
+  font-weight: 700;
+  font-size: 13px;
+}
+.biome-navigation select:focus-visible,
+.biome-field select:focus-visible {
+  outline: 3px solid #ba7b36;
+  outline-offset: 3px;
+}
+.biome-nav-note {
+  color: #748067;
+  font-size: 11px;
+}
+#review[data-biome-view='true'] .scene-toolbar,
+#review[data-biome-view='true'] .studio-inspector,
+#review[data-biome-view='true'] .scene-wrap > :not(#biome-stage):not(.biome-scene-caption),
+#biome-stage[hidden],
+.biome-scene-caption[hidden],
+.biome-inspector[hidden],
+#biome-retry[hidden] {
+  display: none;
+}
+#biome-stage {
+  position: absolute;
+  inset: 0;
+  background: #b8c6a0;
+}
+#biome-stage canvas {
+  display: block;
+  max-width: 100%;
+  image-rendering: pixelated;
+}
+#biome-stage[aria-busy='true']::after {
+  content: 'Gathering a little more life…';
+  position: absolute;
+  inset: 40% 20px auto;
+  text-align: center;
+  color: #36533e;
+  font-size: 18px;
+}
+.biome-scene-caption {
+  position: absolute;
+  top: 24px;
+  left: 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 13px 17px;
+  border: 1px solid #edeac57d;
+  border-radius: 4px;
+  background: #f7f0d7db;
+  color: #3b5541;
+  pointer-events: none;
+  max-width: calc(100% - 52px);
+}
+.biome-scene-caption strong {
+  font:
+    27px Georgia,
+    serif;
+}
+.biome-scene-caption > span:last-child {
+  font-size: 11px;
+}
+.biome-scene-caption.is-dusk {
+  background: #e3dfc9e6;
+}
+.biome-inspector section + section {
+  margin-top: 25px;
+  padding-top: 20px;
+  border-top: 1px solid #dedfce;
+}
+.biome-field {
+  display: grid;
+  gap: 6px;
+  font-size: 11px;
+  color: #78846b;
+  margin-bottom: 12px;
+}
+.biome-field select {
+  width: 100%;
+}
+.biome-animal-caption {
+  margin-top: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 14px;
+}
+#biome-animal-behavior {
+  font-size: 12px;
+  line-height: 1.5;
+  color: #788269;
+  min-height: 36px;
+}
+.biome-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+.biome-actions button,
+#biome-retry {
+  padding: 8px 5px;
+  border: 1px solid #adbb95;
+  border-radius: 4px;
+  background: #e2e9d1;
+  font-size: 11px;
+}
+.biome-actions button:hover,
+#biome-retry:hover {
+  background: #d1ddbb;
+}
+.biome-actions button[aria-pressed='true'] {
+  background: #c5d2ad;
+  border-color: #789058;
+}
+.biome-actions button:disabled,
+.biome-field select:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+#biome-feedback {
+  min-height: 46px;
+  font-size: 11px;
+  line-height: 1.5;
+  padding: 9px 10px;
+  background: #edeedf;
+  border-radius: 4px;
+  color: #607253;
+}
+#biome-swatches {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px 7px;
+}
+#biome-swatches > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+#biome-swatches span {
+  height: 23px;
+  border-radius: 3px;
+  border: 1px solid #34443b15;
+}
+#biome-swatches code {
+  font-size: 10px;
+  color: #627357;
+}
+#biome-swatches small {
+  font-size: 9px;
+  color: #8a8e78;
+}
+#biome-props {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+#biome-props figure {
+  margin: 0;
+  min-width: 0;
+  text-align: center;
+  border: 1px solid #d9ddc7;
+  border-radius: 4px;
+  padding: 5px;
+  background: #e8ebda;
+}
+#biome-props canvas {
+  width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+}
+#biome-props figcaption {
+  font-size: 11px;
+  margin: 3px 0;
+}
+#biome-props code {
+  display: block;
+  font-size: 8px;
+  overflow-wrap: anywhere;
+  color: #848c74;
+}
+@media (max-width: 800px) {
+  .biome-navigation {
+    padding: 12px 15px;
+  }
+  .biome-nav-note {
+    display: none;
+  }
+  .biome-navigation label {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .biome-navigation select {
+    flex: 1;
+    max-width: 210px;
+    min-width: 120px;
+  }
+  .biome-scene-caption {
+    top: 16px;
+    left: 16px;
+    padding: 10px 13px;
+    max-width: calc(100% - 32px);
+  }
+  .biome-inspector {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
+  .biome-inspector section + section {
+    margin-top: 0;
+  }
+  .biome-inspector .object-preview {
+    height: 165px;
+  }
+  #biome-props {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}

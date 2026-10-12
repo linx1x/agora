@@ -25,6 +25,8 @@ import {
   progressionStep,
   settleDay,
   worldTime,
+  waterFromWeather,
+  parseCaveId,
   type ActionChanges,
   type ActionKind,
   type ActionPlanner,
@@ -232,7 +234,8 @@ async function transact(tx: WorldTxn, input: ActionInput, planner: ActionPlanner
   }
   // every accepted action saves the energy state: its day, and the rest a bed just set
   await tx.saveProgress(actor.uid, { skills: nextSkills, energy: energyAfter, day: settled.day, rest: rest ?? null });
-  const savedSim = await saveFarm(tx, world.id, farm, nextSim);
+  const weatherSim = parseCaveId(world.id) === null ? waterFromWeather(nextSim, world.seed) : nextSim;
+  const savedSim = await saveFarm(tx, world.id, farm, weatherSim);
 
   const applied = await writeEdits(tx, world.id, edits, storedDelta, storedRev);
   if (applied === 'cap') {

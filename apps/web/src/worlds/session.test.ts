@@ -9,6 +9,8 @@ import {
   randomAvatar,
   worldGenParamsFor,
   worldSeedFor,
+  worldTime,
+  weatherForecast,
   type S2CMsg,
 } from '@agora/shared';
 import { store } from '../state/store';
@@ -47,6 +49,19 @@ function open(): { s: WorldSession; changes: WorldChange[] } {
 }
 
 describe('WorldSession (P17.14): what the client knows about its world', () => {
+  it('uses the server forecast and clears it on cave welcome and exit', () => {
+    const { s } = open();
+    const weather = weatherForecast(SEED, 5);
+    s.handle({ t: 'world:time', time: worldTime(0, 4 * 1_200_000), weather });
+    expect(s.weather).toEqual(weather);
+    s.handle(welcome({ worldId: caveIdOf('w-alice', 1, 1) }));
+    expect(s.weather).toBeNull();
+    s.handle({ t: 'world:time', time: worldTime(0, 4 * 1_200_000) });
+    expect(s.weather).toBeNull();
+    s.handle({ t: 'world:time', time: worldTime(0, 0), weather });
+    s.stop();
+    expect(s.weather).toBeNull();
+  });
   it('is closed until the server welcomes it into a world, then rebuilds the terrain from the seed', () => {
     const s = new WorldSession();
     expect(s.active).toBe(false);

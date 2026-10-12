@@ -26,7 +26,8 @@ async function reply(c: FakeConn, op: number): Promise<S2CMsg> {
 }
 
 async function enter(store: WorldStore) {
-  const hub = new WorldHub(store);
+  // Tool rules are tested on the guaranteed dry first day, independently of today's weather.
+  const hub = new WorldHub(store, undefined, undefined, undefined, { now: () => 0, autoTick: false });
   const room = (await hub.enter('w1'))!;
   const c = new FakeConn();
   const m = room.join(c, { id: 'owner', uid: OWNER, name: 'owner', avatar: randomAvatar() });
@@ -66,7 +67,7 @@ suite(`tools through the room on the ${backend.name} (P17.21)`, () => {
     act(room, m, 2, 'k-water', 'water', 'can_1', at);
     expect(await reply(c, 2)).toMatchObject({ t: 'world:acted', op: 2 });
 
-    const day = worldTime(0, Date.now()).day;
+    const day = worldTime(0, 0).day;
     const sim = await store.withTxn((tx) => tx.simOf('w1', false));
     expect(sim?.state.plots[`${at.x},${at.y}`]?.wateredOn).toBe(day + 1);
     expect(latestEnergy(c)).toBe(ENERGY_MAX - 4);

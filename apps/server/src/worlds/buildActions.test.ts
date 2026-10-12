@@ -71,6 +71,24 @@ function totalOf(items: Record<string, number>, chest: Record<string, number>): 
 for (const backend of [memory, postgres]) {
   const suite = backend === postgres && !PG_URL ? describe.skip : describe;
   suite(`build actions on ${backend.name} (P17.24, ADR-053)`, () => {
+    it('persists a horizontal bed across a fresh room and resets orientation when replaced vertically',async()=> {
+      const store=await openWorld(backend,{grants:[]});await flatYard(store);
+      const room=(await hub(store).enter('w1'))!;
+      const owner=await join(room,'owner',OWNER);await grant(store,OWNER,{bed:1});
+      room.act(owner.m,{t:'world:act',op:1,key:'bed-horizontal',kind:'place',item:'bed',at:EAST,bedAxis:'horizontal'});
+      expect(await reply(owner.c,1)).toMatchObject({t:'world:acted',changes:{items:{bed:-1}}});
+      expect(room.terrain.cellAt(1,0)).toMatchObject({decor:'bed',bedAxis:'horizontal'});
+      room.leave(owner.m);
+      const reopened=(await hub(store).enter('w1'))!;
+      const rejoined=await join(reopened,'owner-again',OWNER);
+      expect(reopened.terrain.cellAt(1,0)).toMatchObject({decor:'bed',bedAxis:'horizontal'});
+      act(reopened,rejoined,2,'bed-remove','remove',undefined,EAST);
+      expect(await reply(rejoined.c,2)).toMatchObject({t:'world:acted',changes:{items:{bed:1}}});
+      act(reopened,rejoined,3,'bed-default','place','bed',EAST);
+      expect(await reply(rejoined.c,3)).toMatchObject({t:'world:acted'});
+      expect(reopened.terrain.cellAt(1,0)).toMatchObject({decor:'bed',bedAxis:'vertical'});
+      reopened.leave(rejoined.m);
+    });
     it('a wall comes out of the bag onto the ground, and goes back into it when removed', async () => {
       const store = await openWorld(backend, { grants: [] });
       await flatYard(store);

@@ -65,6 +65,13 @@ function queue(limit?: number) {
 const act = (x: number) => ({ kind: 'till' as const, at: { x, y: 0 }, item: 'hoe_1' });
 
 describe('ActQueue: one key per intent, kept until answered (P17.21b)', () => {
+  it('retains bed orientation on a reconnect resend',()=> {
+    const {q,sent}=queue();
+    q.submit('w1',{kind:'place',at:{x:1,y:0},item:'bed',bedAxis:'horizontal'});
+    q.resend('w1');
+    expect(sent).toHaveLength(2);
+    sent.forEach(message=>expect(message).toMatchObject({kind:'place',item:'bed',bedAxis:'horizontal'}));
+  });
   it('sends each intent once, with its own key, and counts it until the server answers', () => {
     const { q, sent } = queue();
     const a = q.submit('w1', act(1));

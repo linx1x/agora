@@ -29,6 +29,11 @@ function fakeEnv(over: { hand?: string | null; world?: string | null; decor?: Re
 const feetIn = (cx: number, cy: number, d: Feet['d'] = 'down'): Feet => ({ x: cx * 32 + 16, y: cy * 32 + 16, d });
 
 describe('useOn: the held item acts on a cell', () => {
+  it('sends the chosen bed axis with placement',()=> {
+    const f=fakeEnv({hand:'bed'});
+    expect(useOn({...f.env,bedAxis:'horizontal'},{x:1,y:1})).toBe(true);
+    expect(f.asks[0]?.act).toMatchObject({kind:'place',item:'bed',bedAxis:'horizontal'});
+  });
   it('an empty hand harvests bare ground, with no item and no swing', () => {
     const f = fakeEnv();
     expect(useOn(f.env, { x: 2, y: 3 })).toBe(true);

@@ -1,4 +1,20 @@
 /* World HUD (P17.20). Phones: the hotbar sits at the bottom and the labels wrap; no motion. */
+.wh-weather {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid #6c8298;
+  border-radius: 6px;
+  background: #172534;
+  color: #eef5fc;
+  font: inherit;
+  cursor: pointer;
+}
+.wh-weather-next { font-size: 0.85em; color: #bfd1e1; }
+.wh-weather:focus-visible { outline: 2px solid #b3d9ff; outline-offset: 2px; }
 .wh-hud {
   position: fixed;
   left: 50%;

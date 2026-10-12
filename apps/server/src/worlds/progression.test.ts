@@ -64,7 +64,7 @@ for (const backend of [memory, postgres]) {
     it('a tier-2 hoe is refused as locked until the farming level is earned, and nothing is written meanwhile', async () => {
       const store = await openWorld(backend);
       await grant(store, OWNER, { hoe_2: 1 });
-      const hub = new WorldHub(store);
+      const hub = new WorldHub(store, undefined, undefined, undefined, { now: () => 0, autoTick: false });
       const room = (await hub.enter('w1'))!;
       const { m, c } = await joinRoom(room, OWNER, 'owner');
       const at = feetCell(m);
@@ -87,7 +87,7 @@ for (const backend of [memory, postgres]) {
 
     it('the xp of a chop reaches the stored skills of the one who chopped', async () => {
       const store = await openWorld(backend);
-      const hub = new WorldHub(store);
+      const hub = new WorldHub(store, undefined, undefined, undefined, { now: () => 0, autoTick: false });
       const room = (await hub.enter('w1'))!;
       const { m, c } = await joinRoom(room, OWNER, 'owner');
       const at = feetCell(m);
@@ -107,7 +107,7 @@ for (const backend of [memory, postgres]) {
       const store = await openWorld(backend);
       await setSkills(store, OWNER, { farming: LEVEL[9]! });
       await grant(store, GUEST, { can_2: 1 });
-      const hub = new WorldHub(store);
+      const hub = new WorldHub(store, undefined, undefined, undefined, { now: () => 0, autoTick: false });
       const room = (await hub.enter('w1'))!;
       const owner = await joinRoom(room, OWNER, 'owner');
       const at = feetCell(owner.m);

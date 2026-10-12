@@ -95,6 +95,7 @@ export function baseCellAt(
 
 /** A 32 x 32 chunk. Arrays are indexed `j * CHUNK_SIZE + i` for local cell (i, j). */
 export interface Chunk {
+  readonly bedAxis?: readonly ('vertical' | 'horizontal' | undefined)[];
   readonly cx: number;
   readonly cy: number;
   readonly level: Uint8Array;

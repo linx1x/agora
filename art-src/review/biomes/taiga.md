@@ -1,0 +1,24 @@
+# Taiga biome art
+
+Original Agora assets generated with the built-in image_gen tool on 2026-10-12. These two PNG atlases use the existing original Agora props.png only as a style reference. No Stardew Valley or Minecraft art was copied or extracted.
+
+## References
+
+Minecraft's [Old Growth Taiga](https://www.minecraft.net/nb-no/article/around-block-old-growth-taiga) describes spruce, podzol/coarse dirt, mossy boulders, mushrooms, berries and ferns. Its [Snowy Taiga](https://www.minecraft.net/nl-nl/article/snowy-taiga) reference suggests a mix of wild and farm animals. These informed habitat categories; silhouettes, palettes and characters are original.
+
+## Files and validation
+
+- apps/web/public/assets/art-review/biomes/taiga-props.png — 1536 × 1024 RGBA, six props. Actual row gutter is near y=620, not the mathematical halfway point.
+- apps/web/public/assets/art-review/biomes/taiga-animals.png — 1536 × 1024 RGBA, three species × four poses (idle, walk A, walk B, forage).
+- apps/web/src/artReview/biomes/taiga.json — measured alpha bounds and world dimensions.
+
+Alpha inspection confirmed 787,682 fully transparent pixels in props and 903,375 in animals. Background RGB remains in transparent areas; runtime must honor alpha. Prop bounds were measured at alpha > 16 and padded by two pixels. Each animal row uses one shared local extent across all four frames to keep its scale and ground baseline stable while its head lowers. The generated source files are preserved unmodified. Small frame-to-frame foot variation is intentional movement. Species include wild red fox and hare, plus farm sheep. Farm behavior is review metadata, not a new production husbandry system.
+
+## Props prompt
+
+Use case: stylized-concept. Create an ORIGINAL Agora taiga biome sprite atlas, using the attached original Agora props image ONLY as aesthetic reference (warm handcrafted pixel clusters, rich 2.5D shading, organic irregular silhouettes). Output transparent RGBA sprite sheet, 1536x1024, EXACTLY 3 columns x 2 rows with six isolated props on an invisible regular grid. Top row left-to-right: tall mature spruce with layered teal-green needles, warm bark and light irregular snow dust; squat dense red berry bush with frosted leaf tips; lush fern and moss tuft. Bottom row left-to-right: broad angular granite boulder with patches of snow and lichen; fallen pine log with a visible ochre cut end and moss on bark; cluster of woodland mushrooms with russet and cream caps, tiny roots and leaf litter attached close to stems. Each sprite centered in its own cell, minimum 35 pixels entirely transparent gutter around each cell, no sprite crosses cell boundaries. Spruce uses most of cell height; other props each use adequate detail area and will be scaled separately. View slightly above, front/side like supplied sprites. Lighting from upper left. Warm muted greens, ochre, icy cream highlights. Detailed crisp pixel-art clusters, not flat cartoon/vector. Ground-attached roots and rough bases, but NO ground tiles, NO drop shadows or circular shadows, NO white sticker outlines, NO labels, text, grids or frame borders. True transparent empty background.
+
+## Animals prompt
+
+Use case: stylized-concept. Create an ORIGINAL animated animal sprite atlas for the cozy 2.5D Agora farming game. Attached original Agora props image is a STYLE reference only: emulate its rich handcrafted pixel clusters, warm organic shading, fine readable textured detail. Transparent RGBA 1536x1024 atlas, EXACTLY 4 columns x 3 rows (12 isolated sprites). Equal 384x341 invisible cells; leave 40 pixels clear padding and no overlap. ROW ONE: the SAME russet red fox with fluffy cream-tipped tail and charcoal paws, facing right in all four columns. ROW TWO: the SAME soft grey-brown hare with long ears, buff belly and small white tail, facing right. ROW THREE: the SAME round shaggy cream-wool sheep with a warm grey face, little dark hooves, facing right. Columns for each species: 1 standing idle, 2 walking with near front leg forward and near back leg back, 3 walking with near front leg back and near back leg forward, 4 grazing/eating/sniffing head lowered to ground with body kept same height. All four poses per species preserve same character, proportions, body scale, body-center X inside cell and same ground-contact baseline. Four complete legged animals per row, distinct foot motion between walk frames. Slightly above side/front view, enough top and front visible for 2.5D world. Crisp low-resolution pixel-art clusters, comfortable character proportions and expressive small eyes; original designs. Soft upper-left light. No outlines in white, no sticker edges, no environment, no tile, no ground, no cast shadow, no contact-shadow blobs, no labels or grid or text. True transparent empty background around every animal.
+

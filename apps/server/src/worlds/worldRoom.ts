@@ -43,6 +43,7 @@ import {
   worldCollides,
   worldGenParamsFor,
   worldTime,
+  weatherForecast,
   DAY_START_MINUTE,
   type ActionPlanners,
   type Avatar,
@@ -307,7 +308,7 @@ export class WorldRoom {
     const slot = timeSlotOf(time);
     if (slot !== this.timeSlot) {
       this.timeSlot = slot;
-      for (const m of this.members.values()) m.conn?.send({ t: 'world:time', time });
+      for (const m of this.members.values()) m.conn?.send({ t: 'world:time', time, ...(!this.cave ? { weather: weatherForecast(this.world.seed, time.day) } : {}) });
     }
   }
 
@@ -433,7 +434,8 @@ export class WorldRoom {
       params: this.params,
       people: [...this.members.values()].map(personOf),
     });
-    conn.send({ t: 'world:time', time: worldTime(this.world.createdAt, this.clock()) });
+    const time = worldTime(this.world.createdAt, this.clock());
+    conn.send({ t: 'world:time', time, ...(!this.cave ? { weather: weatherForecast(this.world.seed, time.day) } : {}) });
     this.updateView(m);
     for (const o of others) o.conn?.send({ t: 'world:join', person: personOf(m) });
     this.sendPeers();
@@ -620,7 +622,7 @@ export class WorldRoom {
         stamp: this.stamp,
         actor: { uid: m.uid, x: m.x, y: m.y },
         people: [...this.members.values()].map((o) => ({ x: o.x, y: o.y })),
-        req: { kind: req.kind, at: req.at, item: req.item, target: req.target },
+        req: { kind: req.kind, at: req.at, item: req.item, target: req.target, bedAxis: req.bedAxis },
         key: req.key,
         now: this.clock(),
         store: this.store,

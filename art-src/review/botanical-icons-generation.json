@@ -1,0 +1,72 @@
+{
+  "generator": "OpenAI built-in image_gen",
+  "entries": [
+    {
+      "file": "seed-packets.png",
+      "kind": "seeds",
+      "ids": [
+        "Dawn radish",
+        "Clover bulb",
+        "Meadow kale",
+        "Honey pea",
+        "Pearl onion",
+        "Ember pepper",
+        "River melon",
+        "Gold maize",
+        "Sun tomato",
+        "Silk squash",
+        "Amber pumpkin",
+        "Mist grape",
+        "Rust yam",
+        "Plum bean",
+        "Reed rice",
+        "Frost cabbage",
+        "Snow lettuce",
+        "Ice berry",
+        "Sunflower",
+        "Rose",
+        "Lavender",
+        "Tulip",
+        "Poppy",
+        "Bluebell"
+      ],
+      "prompt": "Use case: stylized-concept\nOriginal Agora cozy pixel-art inventory sprite atlas, true transparent background, beautiful deliberate logical 32-48px icon clusters enlarged nearest neighbor. Match approved crop reference style, warm upper-left highlights, cool teal shadows, selective dark olive and brown outlines. Crisp hard pixels, no blur, no white sticker border, no text or letters, no grid, no ground or shadows. EXACT 6 columns x 4 rows, 24 isolated icons in equal cells with generous 20% gutters. All icons consistent size and quality, centered, no cell overlap.\nEach icon is a CLOSED upright honey-kraft paper seed packet with folded crimped top, small cream label, botanical picture of the species on front, and a thin muted color band coordinated to its produce. ALL packets same rectangular silhouette and design. Picture must be large and readable, no written name or price. Detailed paper fold/shading. EXACT row-major order left-to-right then down:\n1. Dawn radish: red radish with leafy top\n2. Clover bulb: creamy lilac round bulb with clover leaves\n3. Meadow kale: dark blue-green ruffled kale leaves\n4. Honey pea: golden green pea pods\n5. Pearl onion: ivory onion with upright green shoots\n6. Ember pepper: red slender peppers\n7. River melon: green striped round melon\n8. Gold maize: golden corn ear in husk\n9. Sun tomato: warm red tomato\n10. Silk squash: pale buttery oblong squash\n11. Amber pumpkin: ribbed amber pumpkin\n12. Mist grape: dusty purple grape bunch\n13. Rust yam: rusty purple sweet potato tuber\n14. Plum bean: dark purple bean pods\n15. Reed rice: golden arching rice grain stalks\n16. Frost cabbage: pale blue-green cabbage head\n17. Snow lettuce: pale ruffled lettuce head\n18. Ice berry: frosted blue berry cluster\n19. Sunflower: golden flower brown center\n20. Rose: coral pink layered rose\n21. Lavender: purple flower spikes\n22. Tulip: coral cream cup-shaped tulip\n23. Poppy: orange-red flower black center\n24. Bluebell: arching violet-blue bell flowers"
+    },
+    {
+      "file": "harvest-icons.png",
+      "kind": "harvest",
+      "ids": [
+        "Dawn radish",
+        "Clover bulb",
+        "Meadow kale",
+        "Honey pea",
+        "Pearl onion",
+        "Ember pepper",
+        "River melon",
+        "Gold maize",
+        "Sun tomato",
+        "Silk squash",
+        "Amber pumpkin",
+        "Mist grape",
+        "Rust yam",
+        "Plum bean",
+        "Reed rice",
+        "Frost cabbage",
+        "Snow lettuce",
+        "Ice berry",
+        "Sunflower",
+        "Rose",
+        "Lavender",
+        "Tulip",
+        "Poppy",
+        "Bluebell"
+      ],
+      "prompt": "Use case: stylized-concept\nOriginal Agora cozy pixel-art inventory sprite atlas, true transparent background, beautiful deliberate logical 32-48px icon clusters enlarged nearest neighbor. Match approved crop reference style, warm upper-left highlights, cool teal shadows, selective dark olive and brown outlines. Crisp hard pixels, no blur, no white sticker border, no text or letters, no grid, no ground or shadows. EXACT 6 columns x 4 rows, 24 isolated icons in equal cells with generous 20% gutters. All icons consistent size and quality, centered, no cell overlap.\nEach icon is picked produce or picked flower, beautiful recognizable compact silhouette, no bags, no dirt, no full growing plant or ground. EXACT row-major order left-to-right then down:\n1. Dawn radish: red radish with leafy top\n2. Clover bulb: creamy lilac round bulb with clover leaves\n3. Meadow kale: dark blue-green ruffled kale leaves\n4. Honey pea: golden green pea pods\n5. Pearl onion: ivory onion with upright green shoots\n6. Ember pepper: red slender peppers\n7. River melon: green striped round melon\n8. Gold maize: golden corn ear in husk\n9. Sun tomato: warm red tomato\n10. Silk squash: pale buttery oblong squash\n11. Amber pumpkin: ribbed amber pumpkin\n12. Mist grape: dusty purple grape bunch\n13. Rust yam: rusty purple sweet potato tuber\n14. Plum bean: dark purple bean pods\n15. Reed rice: golden arching rice grain stalks\n16. Frost cabbage: pale blue-green cabbage head\n17. Snow lettuce: pale ruffled lettuce head\n18. Ice berry: frosted blue berry cluster\n19. Sunflower: golden flower brown center\n20. Rose: coral pink layered rose\n21. Lavender: purple flower spikes\n22. Tulip: coral cream cup-shaped tulip\n23. Poppy: orange-red flower black center\n24. Bluebell: arching violet-blue bell flowers"
+    },
+    {
+      "file": "tree-items.png",
+      "kind": "tree-items",
+      "prompt": "Use case: stylized-concept\nOriginal Agora cozy pixel-art inventory sprite atlas, true transparent background, logical32-48px crisp detailed pixel clusters enlarged nearest neighbor, warm upper-left sunlight, selective colored outlines, no text, no white border, no shadow, no background. EXACT5columns x4rows equalcells,20icons generouspadding. Match approved Agora palette.\nROW1 five identical CLOSED honey kraft tree seed packets, crimped top, cream front botanical illustration, no letters: APPLE, CHERRY, PEACH, ORANGE, PEAR. Each front shows recognizable fruit plus a small leaf.\nROW2 five same seed packets: PLUM (purple plum), OAK (acorn and lobed oak leaf), SPRUCE (pine cone and needles), PALM (coconut and palm frond), JUNGLE (large brown tropical seed and broad emerald leaf).\nROW3 five harvested natural items no bags: red apple with leaf; paired crimson cherries; coral golden peach with leaf; golden orange with leaf; pale green pear.\nROW4: dusty purple plum; acorn with lobed oak leaf; brown spruce cone and needles; brown coconut with a cut white half; large warm brown tropical tree seed and broad green leaf.\nOne distinct isolated icon percell, fully contained. Original designs."
+    }
+  ]
+}

@@ -1,0 +1,113 @@
+{
+  "ready": true,
+  "atlasSize": [
+    2048,
+    4096
+  ],
+  "wildlife": {
+    "ready": true,
+    "count": 14,
+    "props": 36,
+    "animals": [
+      {
+        "id": "shaggy_sheep",
+        "biome": "taiga",
+        "x": 13.85,
+        "z": -3.5,
+        "state": "grazing"
+      },
+      {
+        "id": "shaggy_sheep",
+        "biome": "taiga",
+        "x": 23.85,
+        "z": -5.5,
+        "state": "grazing"
+      },
+      {
+        "id": "pig",
+        "biome": "meadow",
+        "x": 2.5,
+        "z": -4.5,
+        "state": "grazing"
+      },
+      {
+        "id": "taiga_hare",
+        "biome": "taiga",
+        "x": 28.438264996873645,
+        "z": -4.062828485266471,
+        "state": "walking"
+      },
+      {
+        "id": "red_fox",
+        "biome": "taiga",
+        "x": 15.33882406301,
+        "z": 4.606682082401837,
+        "state": "walking"
+      },
+      {
+        "id": "taiga_hare",
+        "biome": "taiga",
+        "x": 16.338824063009998,
+        "z": 3.606682082401836,
+        "state": "walking"
+      },
+      {
+        "id": "taiga_hare",
+        "biome": "taiga",
+        "x": 9.5,
+        "z": 11.5,
+        "state": "resting"
+      },
+      {
+        "id": "red_fox",
+        "biome": "taiga",
+        "x": 16.637773808489076,
+        "z": 11.591369641792683,
+        "state": "walking"
+      },
+      {
+        "id": "shaggy_sheep",
+        "biome": "taiga",
+        "x": 6.438264996873646,
+        "z": 1.9371715147335287,
+        "state": "walking"
+      },
+      {
+        "id": "taiga_hare",
+        "biome": "taiga",
+        "x": 27.637773808489076,
+        "z": 3.591369641792683,
+        "state": "walking"
+      },
+      {
+        "id": "red_fox",
+        "biome": "taiga",
+        "x": 5.15,
+        "z": 13.5,
+        "state": "grazing"
+      },
+      {
+        "id": "shaggy_sheep",
+        "biome": "taiga",
+        "x": 24.019339329424387,
+        "z": 10.79944161060478,
+        "state": "walking"
+      },
+      {
+        "id": "shaggy_sheep",
+        "biome": "taiga",
+        "x": 10.85,
+        "z": 23.5,
+        "state": "grazing"
+      },
+      {
+        "id": "shaggy_sheep",
+        "biome": "taiga",
+        "x": 19.378668180070378,
+        "z": 16.944719280124655,
+        "state": "walking"
+      }
+    ]
+  },
+  "shadows": 6
+}

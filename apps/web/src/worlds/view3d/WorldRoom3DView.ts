@@ -19,6 +19,9 @@ import { farmSprites, type FarmSprites } from '../farmArt';
 import {
   CHUNK_SIZE,
   TILE,
+  rainWaters,
+  animalsShelter,
+  baseItemOf,
   type CellRef,
   type Dir,
   type GridCell,
@@ -68,10 +71,20 @@ import {
   type ChunkIndex,
 } from './math3d';
 import { SwingFx } from './swing3d';
+import { WeatherFx } from './weatherFx';
+import { WeatherSound } from '../weatherSound';
+import { WorldLife } from './worldLife';
+import { WorldAmbience } from './worldAmbience';
 import { liveSwings, targetCells, type OwnSwing } from './targetRule';
 
 /** the e2e hooks of this view (`window.__agora.view3d`), on top of the shared `ViewTestApi` */
 interface WorldTestApi {
+  art(): {
+    ready: boolean;
+    atlasSize: number[];
+    wildlife: ReturnType<WorldLife['snapshot']>;
+    shadows: number;
+  };
   /** the world, me and what is drawn, for the e2e specs */
   world(): {
     id: string | null;
@@ -134,7 +147,10 @@ function gpuName(renderer: THREE.WebGLRenderer): string {
 
 interface ChunkView {
   readonly mesh: THREE.Mesh;
+  readonly shadow: THREE.Mesh | null;
+  readonly water: THREE.Mesh | null;
   readonly occlusion: Occlusion | null;
+  readonly livestock: ReadonlyMap<number, CellRef>;
 }
 
 export class WorldRoom3DView {
@@ -145,7 +161,16 @@ export class WorldRoom3DView {
   private readonly atlas: WorldAtlas;
   private readonly texture: THREE.CanvasTexture;
   private readonly material: THREE.MeshBasicMaterial;
+  private readonly shadowMaterial: THREE.MeshBasicMaterial;
+  private readonly waterMaterial: THREE.MeshBasicMaterial;
+  private readonly life: WorldLife;
+  private readonly ambience: WorldAmbience;
+  private readonly artClock = { value: 0 };
+  private readonly weatherFx: WeatherFx;
+  private readonly weatherSound = new WeatherSound();
+  private weatherKind: string | null = null;
   private readonly chunks = new Map<string, ChunkView>();
+  private readonly livestockRay = new THREE.Raycaster();
   /** every chunk in view is rebuilt (the world's data or the farm changed) */
   private dirtyAll = true;
   private win: CellWindow | null = null;
@@ -211,6 +236,12 @@ export class WorldRoom3DView {
     this.applyQuality();
 
     this.texture = pixelTexture(this.atlas.canvas);
+    void this.atlas.ready.then(() => {
+      if (!this.destroyed) {
+        this.texture.needsUpdate = true;
+        this.dirtyAll = true;
+      }
+    });
     this.material = new THREE.MeshBasicMaterial({
       map: this.texture,
       vertexColors: true,
@@ -218,8 +249,43 @@ export class WorldRoom3DView {
       side: THREE.DoubleSide,
     });
     ditherFade(this.material);
+    this.shadowMaterial = new THREE.MeshBasicMaterial({
+      map: this.texture,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.35,
+      alphaTest: 0.015,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    });
+    this.waterMaterial = new THREE.MeshBasicMaterial({
+      map: this.texture,
+      color: '#8cd5cf',
+      transparent: true,
+      opacity: 0.28,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    });
+    this.waterMaterial.onBeforeCompile = (shader) => {
+      shader.uniforms.artClock = this.artClock;
+      shader.vertexShader = 'varying vec3 waterWorld;\n' + shader.vertexShader;
+      shader.vertexShader = shader.vertexShader.replace(
+        '#include <begin_vertex>',
+        '#include <begin_vertex>\nwaterWorld = (modelMatrix * vec4(position,1.0)).xyz;',
+      );
+      shader.fragmentShader =
+        'uniform float artClock; varying vec3 waterWorld;\n' + shader.fragmentShader;
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <opaque_fragment>',
+        'outgoingLight += vec3(.15,.25,.22) * pow(max(0.0,sin(waterWorld.x*11.0 + waterWorld.z*19.0 + artClock*1.2)),18.0);\n#include <opaque_fragment>',
+      );
+    };
+    this.life = new WorldLife(this.scene);
+    this.ambience = new WorldAmbience(this.scene);
     // the paper cut-outs are lit cards (Lambert); the terrain is flat colour, as the flat view
-    this.scene.add(new THREE.AmbientLight(0xffffff, Math.PI));
+    const light = new THREE.AmbientLight(0xffffff, Math.PI);
+    this.scene.add(light);
+    this.weatherFx = new WeatherFx(this.scene, this.material, light);
 
     this.fade = document.createElement('div');
     this.fade.setAttribute('aria-hidden', 'true');
@@ -241,6 +307,11 @@ export class WorldRoom3DView {
     this.unsubs.push(
       worldSession.on((c) => {
         if (c === 'chunks' || c === 'farm' || c === 'welcome') this.dirtyAll = true;
+        if (c === 'time' || c === 'welcome') {
+          const kind = worldSession.weather?.today ?? null;
+          if (kind !== this.weatherKind) this.dirtyAll = true;
+          this.weatherKind = kind;
+        }
       }),
     );
     this.unsubs.push(worldSession.onSwing((s) => this.playSwing(s.id, s.dir, s.tier)));
@@ -272,6 +343,12 @@ export class WorldRoom3DView {
     this.people.dispose();
     this.overlays.destroy();
     this.swingFx.dispose();
+    this.weatherFx.dispose();
+    this.weatherSound.dispose();
+    this.life.dispose();
+    this.ambience.dispose();
+    this.shadowMaterial.dispose();
+    this.waterMaterial.dispose();
     this.pathMat.dispose();
     this.goalMat.dispose();
     this.material.dispose();
@@ -302,6 +379,32 @@ export class WorldRoom3DView {
     if (!t) return null;
     const r = screenRay(this.cam, sx, sy);
     return cellOnRay(r.o, r.d, (cx, cy) => t.cellAt(cx, cy).level);
+  }
+
+  /** Pick the actual animated sprite pixels; its pen position still belongs to its saved housing. */
+  private livestockAtCanvas(point: THREE.Vector2): CellRef | null {
+    if (![...this.chunks.values()].some((chunk) => chunk.livestock.size > 0)) return null;
+    this.livestockRay.setFromCamera(point, this.camera);
+    const chunks = new Map([...this.chunks.values()].map((chunk) => [chunk.mesh, chunk]));
+    const hits = this.livestockRay.intersectObjects([...chunks.keys()], false);
+    const canvas = this.atlas.canvas,
+      context = canvas.getContext('2d')!;
+    for (const hit of hits) {
+      if (hit.faceIndex === undefined || hit.faceIndex === null || !hit.uv) continue;
+      const chunk = chunks.get(hit.object as THREE.Mesh)!;
+      const face = Math.floor(hit.faceIndex / 2);
+      const fade = chunk.mesh.geometry.getAttribute(FADE_ATTR);
+      if (fade && fade.getX(face * 4) < 0.5) continue;
+      const x = Math.max(0, Math.min(canvas.width - 1, Math.floor(hit.uv.x * canvas.width)));
+      const y = Math.max(
+        0,
+        Math.min(canvas.height - 1, Math.floor((1 - hit.uv.y) * canvas.height)),
+      );
+      if (context.getImageData(x, y, 1, 1).data[3]! < 128) continue;
+      // Opaque terrain or decor in front of an animal blocks this click too.
+      return chunk.livestock.get(face) ?? null;
+    }
+    return null;
   }
 
   /** X (or the touch button): act on the current prompt. */
@@ -352,6 +455,31 @@ export class WorldRoom3DView {
       if (e.button !== 0 || !this.walker) return;
       (document.activeElement as HTMLElement | null)?.blur?.();
       const r = c.getBoundingClientRect();
+      const pointer = new THREE.Vector2(
+        ((e.clientX - r.left) / r.width) * 2 - 1,
+        (-(e.clientY - r.top) / r.height) * 2 + 1,
+      );
+      const hand = worldHud.get().inHand;
+      const livestock =
+        hand === null || baseItemOf(hand) === 'fodder' ? this.livestockAtCanvas(pointer) : null;
+      if (livestock) {
+        // Keep the usual reach check and server action; a distant animal click remains a walk.
+        if (!use.useAt(this.useEnv(), this.walker, livestock, e.shiftKey)) {
+          const ground = this.cellAtCanvas(e.clientX - r.left, e.clientY - r.top);
+          if (ground) this.walkTo(ground);
+        }
+        return;
+      }
+      if (
+        hand === null &&
+        this.life.observe(this.camera, pointer, {
+          x: this.walker.x / TILE,
+          z: this.walker.y / TILE,
+        })
+      ) {
+        toast('worlds.wildlifeWatching');
+        return;
+      }
       const cell = this.cellAtCanvas(e.clientX - r.left, e.clientY - r.top);
       if (!cell) return;
       // the held item acts on a cell in reach (the server decides); any other click walks there
@@ -364,7 +492,10 @@ export class WorldRoom3DView {
     this.onKey = (e: KeyboardEvent) => {
       if (use.keysBusy(this.keys(e))) return;
       if (e.key === 'x' || e.key === 'X') this.act();
-      else if (e.key === ' ') {
+      else if (e.key.toLowerCase() === 'r' && worldHud.get().inHand === 'bed' && !e.repeat) {
+        e.preventDefault();
+        worldHud.turnBed();
+      } else if (e.key === ' ') {
         e.preventDefault();
         if (!e.repeat) this.useFaced(e.shiftKey);
       }
@@ -443,6 +574,41 @@ export class WorldRoom3DView {
       this.slowTick();
     }
     this.swingFx.update(now);
+    this.weatherFx.update(
+      dtMs / 1000,
+      now / 1000,
+      worldSession.weather?.today ?? null,
+      this.cam.tx,
+      this.cam.tz,
+      worldSession.terrain!,
+      reducedMotion(),
+    );
+    this.weatherSound.update(worldSession.weather?.today ?? null, store.get().settings.sounds);
+    if (!reducedMotion()) this.artClock.value += Math.min(0.08, dtMs / 1000);
+    if (this.atlas.update(this.artClock.value, reducedMotion())) this.texture.needsUpdate = true;
+    if (this.win)
+      this.life.sync(
+        worldSession.worldId!,
+        worldSession.seed,
+        worldSession.terrain!,
+        this.win,
+        (x, z) => worldSession.plots.has(`${x},${z}`),
+      );
+    this.life.update(
+      dtMs / 1000,
+      reducedMotion(),
+      worldSession.weather?.today ?? null,
+      this.material.color,
+      this.cam.tx,
+      this.cam.tz,
+    );
+    if (this.win) this.ambience.sync(worldSession.terrain!, this.win, worldSession.worldId!);
+    this.ambience.update(
+      this.artClock.value,
+      reducedMotion(),
+      worldSession.weather?.today ?? null,
+      this.material.color,
+    );
     // a swing's shake slides the eye and the target together, so the view moves and does not turn
     const [sx, sy, sz] = this.swingFx.shake(this.cam, now);
     const [x, y, z] = camPos(this.cam);
@@ -614,6 +780,14 @@ export class WorldRoom3DView {
       this.chunks.set(key, this.buildChunkView(c, sprites));
     }
     this.dirtyAll = false;
+    this.life.sync(
+      worldSession.worldId!,
+      worldSession.seed,
+      worldSession.terrain!,
+      win,
+      (x, z) => worldSession.plots.has(`${x},${z}`),
+      true,
+    );
   }
 
   private buildChunkView(c: ChunkIndex, sprites: FarmSprites): ChunkView {
@@ -627,15 +801,23 @@ export class WorldRoom3DView {
         level: cell.level,
         block: cell.block,
         decor: cell.decor,
+        bedAxis: cell.bedAxis,
         solid: cell.solid,
         soil: farm?.soil ?? false,
-        watered: farm?.watered ?? false,
+        watered:
+          !!farm?.soil &&
+          ((farm?.watered ?? false) ||
+            plot?.wateredOn === s.farmDay + 1 ||
+            (s.weather !== null && rainWaters(s.weather.today))),
         crop:
           farm && farm.crop !== null && plot?.crop
             ? cropFrameName(plot.crop.crop, farm.crop)
             : null,
         sprinkler: farm?.sprinkler ?? false,
-        animals: sprites.animals.get(`${cx},${cy}`) ?? [],
+        animals:
+          s.weather && animalsShelter(s.weather.today)
+            ? []
+            : (sprites.animals.get(`${cx},${cy}`) ?? []),
         mark: sprites.marks.get(`${cx},${cy}`) ?? null,
       };
     };
@@ -648,18 +830,54 @@ export class WorldRoom3DView {
     g.setAttribute('position', new THREE.BufferAttribute(geo.position, 3));
     g.setAttribute('uv', new THREE.BufferAttribute(geo.uv, 2));
     g.setAttribute('color', new THREE.BufferAttribute(geo.color, 3));
+    g.setAttribute('aWind', new THREE.BufferAttribute(geo.wind, 1));
     const fade = new THREE.BufferAttribute(geo.fade, 1);
     g.setAttribute(FADE_ATTR, fade);
     g.setIndex(new THREE.BufferAttribute(geo.index, 1));
     g.computeBoundingSphere();
     const mesh = new THREE.Mesh(g, this.material);
     this.scene.add(mesh);
-    return { mesh, occlusion: geo.occluders.length ? new Occlusion(fade, geo.occluders) : null };
+    const shadow = geo.shadow.index.length
+      ? new THREE.Mesh(new THREE.BufferGeometry(), this.shadowMaterial)
+      : null;
+    if (shadow) {
+      shadow.geometry.setAttribute('position', new THREE.BufferAttribute(geo.shadow.position, 3));
+      shadow.geometry.setAttribute('uv', new THREE.BufferAttribute(geo.shadow.uv, 2));
+      shadow.geometry.setAttribute('color', new THREE.BufferAttribute(geo.shadow.color, 4));
+      shadow.geometry.setIndex(new THREE.BufferAttribute(geo.shadow.index, 1));
+      shadow.geometry.computeBoundingSphere();
+      this.scene.add(shadow);
+    }
+    const water = geo.water.index.length
+      ? new THREE.Mesh(new THREE.BufferGeometry(), this.waterMaterial)
+      : null;
+    if (water) {
+      water.geometry.setAttribute('position', new THREE.BufferAttribute(geo.water.position, 3));
+      water.geometry.setAttribute('uv', new THREE.BufferAttribute(geo.water.uv, 2));
+      water.geometry.setIndex(new THREE.BufferAttribute(geo.water.index, 1));
+      water.geometry.computeBoundingSphere();
+      this.scene.add(water);
+    }
+    return {
+      mesh,
+      shadow,
+      water,
+      occlusion: geo.occluders.length ? new Occlusion(fade, geo.occluders) : null,
+      livestock: geo.livestock,
+    };
   }
 
   private dropChunk(v: ChunkView): void {
     this.scene.remove(v.mesh);
     v.mesh.geometry.dispose();
+    if (v.shadow) {
+      this.scene.remove(v.shadow);
+      v.shadow.geometry.dispose();
+    }
+    if (v.water) {
+      this.scene.remove(v.water);
+      v.water.geometry.dispose();
+    }
   }
 
   /**
@@ -778,6 +996,12 @@ export class WorldRoom3DView {
   private testApi(): ViewTestApi & WorldTestApi {
     return {
       engine: '2.5d',
+      art: () => ({
+        ready: this.atlas.artworkReady,
+        atlasSize: [this.atlas.canvas.width, this.atlas.canvas.height],
+        wildlife: this.life.snapshot(),
+        shadows: [...this.chunks.values()].filter((c) => c.shadow).length,
+      }),
       toClient: (x, y) => {
         const r = this.canvas.getBoundingClientRect();
         // the flat view's pixels (a raised top is drawn higher): the same ground, in 2.5D

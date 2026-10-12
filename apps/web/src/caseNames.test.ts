@@ -1,5 +1,6 @@
 import { readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 /**
@@ -27,7 +28,7 @@ function clashes(dir: string, out: string[]): void {
 describe('module names (case-insensitive file systems)', () => {
   it('no two modules in a folder differ only by case', () => {
     const out: string[] = [];
-    clashes(new URL('.', import.meta.url).pathname, out);
+    clashes(fileURLToPath(new URL('.', import.meta.url)), out);
     expect(out).toEqual([]);
   });
 });

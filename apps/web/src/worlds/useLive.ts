@@ -16,6 +16,7 @@ export function liveUse(
   return {
     world: worldSession.worldId,
     hand: worldHud.get().inHand,
+    bedAxis: worldHud.get().bedAxis,
     data: loadGameData(),
     cellAt: (cx, cy) => worldSession.terrain?.cellAt(cx, cy),
     submit: (world, act) => {

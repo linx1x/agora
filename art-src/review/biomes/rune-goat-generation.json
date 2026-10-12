@@ -1,0 +1,5 @@
+{
+  "mode": "OpenAI built-in image_gen",
+  "file": "art-review/biomes/rune-goat.png",
+  "prompt": "Original Agora production farm animal sprite sheet, matching reference illustration's cozy crisp pixel clusters and warm earthy shaded 2.5D style. Reference contains cows pigs hens deer; generate ONLY a new rune goat, a warm tawny beige dairy goat with small swept gray horns, tiny beard, cream belly and very subtle darker curly markings in its fur, natural goat silhouette. Exactly TWO columns by TWO rows four separate frames on real transparent background with generous padding, same animal size and feet baseline within each cell. Row1: idle facing right slightly toward viewer; walking pose A. Row2: walking pose B; head lowered eating. Preserve consistent body proportions and identity across all four frames, readable feet planted, no background, no ground or shadow, no white outline, no grid labels, no text. Elegant deliberate pixel art, muted palette, warm upper-left highlights and cool brown shadow planes, same resolution of details as the approved reference."
+}

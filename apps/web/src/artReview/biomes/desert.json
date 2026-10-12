@@ -1,0 +1,193 @@
+{
+  "id": "desert",
+  "label": "Sunlit desert",
+  "description": "Warm rippled sand, weathered sandstone and a cool oasis, with dates, prickly-pear blooms and quiet desert companions.",
+  "colors": {
+    "grass": "#b3aa66",
+    "dirt": "#d6b77c",
+    "stone": "#b98957",
+    "water": "#4e9490",
+    "edge": "#96673e",
+    "accent": "#e6976a"
+  },
+  "propsImage": "desert-props.png",
+  "animalsImage": "desert-animals.png",
+  "props": [
+    {
+      "id": "oasis_palm",
+      "label": "Oasis date palm",
+      "rect": [
+        24,
+        11,
+        512,
+        585
+      ],
+      "width": 3.4,
+      "height": 3.9
+    },
+    {
+      "id": "flowering_cactus",
+      "label": "Flowering prickly pear",
+      "rect": [
+        589,
+        151,
+        425,
+        441
+      ],
+      "width": 1.4,
+      "height": 1.55
+    },
+    {
+      "id": "dry_bush",
+      "label": "Dry branching bush",
+      "rect": [
+        1078,
+        157,
+        422,
+        435
+      ],
+      "width": 1.1,
+      "height": 1.15
+    },
+    {
+      "id": "sandstone_boulder",
+      "label": "Weathered sandstone",
+      "rect": [
+        17,
+        625,
+        541,
+        352
+      ],
+      "width": 1.8,
+      "height": 1.17
+    },
+    {
+      "id": "succulent_cluster",
+      "label": "Desert succulents",
+      "rect": [
+        582,
+        662,
+        445,
+        315
+      ],
+      "width": 0.85,
+      "height": 0.6
+    },
+    {
+      "id": "dry_grass",
+      "label": "Golden dry grass",
+      "rect": [
+        1062,
+        626,
+        455,
+        354
+      ],
+      "width": 0.9,
+      "height": 0.7
+    }
+  ],
+  "animals": [
+    {
+      "id": "camel",
+      "label": "Domestic camel",
+      "kind": "farm",
+      "rects": [
+        [
+          41,
+          98,
+          365,
+          338
+        ],
+        [
+          419,
+          98,
+          365,
+          338
+        ],
+        [
+          784,
+          98,
+          365,
+          338
+        ],
+        [
+          1150,
+          98,
+          365,
+          338
+        ]
+      ],
+      "width": 1.8,
+      "height": 1.66,
+      "behavior": "Wander slowly, stop to browse, and approach when offered feed."
+    },
+    {
+      "id": "fennec",
+      "label": "Fennec fox",
+      "kind": "wild",
+      "rects": [
+        [
+          34,
+          483,
+          338,
+          242
+        ],
+        [
+          414,
+          483,
+          338,
+          242
+        ],
+        [
+          798,
+          483,
+          338,
+          242
+        ],
+        [
+          1175,
+          483,
+          338,
+          242
+        ]
+      ],
+      "width": 0.9,
+      "height": 0.645,
+      "behavior": "Trot between shade patches, pause, and sniff the ground."
+    },
+    {
+      "id": "desert_tortoise",
+      "label": "Desert tortoise",
+      "kind": "wild",
+      "rects": [
+        [
+          49,
+          782,
+          324,
+          176
+        ],
+        [
+          429,
+          782,
+          324,
+          176
+        ],
+        [
+          812,
+          782,
+          324,
+          176
+        ],
+        [
+          1186,
+          782,
+          324,
+          176
+        ]
+      ],
+      "width": 0.66,
+      "height": 0.359,
+      "behavior": "Amble beside the oasis and nibble low plants."
+    }
+  ]
+}

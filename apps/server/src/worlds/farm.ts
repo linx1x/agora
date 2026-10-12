@@ -4,7 +4,7 @@
  * uses it. Advancing is idempotent: a state already at today comes back as the same object, and an
  * empty farm that nobody has touched is not written at all.
  */
-import { emptySim, noChanges, sellShipping, simulateDays, type GameData, type WorldSimState } from '@agora/shared';
+import { emptySim, noChanges, parseCaveId, sellShipping, simulateDays, waterFromWeather, type GameData, type WorldSimState } from '@agora/shared';
 import { ConflictError } from './inventory';
 import type { SimRow, WorldTxn } from './worldTxn';
 import type { WorldStore } from './worldStore';
@@ -26,9 +26,9 @@ export interface FarmRead {
   readonly sale: FarmSale | null;
 }
 
-/** Advances a farm to `day` (no-op when it is there already). `seed` drives the retention rolls. */
-export function advanceFarm(base: WorldSimState, day: number, data: GameData, seed: number): WorldSimState {
-  return base.day >= day ? base : simulateDays(base, base.day, day, data, seed);
+/** Advances the farm and applies today's rain idempotently. `seed` drives weather and retention. */
+export function advanceFarm(base: WorldSimState, day: number, data: GameData, seed: number, outdoors = true): WorldSimState {
+  return base.day >= day ? (outdoors ? waterFromWeather(base, seed) : base) : simulateDays(base, base.day, day, data, seed, outdoors);
 }
 
 /** Whether a farm has anything on it worth a row: plots, animals, machines, a chest (empty or not), or stock in the bin. */
@@ -47,7 +47,7 @@ export async function readFarm(tx: WorldTxn, worldId: string, day: number, data:
   const stored = await tx.simOf(worldId, lock);
   const base = stored?.state ?? emptySim(day);
   const crossed = base.day < day && Object.keys(base.shipping ?? {}).length > 0;
-  const advanced = advanceFarm(base, day, data, seed);
+  const advanced = advanceFarm(base, day, data, seed, parseCaveId(worldId) === null);
   return {
     stored,
     base,

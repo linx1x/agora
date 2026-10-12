@@ -5,6 +5,10 @@ import { C2S } from './protocol';
 const act = (key: string) => ({ t: 'world:act', op: 1, kind: 'harvest', at: { x: 1, y: 2 }, key });
 
 describe('world:act keys (P17.26)', () => {
+  it('preserves the bed axis on a placement and rejects diagonal values',()=> {
+    expect(C2S.parse({...act('bed-axis-1'),kind:'place',item:'bed',bedAxis:'horizontal'})).toHaveProperty('bedAxis','horizontal');
+    expect(C2S.safeParse({...act('bed-axis-1'),kind:'place',item:'bed',bedAxis:'diagonal'}).success).toBe(false);
+  });
   it('accepts a UUID key from the client (letters, digits, dashes)', () => {
     expect(C2S.safeParse(act('3f2b8c1e-9a7d-4e5f-8b6c-0d1e2f3a4b5c')).success).toBe(true);
   });

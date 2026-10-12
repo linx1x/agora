@@ -18,6 +18,7 @@ import {
   type WorldGenParams,
   type WorldPerson,
   type WorldTime,
+  type WeatherForecast,
 } from '@agora/shared';
 import { world as link } from '../net/client';
 import { store, toast } from '../state/store';
@@ -51,6 +52,7 @@ export class WorldSession {
   readonly plots = new Map<string, PlotState>();
   farmDay = 0;
   time: WorldTime | null = null;
+  weather: WeatherForecast | null = null;
   /** the server refused my last move and says where I stand */
   correction: { x: number; y: number; seq: number; serial: number } | null = null;
   private serial = 0;
@@ -99,6 +101,7 @@ export class WorldSession {
         this.plots.clear();
         this.farmDay = 0;
         this.time = null;
+        this.weather = null;
         this.people.clear();
         for (const p of m.people) this.people.set(p.id, p);
         // the office's prompt and zone describe the office: the world sets its own
@@ -150,6 +153,7 @@ export class WorldSession {
         return;
       case 'world:time':
         this.time = m.time;
+        this.weather = m.weather ?? null;
         this.emit('time');
         return;
       case 'world:swing':
@@ -174,6 +178,7 @@ export class WorldSession {
     this.plots.clear();
     this.people.clear();
     this.time = null;
+    this.weather = null;
     this.correction = null;
     // the office position comes back with the next `state` tick (the server sends none on exit)
     if (me) link.samples.delete(me);

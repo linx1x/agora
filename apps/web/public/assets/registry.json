@@ -3,7 +3,10 @@
     {
       "path": "tiles/agora-office.png",
       "title": "Agora office tileset (procedural placeholder, PNG export)",
-      "authors": ["Vincent (Agora project)", "Claude"],
+      "authors": [
+        "Vincent (Agora project)",
+        "Claude"
+      ],
       "license": "CC0",
       "source": "",
       "modified": false,
@@ -12,7 +15,10 @@
     {
       "path": "generated:tiles/agora-office",
       "title": "Agora office tiles (procedural placeholder)",
-      "authors": ["Vincent (Agora project)", "Claude"],
+      "authors": [
+        "Vincent (Agora project)",
+        "Claude"
+      ],
       "license": "CC0",
       "source": "",
       "modified": false,
@@ -21,7 +27,10 @@
     {
       "path": "generated:characters/agora-avatars",
       "title": "Agora avatars (procedural placeholder)",
-      "authors": ["Vincent (Agora project)", "Claude"],
+      "authors": [
+        "Vincent (Agora project)",
+        "Claude"
+      ],
       "license": "CC0",
       "source": "",
       "modified": false,
@@ -30,7 +39,10 @@
     {
       "path": "generated:characters/agora-paper-avatars",
       "title": "Agora paper avatars (2.5D, drawn in code)",
-      "authors": ["Vincent (Agora project)", "Claude"],
+      "authors": [
+        "Vincent (Agora project)",
+        "Claude"
+      ],
       "license": "CC0",
       "source": "",
       "modified": false,
@@ -39,7 +51,10 @@
     {
       "path": "npm:@fontsource/atkinson-hyperlegible",
       "title": "Atkinson Hyperlegible",
-      "authors": ["Braille Institute of America", "Applied Design Works"],
+      "authors": [
+        "Braille Institute of America",
+        "Applied Design Works"
+      ],
       "license": "OFL-1.1",
       "source": "https://www.brailleinstitute.org/freefont/",
       "modified": false,
@@ -48,7 +63,9 @@
     {
       "path": "npm:lucide-react",
       "title": "Lucide icons",
-      "authors": ["Lucide contributors"],
+      "authors": [
+        "Lucide contributors"
+      ],
       "license": "ISC",
       "source": "https://lucide.dev",
       "modified": false,
@@ -57,7 +74,9 @@
     {
       "path": "kenney/roguelike-rpg.png",
       "title": "Roguelike/RPG pack (Kenney)",
-      "authors": ["Kenney Vleugels (Kenney.nl)"],
+      "authors": [
+        "Kenney Vleugels (Kenney.nl)"
+      ],
       "license": "CC0",
       "source": "https://kenney.nl/assets/roguelike-rpg-pack",
       "modified": false,
@@ -66,7 +85,9 @@
     {
       "path": "kenney/roguelike-indoor.png",
       "title": "Roguelike Indoors (Kenney)",
-      "authors": ["Kenney Vleugels (Kenney.nl)"],
+      "authors": [
+        "Kenney Vleugels (Kenney.nl)"
+      ],
       "license": "CC0",
       "source": "https://kenney.nl/assets/roguelike-indoors",
       "modified": false,
@@ -75,7 +96,9 @@
     {
       "path": "kenney/LICENSE-roguelike-rpg.txt",
       "title": "Roguelike/RPG pack licence (CC0)",
-      "authors": ["Kenney Vleugels (Kenney.nl)"],
+      "authors": [
+        "Kenney Vleugels (Kenney.nl)"
+      ],
       "license": "CC0",
       "source": "https://kenney.nl/assets/roguelike-rpg-pack",
       "modified": false,
@@ -84,7 +107,9 @@
     {
       "path": "kenney/LICENSE-roguelike-indoor.txt",
       "title": "Roguelike Indoors licence (CC0)",
-      "authors": ["Kenney Vleugels (Kenney.nl)"],
+      "authors": [
+        "Kenney Vleugels (Kenney.nl)"
+      ],
       "license": "CC0",
       "source": "https://kenney.nl/assets/roguelike-indoors",
       "modified": false,
@@ -93,7 +118,10 @@
     {
       "path": "agora/LICENSE-agora-art.txt",
       "title": "Agora original art licence text (CC0 1.0)",
-      "authors": ["Vincent (Agora project)", "Claude"],
+      "authors": [
+        "Vincent (Agora project)",
+        "Claude"
+      ],
       "license": "CC0",
       "source": "",
       "modified": false,
@@ -102,7 +130,10 @@
     {
       "path": "agora/common.json",
       "title": "Agora art: shared chairs, desk props, drinks, UI icons (manifest)",
-      "authors": ["Vincent (Agora project)", "Claude"],
+      "authors": [
+        "Vincent (Agora project)",
+        "Claude"
+      ],
       "license": "CC0",
       "source": "",
       "modified": false,
@@ -111,7 +142,10 @@
     {
       "path": "agora/common.png",
       "title": "Agora art: shared chairs, desk props, drinks, UI icons (sprite sheet)",
-      "authors": ["Vincent (Agora project)", "Claude"],
+      "authors": [
+        "Vincent (Agora project)",
+        "Claude"
+      ],
       "license": "CC0",
       "source": "",
       "modified": false,
@@ -120,7 +154,10 @@
     {
       "path": "agora/hub.json",
       "title": "Agora art: hub / lobby fixtures and animated tiles (manifest)",
-      "authors": ["Vincent (Agora project)", "Claude"],
+      "authors": [
+        "Vincent (Agora project)",
+        "Claude"
+      ],
       "license": "CC0",
       "source": "",
       "modified": false,
@@ -129,7 +166,10 @@
     {
       "path": "agora/hub.png",
       "title": "Agora art: hub / lobby fixtures and animated tiles (sprite sheet)",
-      "authors": ["Vincent (Agora project)", "Claude"],
+      "authors": [
+        "Vincent (Agora project)",
+        "Claude"
+      ],
       "license": "CC0",
       "source": "",
       "modified": false,
@@ -138,7 +178,10 @@
     {
       "path": "agora/jungle.json",
       "title": "Agora art: Jungle biome (manifest)",
-      "authors": ["Vincent (Agora project)", "Claude"],
+      "authors": [
+        "Vincent (Agora project)",
+        "Claude"
+      ],
       "license": "CC0",
       "source": "",
       "modified": false,
@@ -147,7 +190,10 @@
     {
       "path": "agora/jungle.png",
       "title": "Agora art: Jungle biome (sprite sheet)",
-      "authors": ["Vincent (Agora project)", "Claude"],
+      "authors": [
+        "Vincent (Agora project)",
+        "Claude"
+      ],
       "license": "CC0",
       "source": "",
       "modified": false,
@@ -157,7 +203,10 @@
       "path": "agora/oasis.json",
       "title": "Agora art: Oasis biome (manifest)",
       "notes": "Sprite manifest {name: x,y,w,h,frames,fps} generated by scripts/art/build.py.",
-      "authors": ["Vincent (Agora project)", "Claude"],
+      "authors": [
+        "Vincent (Agora project)",
+        "Claude"
+      ],
       "license": "CC0",
       "source": "",
       "modified": false
@@ -166,7 +215,10 @@
       "path": "agora/oasis.png",
       "title": "Agora art: Oasis biome (sprite sheet)",
       "notes": "Hand-drawn 32 px pixel art, 512 px wide sheet; frame 0 is the still. Sources: art-src/oasis, built by scripts/art/build.py.",
-      "authors": ["Vincent (Agora project)", "Claude"],
+      "authors": [
+        "Vincent (Agora project)",
+        "Claude"
+      ],
       "license": "CC0",
       "source": "",
       "modified": false
@@ -175,7 +227,10 @@
       "path": "agora/boreal.json",
       "title": "Agora art: Oasis biome (manifest)",
       "notes": "Sprite manifest {name: x,y,w,h,frames,fps} generated by scripts/art/build.py.",
-      "authors": ["Vincent (Agora project)", "Claude"],
+      "authors": [
+        "Vincent (Agora project)",
+        "Claude"
+      ],
       "license": "CC0",
       "source": "",
       "modified": false
@@ -184,7 +239,10 @@
       "path": "agora/boreal.png",
       "title": "Agora art: Oasis biome (sprite sheet)",
       "notes": "Hand-drawn 32 px pixel art, 512 px wide sheet; frame 0 is the still. Sources: art-src/boreal, built by scripts/art/build.py.",
-      "authors": ["Vincent (Agora project)", "Claude"],
+      "authors": [
+        "Vincent (Agora project)",
+        "Claude"
+      ],
       "license": "CC0",
       "source": "",
       "modified": false
@@ -193,7 +251,10 @@
       "path": "agora/zen.json",
       "title": "Agora art: Oasis biome (manifest)",
       "notes": "Sprite manifest {name: x,y,w,h,frames,fps} generated by scripts/art/build.py.",
-      "authors": ["Vincent (Agora project)", "Claude"],
+      "authors": [
+        "Vincent (Agora project)",
+        "Claude"
+      ],
       "license": "CC0",
       "source": "",
       "modified": false
@@ -202,7 +263,10 @@
       "path": "agora/zen.png",
       "title": "Agora art: Oasis biome (sprite sheet)",
       "notes": "Hand-drawn 32 px pixel art, 512 px wide sheet; frame 0 is the still. Sources: art-src/zen, built by scripts/art/build.py.",
-      "authors": ["Vincent (Agora project)", "Claude"],
+      "authors": [
+        "Vincent (Agora project)",
+        "Claude"
+      ],
       "license": "CC0",
       "source": "",
       "modified": false
@@ -211,7 +275,10 @@
       "path": "agora/pets.json",
       "title": "Agora art: pets (manifest)",
       "notes": "Sprite manifest {name: x,y,w,h,frames,fps}. Six coats (ginger, grey, black, tabby, tuxedo, calico) x eight animations: walk (side, mirrored for left), walkUp, walkDown, sit, loaf, sleep, drink, stretch. Built from art-src/pets.",
-      "authors": ["Vincent (Agora project)", "Claude"],
+      "authors": [
+        "Vincent (Agora project)",
+        "Claude"
+      ],
       "license": "CC0",
       "source": "",
       "modified": false
@@ -220,10 +287,499 @@
       "path": "agora/pets.png",
       "title": "Agora art: pets (sprite sheet)",
       "notes": "Hand-drawn 32 px pixel art of the office cat in six coats (ADR-040): 512x288, 32 px cells, generated by scripts/art/build.py pets from art-src/pets/cat.py.",
-      "authors": ["Vincent (Agora project)", "Claude"],
+      "authors": [
+        "Vincent (Agora project)",
+        "Claude"
+      ],
       "license": "CC0",
       "source": "",
       "modified": false
+    },
+    {
+      "path": "art-review/props.png",
+      "title": "Agora art review — 16 original environment and furniture sprites",
+      "authors": [
+        "Vincent (Agora project)",
+        "OpenAI image generation"
+      ],
+      "license": "Own work (AI-assisted)",
+      "source": "https://openai.com/policies/terms-of-use/",
+      "modified": false,
+      "notes": "Review-only original artwork, 2026-10-12. Runtime source rectangles and nearest-neighbour scaling in src/artReview/art.ts. No Stardew assets included. The avatar uses the review extension to REF-B; full prompts and scope are in art-src/review/generation.json.",
+      "generation": {
+        "generator": "OpenAI built-in image_gen",
+        "termsUrl": "https://openai.com/policies/terms-of-use/",
+        "prompt": "Use case: stylized-concept\nAsset type: production game prop sprite atlas for Agora, an original cozy pixel-art 2.5D game.\nGenerate one 1024x1024 PNG with a genuinely transparent background. EXACT regular 4 columns x 4 rows grid, each cell 256x256. No visible grid. Exactly ONE separate sprite centered in each cell, all entirely contained with at least 20px empty padding. Baseline y=232 within every cell. No text, no labels, no borders, no checkerboard.\nArt: exceptionally beautiful hand-pixeled 16-bit life-simulation RPG assets, crisp pixel clusters, logical ~64px per sprite enlarged nearest-neighbor 4x. Selective colored dark outlines, restrained warm highlights at upper left, cool forest shadows, no smooth gradients, no antialiasing. Readable silhouette, exquisite deliberate texture, no uniform noise. Natural believable proportions, charming. Three-quarter FRONT VIEW facing camera south, visible top surfaces, symmetrical front-facing furniture, NOT diamond isometric. These will be upright cards in a 35-degree tilted 3D world.\nRow 1 from left: (1) lush broad-crowned oak tree with rounded clustered leaves in sage olive and warm spring green, branched honey-brown trunk and visible roots; (2) tall elegant layered spruce pine in deep teal greens; (3) graceful palm tree with spreading fronds and textured trunk; (4) tropical jungle tree with rich emerald layered crown and hanging vines.\nRow 2: (1) natural grey-blue boulder with angular faces, a little moss; (2) low clump of pink and cream wildflowers on green stems; (3) lush delicate fern plant; (4) two-armed desert cactus, olive green ribs and tiny warm flower.\nRow 3: (1) closed wooden storage chest, honey oak, curved lid, dark iron straps and brass latch; (2) wooden carpenter workbench with vise and just a hammer; (3) wooden torch post with small bright amber flame; (4) short wooden fence section, two posts and two rails.\nRow 4: (1) modern wooden office desk facing front, one dark teal monitor and keyboard on top, honest recognizable furniture; (2) matching teal upholstered office swivel chair, front view; (3) single wooden bed with cream pillow and navy-blue blanket seen three-quarter from foot; (4) wooden shipping bin with open top and reinforced corner bands.\nPalette: warm ivory #f5e2b6, honey #c58d52, walnut #674735, darkest #293c39, green #698c48 #94af5b #395f42, slate #778e94, teal #386975, amber #eab95a. Add limited intermediate shades as needed. All 16 assets beautifully detailed and cohesive. Transparent everywhere outside each individual object. No ground patches or floating platform underneath, minimal contact shadow only. Original designs, not assets from any existing game.",
+        "styleRef": "REF-B"
+      }
+    },
+    {
+      "path": "art-review/avatar.png",
+      "title": "Agora art review — original four-direction avatar walk sheet",
+      "authors": [
+        "Vincent (Agora project)",
+        "OpenAI image generation"
+      ],
+      "license": "Own work (AI-assisted)",
+      "source": "https://openai.com/policies/terms-of-use/",
+      "modified": false,
+      "notes": "Review-only original artwork, 2026-10-12. Runtime source rectangles and nearest-neighbour scaling in src/artReview/art.ts. No Stardew assets included. The avatar uses the review extension to REF-B; full prompts and scope are in art-src/review/generation.json.",
+      "generation": {
+        "generator": "OpenAI built-in image_gen",
+        "termsUrl": "https://openai.com/policies/terms-of-use/",
+        "prompt": "Use case: stylized-concept\nCreate a production character WALK ANIMATION SPRITE SHEET, original cozy pixel-art RPG adult avatar, transparent background, exactly 1024x1024 pixels, regular 4 columns by 4 rows of 256x256 cells. Each cell contains the SAME person, full body, centered horizontally at x=128, feet baseline y=228. Every figure exactly the same scale, about 96px wide and 176px tall, with plenty of transparent padding. No text, no lines, no checkerboard.\nCharacter: warm medium skin, short tousled chestnut hair, small kind face with pixel eyes, teal long-sleeve shirt/jacket with ochre collar, dark navy trousers, brown boots. Adult proportions with head around a quarter of body height, NO enormous chibi head, NO white sticker outline. Consistent outfit, colors, body and facial proportions in ALL cells.\nEXACT order:\nRow 1 all face DOWN toward viewer: column1 neutral standing; column2 left foot steps forward and right arm forward; column3 neutral standing; column4 right foot forward and left arm forward.\nRow 2 all face LEFT, full left profile: col1 neutral; col2 left leg forward; col3 neutral; col4 right leg forward.\nRow 3 all face RIGHT, full right profile: col1 neutral; col2 left leg forward; col3 neutral; col4 right leg forward.\nRow 4 all face UP away from viewer showing back of hair, shirt and boots: col1 neutral; col2 left step; col3 neutral; col4 right step.\nArt quality: exquisite deliberate 16-bit pixel art, logically 24px wide by 44px tall character, uniformly enlarged 4x nearest neighbor. Beautiful clustered shading, dark colored selective 1 logical pixel outline, warm top-left light, cool shaded fabric folds, readable hair locks, 4-shade material ramps. Hard pixel edges with no blur, no anti-aliasing, no smooth vector curves. Flat front-facing 3/4 RPG view, not diamond isometric. No floor patches, shadows, props, weapons, hats, white border or background. Original avatar for Agora.",
+        "styleRef": "REF-B"
+      }
+    },
+    {
+      "path": "art-review/icons.png",
+      "title": "Agora art review — eight original inventory and UI icons",
+      "authors": [
+        "Vincent (Agora project)",
+        "OpenAI image generation"
+      ],
+      "license": "Own work (AI-assisted)",
+      "source": "https://openai.com/policies/terms-of-use/",
+      "modified": false,
+      "notes": "Review-only original artwork, 2026-10-12. Runtime source rectangles and nearest-neighbour scaling in src/artReview/art.ts. No Stardew assets included. The avatar uses the review extension to REF-B; full prompts and scope are in art-src/review/generation.json.",
+      "generation": {
+        "generator": "OpenAI built-in image_gen",
+        "termsUrl": "https://openai.com/policies/terms-of-use/",
+        "prompt": "Use case: stylized-concept\nAsset: original cozy pixel-art game inventory icons, exactly 4 columns by 2 rows sprite atlas, 1024x512, TRANSPARENT background.\nEqual 256x256 cells. One icon centered in each cell, max 160x160 with large transparent gutters. No labels, no grid lines, no numbers, no borders, no shadows, no backgrounds.\nRow 1: steel axe with brown wooden handle pointing down-left; steel pickaxe with brown wooden handle pointing down-left; turquoise metal watering can with brass handle and spout right; gardening hoe with brown wooden handle.\nRow 2: little tan seed packet with a green sprout printed on it and NO letters; freshly picked red radish with leafy green top; small stack of golden coins; brown leather backpack with cream flap and brass buckle.\nEach icon exquisitely crafted 32x32 logical pixel art, enlarged nearest neighbor. Crisp square pixel clusters, restrained 4-color shading ramps for every material, one logical pixel dark brown/teal colored outline. Warm upper-left highlights, cool blue shadows. Small bright specular pixels on metal. Charming artisan sprites, realistic object silhouettes, no vector style, no blur, no anti-aliasing, no photorealism. Cohesive honey oak, muted teal, golden amber, warm ivory, forest green palette. Original designs for Agora.",
+        "styleRef": "REF-D"
+      }
+    },
+    {
+      "path": "art-review/tree-growth.png",
+      "title": "Agora tree growth — 12 original juvenile tree sprites",
+      "authors": [
+        "Vincent (Agora project)",
+        "OpenAI image generation"
+      ],
+      "license": "Own work (AI-assisted)",
+      "source": "https://openai.com/policies/terms-of-use/",
+      "modified": false,
+      "notes": "Original review-only tree growth atlas, 2026-10-12. Four species, three distinct juvenile stages. Runtime measured crops in src/artReview/art.ts.",
+      "generation": {
+        "generator": "OpenAI built-in image_gen",
+        "termsUrl": "https://openai.com/policies/terms-of-use/",
+        "prompt": "Use case: stylized-concept\nAsset type: transparent tree-growth sprite atlas for original cozy pixel-art 2.5D game Agora.\nInput image role: style reference ONLY, the existing approved prop atlas. Generate a NEW atlas of juvenile trees matching its beautiful clustered pixel shading and warm upper-left light. Do not redraw furniture or mature trees.\nExactly 4 columns by 3 rows, 12 separated sprites, wide transparent gutters, no text or grid. Columns species: oak; spruce; palm; jungle broadleaf with vines. Rows distinct developmental stages: ROW 1 tiny newly emerged seedling with 2-5 species-appropriate leaves and a short tender stem (palm emerging from split seed); ROW 2 sapling with thin woody stem, few branching leaves (spruce several young needle whorls, palm 3 little fronds, jungle broad leaves); ROW 3 young tree with visibly branching small canopy and narrow trunk (spruce tiers, palm arching fronds short slender trunk, jungle first hanging vine). These are genuinely different botanically readable growth silhouettes, NOT scaled-down mature trees. One isolated plant per cell, all at same baseline near cell bottom with at least 25 pixels clear padding, never touch another cell. Use available cell area for detailed rendering, world scale will be set in engine. Rectangular atlas 4:3 aspect ratio if possible.\nArt style: detailed deliberate 16-bit pixel clusters, hard pixel edges, original designs, warm honey trunks, olive/sage oak leaves, deep teal spruce, emerald jungle, yellow-green palm. Match reference texture density. No white sticker outlines, no painted cast shadows, no ground discs or platforms, no background or baked checkerboard. Genuinely transparent alpha outside every plant.",
+        "styleRef": "REF-B"
+      }
+    },
+    {
+      "path": "art-review/beds.png",
+      "title": "Agora axis-aligned bed orientations",
+      "authors": [
+        "Vincent (Agora project)",
+        "OpenAI image generation"
+      ],
+      "license": "Own work (AI-assisted)",
+      "source": "https://openai.com/policies/terms-of-use/",
+      "modified": false,
+      "notes": "Original pixel artwork, 2026-10-12. Runtime atlas extraction; no copied game artwork. Beds are also used by the personal-world placement renderer.",
+      "generation": {
+        "generator": "OpenAI built-in image_gen",
+        "termsUrl": "https://openai.com/policies/terms-of-use/",
+        "prompt": "Use case: stylized-concept\nOriginal cozy 16-bit pixel art bed sprite atlas, transparent background. Exactly TWO sprites side by side, 2 equal cells, no other objects, no labels or text. Same honey oak single bed with cream pillow and dark navy blue blanket as approved Agora art. Left: bed length runs exactly NORTH-SOUTH, headboard at TOP, footboard at BOTTOM, front view showing blanket top and front footboard. PERFECTLY VERTICAL CENTERLINE, left and right long edges run straight vertically on the image, absolutely no diagonal or isometric skew. Right: same bed rotated to EAST-WEST, headboard at LEFT, footboard at RIGHT; PERFECTLY HORIZONTAL CENTERLINE, long rails run straight horizontally. Show mattress upper surface as a rectangle, with front-facing vertical wooden side. Camera 35 degrees above ground, NO camera yaw; all edges align with horizontal or vertical image axes, no diamond-shaped top, no diagonal vanishing lines. Thick honest wooden posts, pixel-cluster textile folds, four legs on ground, crisp selective dark colored outline, warm top-left highlights, sage/slate cool shadows. Same construction and colors both views. High quality deliberate pixel clusters, no white border, no smooth vector shapes. Large transparent gutters, each entire object contained in its half, no baked ground or shadow. Original art, logical ~96px sprite enlarged nearest-neighbor.",
+        "styleRef": "REF-B"
+      }
+    },
+    {
+      "path": "art-review/ambient.png",
+      "title": "Agora bird, butterfly and torch animation atlas",
+      "authors": [
+        "Vincent (Agora project)",
+        "OpenAI image generation"
+      ],
+      "license": "Own work (AI-assisted)",
+      "source": "https://openai.com/policies/terms-of-use/",
+      "modified": false,
+      "notes": "Original pixel artwork, 2026-10-12. Runtime atlas extraction; no copied game artwork. Beds are also used by the personal-world placement renderer.",
+      "generation": {
+        "generator": "OpenAI built-in image_gen",
+        "termsUrl": "https://openai.com/policies/terms-of-use/",
+        "prompt": "Use case: stylized-concept\nAsset: original cozy pixel-art game ANIMATION SPRITE ATLAS with true transparent background. Exact 4 columns x 3 rows, twelve separated cells, no grid or text. Match warm honey wood, forest greens, teal and cream palette, deliberate crisp pixel clusters, logical sprite resolution 32-64 pixels enlarged nearest neighbor, no smooth shapes, no white sticker outline. ALL frames stay fully inside their cell, generous transparent padding.\nROW 1: SAME small charming brown woodland bird with cream belly, ochre beak, dark eye, always facing RIGHT. Frame1 perching, closed wing, feet beneath; frame2 flying with wings raised UP; frame3 flying with wings DOWN; frame4 on ground bending head DOWN with beak near feet to peck. Same bird size and body dimensions in all four, coherent sprite animation. Not a huge raptor.\nROW 2: SAME small golden-orange butterfly with dark brown wing edges, tiny pale spots, dark slim body. Four flapping phases: wings spread open; wings half open; wings closed narrow; wings half open. Face mostly viewer, identical scale and center across four cells.\nROW 3: SAME upright honey-brown wooden torch post with dark iron basket and orange-yellow fire. Four different flickering FLAME shapes, bending slightly left, taller, bending right, shorter. Wooden pole and iron basket are IDENTICAL and fixed in exactly same position and scale across all four cells; only flames change. Pole base on same baseline near bottom of cell. No painted light halo or cast shadows. Full torch visible, from flame tip to wooden foot.\nTransparent outside all subjects, no environment, no labels, no ground patches, no black background, no checkerboard. Original sprites for Agora.",
+        "styleRef": "REF-B"
+      }
+    },
+    {
+      "path": "art-review/crops.png",
+      "title": "Agora crop growth — radish, kale and pea, five stages each",
+      "authors": [
+        "Vincent (Agora project)",
+        "OpenAI image generation"
+      ],
+      "license": "Own work (AI-assisted)",
+      "source": "https://openai.com/policies/terms-of-use/",
+      "modified": false,
+      "notes": "Original crop growth atlas, 2026-10-12. Review-only. Unchanged generated PNG, measured runtime extraction, five developmental silhouettes per species. Motion is root-pinned geometry with matching projected shadows.",
+      "generation": {
+        "generator": "OpenAI built-in image_gen",
+        "termsUrl": "https://openai.com/policies/terms-of-use/",
+        "prompt": "Use case: stylized-concept\nAsset type: original cozy pixel-art crop growth sprite atlas for Agora.\nInput reference: approved Agora scene, STYLE REFERENCE ONLY for pixel density, clustered shading and palette. Do not reproduce the scene. Create a new isolated crop atlas with true transparent background.\nEXACTLY 5 COLUMNS x 3 ROWS, 15 individual sprites, regular equal cells, generous transparent gutters. Landscape aspect 5:3. No labels, no text, no borders or grid.\nEach ROW shows ONE species through FIVE genuinely different growth stages, left to right. Keep a common soil-line baseline near cell bottom; mature plants largest, sprouts naturally much smaller. Upright 3/4 front view, camera looks down 35 degrees, no isometric diagonal.\nROW 1 DAWN RADISH: 1 tiny two-cotyledon sprout; 2 four small fresh leaves; 3 leafy young rosette; 4 lush serrated foliage with tiny rosy root shoulder at base; 5 harvest-ready round crimson radish bulb partially above soil line, cream root tip, lush broad irregular leaves with readable pale veins.\nROW 2 MEADOW KALE: 1 two tiny rounded cotyledons; 2 four crinkly leaves; 3 small ruffled rosette; 4 medium sprawling blue-green kale; 5 magnificent mature low rosette with overlapping curled scalloped leaves, dark teal folds, sage and lime edges, visibly different leaf lobes, NOT cabbage sphere.\nROW 3 HONEY PEA: 1 two tiny pea leaves on short stalk; 2 upright tender branching seedling; 3 taller self-supporting curling tendril vine with paired oval leaflets; 4 mature leafy vine with a few ivory blossoms; 5 upright arching pea vine laden with plump golden-green pods, paired leaves and curly tendrils, small cream blossoms. NO trellis, pots or sticks.\nBeautiful deliberate high quality pixel clusters, original 16-bit farming RPG art with rich natural texture, selective dark olive outlines, warm upper-left sunlight, shaded teal greens. Mature each crop logical ~64x80px enlarged nearest neighbor. Crisp square pixels, no blur or smooth vector shapes. Keep species silhouettes readable at small in-game size, avoid thin noisy dithering. Soft sage #94af5b, olive #698c48, teal shadows #395f42, pale leaf veins #c3d183, radish #c65464, ivory #f5e2b6.\nNO ground discs, NO dirt patches, NO shadows, NO white sticker outlines, NO background or checkerboard. Alpha transparent outside plants. Leave root tips short: vegetables remain planted, not lifted out of ground. All sprites fully contained within own cell and separated.",
+        "styleRef": "REF-B"
+      }
+    },
+    {
+      "path": "art-review/crops-1.png",
+      "title": "Agora botanical collection — crops-1",
+      "authors": [
+        "Vincent (Agora project)",
+        "OpenAI image generation"
+      ],
+      "license": "Own work (AI-assisted)",
+      "source": "https://openai.com/policies/terms-of-use/",
+      "modified": false,
+      "notes": "Original review artwork, 2026-10-12. Crops, flowers, orchard growth or inventory icons. Runtime alpha-bound extraction, no copied game art. Source PNG saved unchanged.",
+      "generation": {
+        "generator": "OpenAI built-in image_gen",
+        "termsUrl": "https://openai.com/policies/terms-of-use/",
+        "prompt": "Use case: stylized-concept\nOriginal Agora pixel-art sprite atlas, true transparent alpha. Use attached approved crop atlas as STYLE REFERENCE ONLY. Beautiful deliberate crisp 16-bit pixel clusters, olive/sage foliage, cool teal shadows, warm upper-left highlights, selective dark colored outline. Match reference detail, no smooth vector shapes, no blur, no white sticker border, no text, no grid, no backgrounds, ground patches or shadows. Upright front view with visible top surfaces for a 35-degree tilted 2.5D world. EXACT equal-width 5 columns by 3 rows, 15 fully separated sprites. Wide gutters, no cell overlap, at least 12% padding each side. Common baseline near bottom of each cell. Each row same species with consistent scale and evolving silhouette; early sprouts much smaller than maturity. Landscape 5:3 atlas.\nEach ROW shows five growth stages left to right: 1 tiny two-leaf sprout; 2 small distinctive seedling; 3 leafy juvenile without fruit; 4 near mature flowering or forming produce; 5 harvest-ready mature plant with clearly visible produce. Distinct developmental art, not scaled copies. Roots stay very short for planting into soil. No pots or supports.\nROW 1: Clover bulb: round creamy-lilac edible bulb with trifoliate clover leaves.\nROW 2: Pearl onion: ivory onion bulb with slim upright tubular sage-green leaves.\nROW 3: Ember pepper: branching compact plant, pointed leaves, cream blossoms and slender scarlet peppers.",
+        "styleRef": "REF-B"
+      }
+    },
+    {
+      "path": "art-review/crops-2.png",
+      "title": "Agora botanical collection — crops-2",
+      "authors": [
+        "Vincent (Agora project)",
+        "OpenAI image generation"
+      ],
+      "license": "Own work (AI-assisted)",
+      "source": "https://openai.com/policies/terms-of-use/",
+      "modified": false,
+      "notes": "Original review artwork, 2026-10-12. Crops, flowers, orchard growth or inventory icons. Runtime alpha-bound extraction, no copied game art. Source PNG saved unchanged.",
+      "generation": {
+        "generator": "OpenAI built-in image_gen",
+        "termsUrl": "https://openai.com/policies/terms-of-use/",
+        "prompt": "Use case: stylized-concept\nOriginal Agora pixel-art sprite atlas, true transparent alpha. Use attached approved crop atlas as STYLE REFERENCE ONLY. Beautiful deliberate crisp 16-bit pixel clusters, olive/sage foliage, cool teal shadows, warm upper-left highlights, selective dark colored outline. Match reference detail, no smooth vector shapes, no blur, no white sticker border, no text, no grid, no backgrounds, ground patches or shadows. Upright front view with visible top surfaces for a 35-degree tilted 2.5D world. EXACT equal-width 5 columns by 3 rows, 15 fully separated sprites. Wide gutters, no cell overlap, at least 12% padding each side. Common baseline near bottom of each cell. Each row same species with consistent scale and evolving silhouette; early sprouts much smaller than maturity. Landscape 5:3 atlas.\nEach ROW shows five growth stages left to right: 1 tiny two-leaf sprout; 2 small distinctive seedling; 3 leafy juvenile without fruit; 4 near mature flowering or forming produce; 5 harvest-ready mature plant with clearly visible produce. Distinct developmental art, not scaled copies. Roots stay very short for planting into soil. No pots or supports.\nROW 1: River melon: low sprawling lobed-leaf vine, yellow flower, round striped blue-green melon.\nROW 2: Gold maize: tall corn stalk, long arching blades, tassels, golden ears in green husks.\nROW 3: Sun tomato: branching tomato plant with serrated leaves, yellow blossoms, warm red round tomato clusters.",
+        "styleRef": "REF-B"
+      }
+    },
+    {
+      "path": "art-review/crops-3.png",
+      "title": "Agora botanical collection — crops-3",
+      "authors": [
+        "Vincent (Agora project)",
+        "OpenAI image generation"
+      ],
+      "license": "Own work (AI-assisted)",
+      "source": "https://openai.com/policies/terms-of-use/",
+      "modified": false,
+      "notes": "Original review artwork, 2026-10-12. Crops, flowers, orchard growth or inventory icons. Runtime alpha-bound extraction, no copied game art. Source PNG saved unchanged.",
+      "generation": {
+        "generator": "OpenAI built-in image_gen",
+        "termsUrl": "https://openai.com/policies/terms-of-use/",
+        "prompt": "Use case: stylized-concept\nOriginal Agora pixel-art sprite atlas, true transparent alpha. Use attached approved crop atlas as STYLE REFERENCE ONLY. Beautiful deliberate crisp 16-bit pixel clusters, olive/sage foliage, cool teal shadows, warm upper-left highlights, selective dark colored outline. Match reference detail, no smooth vector shapes, no blur, no white sticker border, no text, no grid, no backgrounds, ground patches or shadows. Upright front view with visible top surfaces for a 35-degree tilted 2.5D world. EXACT equal-width 5 columns by 3 rows, 15 fully separated sprites. Wide gutters, no cell overlap, at least 12% padding each side. Common baseline near bottom of each cell. Each row same species with consistent scale and evolving silhouette; early sprouts much smaller than maturity. Landscape 5:3 atlas.\nEach ROW shows five growth stages left to right: 1 tiny two-leaf sprout; 2 small distinctive seedling; 3 leafy juvenile without fruit; 4 near mature flowering or forming produce; 5 harvest-ready mature plant with clearly visible produce. Distinct developmental art, not scaled copies. Roots stay very short for planting into soil. No pots or supports.\nROW 1: Silk squash: low broad-leaf vine with golden flowers and pale buttery oblong squash.\nROW 2: Amber pumpkin: broad lobed-leaf vine with yellow flower and squat deeply ribbed amber pumpkin.\nROW 3: Mist grape: self-supporting compact arching woody vine, lobed leaves, hanging dusty purple grape bunches, no trellis.",
+        "styleRef": "REF-B"
+      }
+    },
+    {
+      "path": "art-review/crops-4.png",
+      "title": "Agora botanical collection — crops-4",
+      "authors": [
+        "Vincent (Agora project)",
+        "OpenAI image generation"
+      ],
+      "license": "Own work (AI-assisted)",
+      "source": "https://openai.com/policies/terms-of-use/",
+      "modified": false,
+      "notes": "Original review artwork, 2026-10-12. Crops, flowers, orchard growth or inventory icons. Runtime alpha-bound extraction, no copied game art. Source PNG saved unchanged.",
+      "generation": {
+        "generator": "OpenAI built-in image_gen",
+        "termsUrl": "https://openai.com/policies/terms-of-use/",
+        "prompt": "Use case: stylized-concept\nOriginal Agora pixel-art sprite atlas, true transparent alpha. Use attached approved crop atlas as STYLE REFERENCE ONLY. Beautiful deliberate crisp 16-bit pixel clusters, olive/sage foliage, cool teal shadows, warm upper-left highlights, selective dark colored outline. Match reference detail, no smooth vector shapes, no blur, no white sticker border, no text, no grid, no backgrounds, ground patches or shadows. Upright front view with visible top surfaces for a 35-degree tilted 2.5D world. EXACT equal-width 5 columns by 3 rows, 15 fully separated sprites. Wide gutters, no cell overlap, at least 12% padding each side. Common baseline near bottom of each cell. Each row same species with consistent scale and evolving silhouette; early sprouts much smaller than maturity. Landscape 5:3 atlas.\nEach ROW shows five growth stages left to right: 1 tiny two-leaf sprout; 2 small distinctive seedling; 3 leafy juvenile without fruit; 4 near mature flowering or forming produce; 5 harvest-ready mature plant with clearly visible produce. Distinct developmental art, not scaled copies. Roots stay very short for planting into soil. No pots or supports.\nROW 1: Rust yam: low heart-shaped leaves on creeping stems, small rust-purple tuber shoulder near stem base.\nROW 2: Plum bean: upright curling green vine, trifoliate leaves, pale mauve blossoms and hanging deep plum-purple bean pods.\nROW 3: Reed rice: dense slender upright green blades becoming arching stalks heavy with pale golden rice grains.",
+        "styleRef": "REF-B"
+      }
+    },
+    {
+      "path": "art-review/crops-5.png",
+      "title": "Agora botanical collection — crops-5",
+      "authors": [
+        "Vincent (Agora project)",
+        "OpenAI image generation"
+      ],
+      "license": "Own work (AI-assisted)",
+      "source": "https://openai.com/policies/terms-of-use/",
+      "modified": false,
+      "notes": "Original review artwork, 2026-10-12. Crops, flowers, orchard growth or inventory icons. Runtime alpha-bound extraction, no copied game art. Source PNG saved unchanged.",
+      "generation": {
+        "generator": "OpenAI built-in image_gen",
+        "termsUrl": "https://openai.com/policies/terms-of-use/",
+        "prompt": "Use case: stylized-concept\nOriginal Agora pixel-art sprite atlas, true transparent alpha. Use attached approved crop atlas as STYLE REFERENCE ONLY. Beautiful deliberate crisp 16-bit pixel clusters, olive/sage foliage, cool teal shadows, warm upper-left highlights, selective dark colored outline. Match reference detail, no smooth vector shapes, no blur, no white sticker border, no text, no grid, no backgrounds, ground patches or shadows. Upright front view with visible top surfaces for a 35-degree tilted 2.5D world. EXACT equal-width 5 columns by 3 rows, 15 fully separated sprites. Wide gutters, no cell overlap, at least 12% padding each side. Common baseline near bottom of each cell. Each row same species with consistent scale and evolving silhouette; early sprouts much smaller than maturity. Landscape 5:3 atlas.\nEach ROW shows five growth stages left to right: 1 tiny two-leaf sprout; 2 small distinctive seedling; 3 leafy juvenile without fruit; 4 near mature flowering or forming produce; 5 harvest-ready mature plant with clearly visible produce. Distinct developmental art, not scaled copies. Roots stay very short for planting into soil. No pots or supports.\nROW 1: Frost cabbage: low broad blue-green waxy leaves surrounding a pale icy-green tightly wrapped cabbage head.\nROW 2: Snow lettuce: low open rosette of soft pale-green ruffled loose leaves, ivory-green heart, not a closed cabbage.\nROW 3: Ice berry: compact bush with small pointed green leaves, white bell blossoms, clusters of frosted blue berries.",
+        "styleRef": "REF-B"
+      }
+    },
+    {
+      "path": "art-review/flowers-1.png",
+      "title": "Agora botanical collection — flowers-1",
+      "authors": [
+        "Vincent (Agora project)",
+        "OpenAI image generation"
+      ],
+      "license": "Own work (AI-assisted)",
+      "source": "https://openai.com/policies/terms-of-use/",
+      "modified": false,
+      "notes": "Original review artwork, 2026-10-12. Crops, flowers, orchard growth or inventory icons. Runtime alpha-bound extraction, no copied game art. Source PNG saved unchanged.",
+      "generation": {
+        "generator": "OpenAI built-in image_gen",
+        "termsUrl": "https://openai.com/policies/terms-of-use/",
+        "prompt": "Use case: stylized-concept\nOriginal Agora pixel-art sprite atlas, true transparent alpha. Use attached approved crop atlas as STYLE REFERENCE ONLY. Beautiful deliberate crisp 16-bit pixel clusters, olive/sage foliage, cool teal shadows, warm upper-left highlights, selective dark colored outline. Match reference detail, no smooth vector shapes, no blur, no white sticker border, no text, no grid, no backgrounds, ground patches or shadows. Upright front view with visible top surfaces for a 35-degree tilted 2.5D world. EXACT equal-width 5 columns by 3 rows, 15 fully separated sprites. Wide gutters, no cell overlap, at least 12% padding each side. Common baseline near bottom of each cell. Each row same species with consistent scale and evolving silhouette; early sprouts much smaller than maturity. Landscape 5:3 atlas.\nEach row five developmental stages left to right: tiny sprout; small leafy seedling; taller leafy stems; closed buds and first flower; fully blooming mature plant. Gracefully varied stems, botanical silhouettes, beautifully detailed flowers, coherent single rooted plant per cell, no bouquets, pots, bulbs out of the ground or detached petals.\nROW 1: Sunflower: tall stalk with heart-shaped leaves, large golden petal disc and dark brown seed center.\nROW 2: Rose: compact upright rose bush, serrated dark green leaves, rich coral pink layered rose blossoms.\nROW 3: Lavender: silver sage narrow leaves, slender stems, purple lavender flower spikes.",
+        "styleRef": "REF-B"
+      }
+    },
+    {
+      "path": "art-review/flowers-2.png",
+      "title": "Agora botanical collection — flowers-2",
+      "authors": [
+        "Vincent (Agora project)",
+        "OpenAI image generation"
+      ],
+      "license": "Own work (AI-assisted)",
+      "source": "https://openai.com/policies/terms-of-use/",
+      "modified": false,
+      "notes": "Original review artwork, 2026-10-12. Crops, flowers, orchard growth or inventory icons. Runtime alpha-bound extraction, no copied game art. Source PNG saved unchanged.",
+      "generation": {
+        "generator": "OpenAI built-in image_gen",
+        "termsUrl": "https://openai.com/policies/terms-of-use/",
+        "prompt": "Use case: stylized-concept\nOriginal Agora pixel-art sprite atlas, true transparent alpha. Use attached approved crop atlas as STYLE REFERENCE ONLY. Beautiful deliberate crisp 16-bit pixel clusters, olive/sage foliage, cool teal shadows, warm upper-left highlights, selective dark colored outline. Match reference detail, no smooth vector shapes, no blur, no white sticker border, no text, no grid, no backgrounds, ground patches or shadows. Upright front view with visible top surfaces for a 35-degree tilted 2.5D world. EXACT equal-width 5 columns by 3 rows, 15 fully separated sprites. Wide gutters, no cell overlap, at least 12% padding each side. Common baseline near bottom of each cell. Each row same species with consistent scale and evolving silhouette; early sprouts much smaller than maturity. Landscape 5:3 atlas.\nEach row five developmental stages left to right: tiny sprout; small leafy seedling; taller leafy stems; closed buds and first flower; fully blooming mature plant. Gracefully varied stems, botanical silhouettes, beautifully detailed flowers, coherent single rooted plant per cell, no bouquets, pots, bulbs out of the ground or detached petals.\nROW 1: Tulip: upright smooth strap leaves with coral and cream cup-shaped flowers.\nROW 2: Poppy: delicate branched ferny green foliage, vivid orange-red papery petals and dark centers.\nROW 3: Bluebell: arching slender stalks, narrow leaves, hanging clusters of blue-violet bell flowers.",
+        "styleRef": "REF-B"
+      }
+    },
+    {
+      "path": "art-review/orchard-1.png",
+      "title": "Agora botanical collection — orchard-1",
+      "authors": [
+        "Vincent (Agora project)",
+        "OpenAI image generation"
+      ],
+      "license": "Own work (AI-assisted)",
+      "source": "https://openai.com/policies/terms-of-use/",
+      "modified": false,
+      "notes": "Original review artwork, 2026-10-12. Crops, flowers, orchard growth or inventory icons. Runtime alpha-bound extraction, no copied game art. Source PNG saved unchanged.",
+      "generation": {
+        "generator": "OpenAI built-in image_gen",
+        "termsUrl": "https://openai.com/policies/terms-of-use/",
+        "prompt": "Use case: stylized-concept\nOriginal Agora pixel-art sprite atlas, true transparent alpha. Use attached approved crop atlas as STYLE REFERENCE ONLY. Beautiful deliberate crisp 16-bit pixel clusters, olive/sage foliage, cool teal shadows, warm upper-left highlights, selective dark colored outline. Match reference detail, no smooth vector shapes, no blur, no white sticker border, no text, no grid, no backgrounds, ground patches or shadows. Upright front view with visible top surfaces for a 35-degree tilted 2.5D world. EXACT equal-width 5 columns by 3 rows, 15 fully separated sprites. Wide gutters, no cell overlap, at least 12% padding each side. Common baseline near bottom of each cell. Each row same species with consistent scale and evolving silhouette; early sprouts much smaller than maturity. Landscape 5:3 atlas.\nThis sheet shows ORCHARD TREES, detailed logical 96px mature sprites. FIVE columns: 1 tiny rooted seedling with two or three leaves; 2 sapling with thin woody stem and a few branches; 3 young tree with branching small canopy; 4 fully grown tree in blossom; 5 SAME fully grown tree full of ripe fruit. Mature trees have honest branched trunks, irregular clusters of leaves, visible root collar but NO ground patch. Full crown and roots contained in cell. Maintain same mature trunk position and canopy dimensions in last two columns. Trees are much larger in-game than vegetables.\nROW 1: Apple tree: broad rounded spreading crown, fresh green leaves, warm brown trunk; white-pink spring blossom, bright red apples.\nROW 2: Cherry tree: graceful spreading branching crown, deep green leaves, textured reddish-brown trunk; pink blossoms, small paired crimson cherries.\nROW 3: Peach tree: airy open crown, long narrow pointed sage leaves, slender honey-brown trunk; rose pink blossoms, warm coral-gold peaches.",
+        "styleRef": "REF-B"
+      }
+    },
+    {
+      "path": "art-review/orchard-2.png",
+      "title": "Agora botanical collection — orchard-2",
+      "authors": [
+        "Vincent (Agora project)",
+        "OpenAI image generation"
+      ],
+      "license": "Own work (AI-assisted)",
+      "source": "https://openai.com/policies/terms-of-use/",
+      "modified": false,
+      "notes": "Original review artwork, 2026-10-12. Crops, flowers, orchard growth or inventory icons. Runtime alpha-bound extraction, no copied game art. Source PNG saved unchanged.",
+      "generation": {
+        "generator": "OpenAI built-in image_gen",
+        "termsUrl": "https://openai.com/policies/terms-of-use/",
+        "prompt": "Use case: stylized-concept\nOriginal Agora pixel-art sprite atlas, true transparent alpha. Use attached approved crop atlas as STYLE REFERENCE ONLY. Beautiful deliberate crisp 16-bit pixel clusters, olive/sage foliage, cool teal shadows, warm upper-left highlights, selective dark colored outline. Match reference detail, no smooth vector shapes, no blur, no white sticker border, no text, no grid, no backgrounds, ground patches or shadows. Upright front view with visible top surfaces for a 35-degree tilted 2.5D world. EXACT equal-width 5 columns by 3 rows, 15 fully separated sprites. Wide gutters, no cell overlap, at least 12% padding each side. Common baseline near bottom of each cell. Each row same species with consistent scale and evolving silhouette; early sprouts much smaller than maturity. Landscape 5:3 atlas.\nThis sheet shows ORCHARD TREES, detailed logical 96px mature sprites. FIVE columns: 1 tiny rooted seedling with two or three leaves; 2 sapling with thin woody stem and a few branches; 3 young tree with branching small canopy; 4 fully grown tree in blossom; 5 SAME fully grown tree full of ripe fruit. Mature trees have honest branched trunks, irregular clusters of leaves, visible root collar but NO ground patch. Full crown and roots contained in cell. Maintain same mature trunk position and canopy dimensions in last two columns. Trees are much larger in-game than vegetables.\nROW 1: Orange tree: dense rounded crown, glossy deep emerald oval leaves, sturdy warm trunk; ivory blossoms, bright golden-orange oranges.\nROW 2: Pear tree: upright oval crown, fresh olive-green leaves, forked brown trunk; cream blossoms, pale golden-green pear-shaped fruit.\nROW 3: Plum tree: spreading low-branched crown, muted teal-green leaves, dark brown trunk; pale pink blossoms, dusty purple oval plums.",
+        "styleRef": "REF-B"
+      }
+    },
+    {
+      "path": "art-review/seed-packets.png",
+      "title": "Agora botanical collection — seed-packets",
+      "authors": [
+        "Vincent (Agora project)",
+        "OpenAI image generation"
+      ],
+      "license": "Own work (AI-assisted)",
+      "source": "https://openai.com/policies/terms-of-use/",
+      "modified": false,
+      "notes": "Original review artwork, 2026-10-12. Crops, flowers, orchard growth or inventory icons. Runtime alpha-bound extraction, no copied game art. Source PNG saved unchanged.",
+      "generation": {
+        "generator": "OpenAI built-in image_gen",
+        "termsUrl": "https://openai.com/policies/terms-of-use/",
+        "prompt": "Use case: stylized-concept\nOriginal Agora cozy pixel-art inventory sprite atlas, true transparent background, beautiful deliberate logical 32-48px icon clusters enlarged nearest neighbor. Match approved crop reference style, warm upper-left highlights, cool teal shadows, selective dark olive and brown outlines. Crisp hard pixels, no blur, no white sticker border, no text or letters, no grid, no ground or shadows. EXACT 6 columns x 4 rows, 24 isolated icons in equal cells with generous 20% gutters. All icons consistent size and quality, centered, no cell overlap.\nEach icon is a CLOSED upright honey-kraft paper seed packet with folded crimped top, small cream label, botanical picture of the species on front, and a thin muted color band coordinated to its produce. ALL packets same rectangular silhouette and design. Picture must be large and readable, no written name or price. Detailed paper fold/shading. EXACT row-major order left-to-right then down:\n1. Dawn radish: red radish with leafy top\n2. Clover bulb: creamy lilac round bulb with clover leaves\n3. Meadow kale: dark blue-green ruffled kale leaves\n4. Honey pea: golden green pea pods\n5. Pearl onion: ivory onion with upright green shoots\n6. Ember pepper: red slender peppers\n7. River melon: green striped round melon\n8. Gold maize: golden corn ear in husk\n9. Sun tomato: warm red tomato\n10. Silk squash: pale buttery oblong squash\n11. Amber pumpkin: ribbed amber pumpkin\n12. Mist grape: dusty purple grape bunch\n13. Rust yam: rusty purple sweet potato tuber\n14. Plum bean: dark purple bean pods\n15. Reed rice: golden arching rice grain stalks\n16. Frost cabbage: pale blue-green cabbage head\n17. Snow lettuce: pale ruffled lettuce head\n18. Ice berry: frosted blue berry cluster\n19. Sunflower: golden flower brown center\n20. Rose: coral pink layered rose\n21. Lavender: purple flower spikes\n22. Tulip: coral cream cup-shaped tulip\n23. Poppy: orange-red flower black center\n24. Bluebell: arching violet-blue bell flowers\nFinal transparency edit: Use case: background-extraction\nEdit this existing sprite atlas. Preserve EVERY individual icon, exact grid positions, colors, silhouettes and pixel detail unchanged. Remove ALL of the continuous brown/green gradient background between and around the icons, including any glow or shadow. Replace background with GENUINE fully transparent alpha (alpha=0), not black, white or checkerboard. Keep icon pixels crisp and fully opaque. No added artwork, no rearrangement, no text. Production game sprite sheet cutouts. Output the SAME image dimensions and same layout with genuinely transparent background.",
+        "styleRef": "REF-B"
+      }
+    },
+    {
+      "path": "art-review/harvest-icons.png",
+      "title": "Agora botanical collection — harvest-icons",
+      "authors": [
+        "Vincent (Agora project)",
+        "OpenAI image generation"
+      ],
+      "license": "Own work (AI-assisted)",
+      "source": "https://openai.com/policies/terms-of-use/",
+      "modified": false,
+      "notes": "Original review artwork, 2026-10-12. Crops, flowers, orchard growth or inventory icons. Runtime alpha-bound extraction, no copied game art. Source PNG saved unchanged.",
+      "generation": {
+        "generator": "OpenAI built-in image_gen",
+        "termsUrl": "https://openai.com/policies/terms-of-use/",
+        "prompt": "Use case: stylized-concept\nOriginal Agora cozy pixel-art inventory sprite atlas, true transparent background, beautiful deliberate logical 32-48px icon clusters enlarged nearest neighbor. Match approved crop reference style, warm upper-left highlights, cool teal shadows, selective dark olive and brown outlines. Crisp hard pixels, no blur, no white sticker border, no text or letters, no grid, no ground or shadows. EXACT 6 columns x 4 rows, 24 isolated icons in equal cells with generous 20% gutters. All icons consistent size and quality, centered, no cell overlap.\nEach icon is picked produce or picked flower, beautiful recognizable compact silhouette, no bags, no dirt, no full growing plant or ground. EXACT row-major order left-to-right then down:\n1. Dawn radish: red radish with leafy top\n2. Clover bulb: creamy lilac round bulb with clover leaves\n3. Meadow kale: dark blue-green ruffled kale leaves\n4. Honey pea: golden green pea pods\n5. Pearl onion: ivory onion with upright green shoots\n6. Ember pepper: red slender peppers\n7. River melon: green striped round melon\n8. Gold maize: golden corn ear in husk\n9. Sun tomato: warm red tomato\n10. Silk squash: pale buttery oblong squash\n11. Amber pumpkin: ribbed amber pumpkin\n12. Mist grape: dusty purple grape bunch\n13. Rust yam: rusty purple sweet potato tuber\n14. Plum bean: dark purple bean pods\n15. Reed rice: golden arching rice grain stalks\n16. Frost cabbage: pale blue-green cabbage head\n17. Snow lettuce: pale ruffled lettuce head\n18. Ice berry: frosted blue berry cluster\n19. Sunflower: golden flower brown center\n20. Rose: coral pink layered rose\n21. Lavender: purple flower spikes\n22. Tulip: coral cream cup-shaped tulip\n23. Poppy: orange-red flower black center\n24. Bluebell: arching violet-blue bell flowers\nFinal transparency edit: Use case: background-extraction\nEdit this existing sprite atlas. Preserve EVERY individual icon, exact grid positions, colors, silhouettes and pixel detail unchanged. Remove ALL of the continuous brown/green gradient background between and around the icons, including any glow or shadow. Replace background with GENUINE fully transparent alpha (alpha=0), not black, white or checkerboard. Keep icon pixels crisp and fully opaque. No added artwork, no rearrangement, no text. Production game sprite sheet cutouts. Output the SAME image dimensions and same layout with genuinely transparent background.",
+        "styleRef": "REF-B"
+      }
+    },
+    {
+      "path": "art-review/tree-items.png",
+      "title": "Agora botanical collection — tree-items",
+      "authors": [
+        "Vincent (Agora project)",
+        "OpenAI image generation"
+      ],
+      "license": "Own work (AI-assisted)",
+      "source": "https://openai.com/policies/terms-of-use/",
+      "modified": false,
+      "notes": "Original review artwork, 2026-10-12. Crops, flowers, orchard growth or inventory icons. Runtime alpha-bound extraction, no copied game art. Source PNG saved unchanged.",
+      "generation": {
+        "generator": "OpenAI built-in image_gen",
+        "termsUrl": "https://openai.com/policies/terms-of-use/",
+        "prompt": "Use case: stylized-concept\nOriginal Agora cozy pixel-art inventory sprite atlas, true transparent background, logical32-48px crisp detailed pixel clusters enlarged nearest neighbor, warm upper-left sunlight, selective colored outlines, no text, no white border, no shadow, no background. EXACT5columns x4rows equalcells,20icons generouspadding. Match approved Agora palette.\nROW1 five identical CLOSED honey kraft tree seed packets, crimped top, cream front botanical illustration, no letters: APPLE, CHERRY, PEACH, ORANGE, PEAR. Each front shows recognizable fruit plus a small leaf.\nROW2 five same seed packets: PLUM (purple plum), OAK (acorn and lobed oak leaf), SPRUCE (pine cone and needles), PALM (coconut and palm frond), JUNGLE (large brown tropical seed and broad emerald leaf).\nROW3 five harvested natural items no bags: red apple with leaf; paired crimson cherries; coral golden peach with leaf; golden orange with leaf; pale green pear.\nROW4: dusty purple plum; acorn with lobed oak leaf; brown spruce cone and needles; brown coconut with a cut white half; large warm brown tropical tree seed and broad green leaf.\nOne distinct isolated icon percell, fully contained. Original designs.",
+        "styleRef": "REF-B"
+      }
+    },
+    {
+      "path": "art-review/biomes/meadow-animals.png",
+      "title": "Agora biome collection — meadow-animals",
+      "authors": [
+        "Vincent (Agora project)",
+        "OpenAI image generation"
+      ],
+      "license": "Own work (AI-assisted)",
+      "source": "https://openai.com/policies/terms-of-use/",
+      "modified": false,
+      "notes": "Original biome review artwork, 2026-10-12. Transparent source retained unchanged. Runtime atlas extraction; no third-party game art copied.",
+      "generation": {
+        "generator": "OpenAI built-in image_gen",
+        "termsUrl": "https://openai.com/policies/terms-of-use/",
+        "prompt": "Use case: stylized-concept. Original Agora game production transparent sprite animation atlas. Reference image is ONLY the approved Agora pixel-art material style and density; make new animals, no props. Exactly 4 columns by 4 rows, equal generously padded cells in a square image. Each row one species: row1 warm cream-and-brown dairy cow with small horns, row2 rose pink farm pig, row3 white hen with red comb, row4 tawny woodland deer with tiny antlers. Column1 relaxed standing idle, column2 walking left-leg step, column3 walking right-leg step, column4 head lowered grazing/pecking. All face to screen right, slightly toward camera, consistent 2.5D three-quarter farm perspective. Within each row maintain IDENTICAL animal body size, design, color and ground baseline across all four frames; legs touch same baseline. Each creature centered with 12 percent transparent margin, nothing crosses cells. Rich deliberate crisp pixel clusters, readable natural proportions, hand-painted pixel detail, muted earthy warm highlights and deep cool shadows as reference; no smooth 3D, no vector, no pixel grid lines. True transparent background. No baked ground shadows, no ground patches, no white sticker outline, no text labels, no grid, no watermark. All sixteen complete separated animals.",
+        "styleRef": "REF-B"
+      }
+    },
+    {
+      "path": "art-review/biomes/jungle-props.png",
+      "title": "Agora biome collection — jungle-props",
+      "authors": [
+        "Vincent (Agora project)",
+        "OpenAI image generation"
+      ],
+      "license": "Own work (AI-assisted)",
+      "source": "https://openai.com/policies/terms-of-use/",
+      "modified": false,
+      "notes": "Original biome review artwork, 2026-10-12. Transparent source retained unchanged. Runtime atlas extraction; no third-party game art copied.",
+      "generation": {
+        "generator": "OpenAI built-in image_gen",
+        "termsUrl": "https://openai.com/policies/terms-of-use/",
+        "prompt": "# Jungle biome art pack\n\nOriginal Agora art, generated with the built-in image generation tool on 2026-10-12. The approved Agora props atlas was the only image reference. Final images are saved in `apps/web/public/assets/art-review/biomes/`.\n\n## Assets and integration\n\n- `jungle-props.png`: 1536 × 1024 RGBA, six isolated props: broad jungle tree, fern, banana understory, mossy boulder, fallen log, bromeliad.\n- `jungle-animals.png`: 1536 × 1024 RGBA, three animals × four poses: idle, walk A, walk B, feeding.\n- `apps/web/src/artReview/biomes/jungle.json`: measured atlas rectangles, world dimensions, environmental colors and behavior hints.\n- Both images have real transparency. Alpha threshold 100 measurement finds exactly six large prop components and twelve large animal components. The first props layout was regenerated through an image edit to ensure neighboring sprites do not intrude into source rectangles.\n- Animal frame rectangles preserve row-wide sizes and a common ground baseline so the feeding frame remains the same scale as idle.\n- Tree must be large in scene; use bottom-center anchoring and terrain contact shadow. No cast shadow is baked into source art.\n- Wildlife art and suggested behavior only; parent task owns scene interactions.\n\n## Inspiration\n\nMinecraft's official [Around the Block: Jungle](https://www.minecraft.net/en-us/article/around-block--jungle) provides biome identity: lush dense trees, trailing vegetation and bamboo. The official [parrot spawn rule](https://learn.microsoft.com/en-us/minecraft/creator/reference/source/vanillabehaviorpack_snippets/spawn_rules/parrot?view=minecraft-bedrock-stable) associates parrots with jungle biomes. These informed species and density, while all imagery uses Agora's existing original pixel-cluster look. Capybara, turtle, banana and bromeliad are original additions to this jungle visual pass, not claims about Minecraft's item catalog. No game art was extracted or copied.\n\n## Exact prompts\n\n### Props generation\n\nUse case: stylized-concept.\nAsset type: original Agora jungle environment sprite atlas, transparent RGBA, landscape 3 columns by 2 rows exactly six isolated objects.\nReference image role: style reference only; match its warm hand-crafted pixel clusters, dark green shaded silhouettes, upper-left light and cozy 2.5D view slightly above front. Create new original art. \nSheet layout: top row left giant broad jungle tree with buttress roots, dense tiered jade canopy and hanging vines; top middle broad fern clump; top right banana understory plant with broad leaves and small bunch of green bananas.\nBottom row left mossy granite boulder; bottom middle fallen moss-covered jungle log with a dark end hollow; bottom right three vivid coral bromeliad flowers with broad green basal leaves.\nEvery sprite entirely within its own equal cell, generous transparent gutters at least 40 px and outside padding. Tree must retain large canopy and roots; other objects may fill their own cells, runtime gives natural relative sizes. Objects centered bottom on row baseline. Genuinely transparent background, no labels, no grid, no outlines in white, no border, no ground plane or platform, no baked cast shadows; roots and vegetation emerge directly from base. Richly detailed crisp pixel-cluster 2.5D game art, subtle irregular natural forms, coherent warm greens and damp woodland color. Match reference shading and pixel density, no smooth vector art, no photorealism.\n\n### Props spacing edit\n\nUse case: precise-object-edit. Edit this original jungle sprite atlas ONLY to improve the grid layout and isolation. Preserve all six object designs, pixel art style, colors, pixel details and true transparency. Arrange the six objects in a strict 3 column x 2 row equal cell grid on a 1536x1024 transparent canvas. Every cell is 512 by 512 pixels. Shrink the giant tree to fit wholly in its top-left 512x512 cell with at least 32 pixel clear margins on ALL four sides; it may be smaller than before. Put fern wholly inside top-middle cell, banana wholly inside top-right cell, boulder bottom-left, log bottom-middle, flowers bottom-right. Resize each object as necessary so no sprite extends beyond its cell and at least 64 pixels transparent space separates neighboring sprites. Keep all bases inside own cells. No shadows, no text, no visible grid, no new elements, no background. This is a technical sprite atlas with isolated, separated sprites.\n\n### Animal generation\n\nUse case: stylized-concept. Asset type: original Agora jungle animal animation sprite atlas, transparent RGBA.\nReference role: only stylistic guidance for crisp textured pixel clusters, warm light upper-left and cozy 2.5D rendering viewed slightly above front/side. Draw original animals.\nLayout: exact regular 4 columns by 3 rows; 12 separate sprites with wide transparent gutters, every sprite contained in its cell.\nRow 1: a small red, blue and gold tropical parrot, facing right. Columns idle standing; stepping forward A left foot down; stepping B right foot down; pecking down.\nRow 2: a friendly warm brown capybara, facing right. Columns idle standing; walking A; walking B with alternate feet; grazing head lowered.\nRow 3: a tiny green turtle with textured olive shell, facing right. Columns idle; walking A; walking B; eating with head lowered.\nAnimation requirement: within each row each animal keeps identical scale, design, palette, silhouette proportions and aligned feet ground baseline. Poses are visibly different but no huge jumps. Body fits fully within each equally sized cell, with at least 30 pixel gutters. Cuddly believable animal proportions without clothes or accessories. Clear eyes and warm pixel shading, no vector smoothing. No text, no labels, no grid, no frame border, no ground circles, no baked shadows, no platform, no background scenery, no white outline. Genuinely transparent background and crisp clean alpha edges.\n\n",
+        "styleRef": "REF-B"
+      }
+    },
+    {
+      "path": "art-review/biomes/jungle-animals.png",
+      "title": "Agora biome collection — jungle-animals",
+      "authors": [
+        "Vincent (Agora project)",
+        "OpenAI image generation"
+      ],
+      "license": "Own work (AI-assisted)",
+      "source": "https://openai.com/policies/terms-of-use/",
+      "modified": false,
+      "notes": "Original biome review artwork, 2026-10-12. Transparent source retained unchanged. Runtime atlas extraction; no third-party game art copied.",
+      "generation": {
+        "generator": "OpenAI built-in image_gen",
+        "termsUrl": "https://openai.com/policies/terms-of-use/",
+        "prompt": "# Jungle biome art pack\n\nOriginal Agora art, generated with the built-in image generation tool on 2026-10-12. The approved Agora props atlas was the only image reference. Final images are saved in `apps/web/public/assets/art-review/biomes/`.\n\n## Assets and integration\n\n- `jungle-props.png`: 1536 × 1024 RGBA, six isolated props: broad jungle tree, fern, banana understory, mossy boulder, fallen log, bromeliad.\n- `jungle-animals.png`: 1536 × 1024 RGBA, three animals × four poses: idle, walk A, walk B, feeding.\n- `apps/web/src/artReview/biomes/jungle.json`: measured atlas rectangles, world dimensions, environmental colors and behavior hints.\n- Both images have real transparency. Alpha threshold 100 measurement finds exactly six large prop components and twelve large animal components. The first props layout was regenerated through an image edit to ensure neighboring sprites do not intrude into source rectangles.\n- Animal frame rectangles preserve row-wide sizes and a common ground baseline so the feeding frame remains the same scale as idle.\n- Tree must be large in scene; use bottom-center anchoring and terrain contact shadow. No cast shadow is baked into source art.\n- Wildlife art and suggested behavior only; parent task owns scene interactions.\n\n## Inspiration\n\nMinecraft's official [Around the Block: Jungle](https://www.minecraft.net/en-us/article/around-block--jungle) provides biome identity: lush dense trees, trailing vegetation and bamboo. The official [parrot spawn rule](https://learn.microsoft.com/en-us/minecraft/creator/reference/source/vanillabehaviorpack_snippets/spawn_rules/parrot?view=minecraft-bedrock-stable) associates parrots with jungle biomes. These informed species and density, while all imagery uses Agora's existing original pixel-cluster look. Capybara, turtle, banana and bromeliad are original additions to this jungle visual pass, not claims about Minecraft's item catalog. No game art was extracted or copied.\n\n## Exact prompts\n\n### Props generation\n\nUse case: stylized-concept.\nAsset type: original Agora jungle environment sprite atlas, transparent RGBA, landscape 3 columns by 2 rows exactly six isolated objects.\nReference image role: style reference only; match its warm hand-crafted pixel clusters, dark green shaded silhouettes, upper-left light and cozy 2.5D view slightly above front. Create new original art. \nSheet layout: top row left giant broad jungle tree with buttress roots, dense tiered jade canopy and hanging vines; top middle broad fern clump; top right banana understory plant with broad leaves and small bunch of green bananas.\nBottom row left mossy granite boulder; bottom middle fallen moss-covered jungle log with a dark end hollow; bottom right three vivid coral bromeliad flowers with broad green basal leaves.\nEvery sprite entirely within its own equal cell, generous transparent gutters at least 40 px and outside padding. Tree must retain large canopy and roots; other objects may fill their own cells, runtime gives natural relative sizes. Objects centered bottom on row baseline. Genuinely transparent background, no labels, no grid, no outlines in white, no border, no ground plane or platform, no baked cast shadows; roots and vegetation emerge directly from base. Richly detailed crisp pixel-cluster 2.5D game art, subtle irregular natural forms, coherent warm greens and damp woodland color. Match reference shading and pixel density, no smooth vector art, no photorealism.\n\n### Props spacing edit\n\nUse case: precise-object-edit. Edit this original jungle sprite atlas ONLY to improve the grid layout and isolation. Preserve all six object designs, pixel art style, colors, pixel details and true transparency. Arrange the six objects in a strict 3 column x 2 row equal cell grid on a 1536x1024 transparent canvas. Every cell is 512 by 512 pixels. Shrink the giant tree to fit wholly in its top-left 512x512 cell with at least 32 pixel clear margins on ALL four sides; it may be smaller than before. Put fern wholly inside top-middle cell, banana wholly inside top-right cell, boulder bottom-left, log bottom-middle, flowers bottom-right. Resize each object as necessary so no sprite extends beyond its cell and at least 64 pixels transparent space separates neighboring sprites. Keep all bases inside own cells. No shadows, no text, no visible grid, no new elements, no background. This is a technical sprite atlas with isolated, separated sprites.\n\n### Animal generation\n\nUse case: stylized-concept. Asset type: original Agora jungle animal animation sprite atlas, transparent RGBA.\nReference role: only stylistic guidance for crisp textured pixel clusters, warm light upper-left and cozy 2.5D rendering viewed slightly above front/side. Draw original animals.\nLayout: exact regular 4 columns by 3 rows; 12 separate sprites with wide transparent gutters, every sprite contained in its cell.\nRow 1: a small red, blue and gold tropical parrot, facing right. Columns idle standing; stepping forward A left foot down; stepping B right foot down; pecking down.\nRow 2: a friendly warm brown capybara, facing right. Columns idle standing; walking A; walking B with alternate feet; grazing head lowered.\nRow 3: a tiny green turtle with textured olive shell, facing right. Columns idle; walking A; walking B; eating with head lowered.\nAnimation requirement: within each row each animal keeps identical scale, design, palette, silhouette proportions and aligned feet ground baseline. Poses are visibly different but no huge jumps. Body fits fully within each equally sized cell, with at least 30 pixel gutters. Cuddly believable animal proportions without clothes or accessories. Clear eyes and warm pixel shading, no vector smoothing. No text, no labels, no grid, no frame border, no ground circles, no baked shadows, no platform, no background scenery, no white outline. Genuinely transparent background and crisp clean alpha edges.\n\n",
+        "styleRef": "REF-B"
+      }
+    },
+    {
+      "path": "art-review/biomes/desert-props.png",
+      "title": "Agora biome collection — desert-props",
+      "authors": [
+        "Vincent (Agora project)",
+        "OpenAI image generation"
+      ],
+      "license": "Own work (AI-assisted)",
+      "source": "https://openai.com/policies/terms-of-use/",
+      "modified": false,
+      "notes": "Original biome review artwork, 2026-10-12. Transparent source retained unchanged. Runtime atlas extraction; no third-party game art copied.",
+      "generation": {
+        "generator": "OpenAI built-in image_gen",
+        "termsUrl": "https://openai.com/policies/terms-of-use/",
+        "prompt": "# Desert biome artwork\n\nBuilt-in image_gen mode, original artwork generated 2026-10-12. Style reference: Agora's existing original `apps/web/public/assets/art-review/props.png`. No third-party sprites copied or extracted.\n\n## Reference notes\n\n[Minecraft's official desert feature](https://www.minecraft.net/en-us/article/desert) and [official biome guide](https://help.minecraft.net/hc/en-us/articles/360046470431-Minecraft-Types-of-Biomes) informed the sand, sandstone, cactus and dry-bush vocabulary; the [official camel feature](https://www.minecraft.net/es-mx/article/camel) informed the domestic camel choice. The palette, silhouettes, plant mix and all artwork are original. The approved Agora botanical screenshot governed style continuity.\n\n## Deliverables\n\n- `apps/web/public/assets/art-review/biomes/desert-props.png`: six sprites, 1536 × 1024 RGBA.\n- `apps/web/public/assets/art-review/biomes/desert-animals.png`: three species, four poses each, 1536 × 1024 RGBA.\n- `apps/web/src/artReview/biomes/desert.json`: measured alpha bounds and equal-size animation frame windows per animal species.\n\nAlpha was checked numerically: empty corners have alpha 0. The image viewer displays RGB color behind some fully transparent pixels; that RGB is not a visible backdrop in normal alpha composition. No background removal or image processing was needed. Props bounds encompass pixels above alpha 10; animal frames preserve shared row baselines and dimensions through the feeding pose. Idle/walk A/walk B/eat order.\n\n## Props prompt\n\nUse case: stylized-concept. Asset type: original game sprite atlas for Agora desert biome. Input image is STYLE REFERENCE only: match its hand-painted pixel-cluster detail, warm small palette, tangible 2.5D shaded forms and charming readable silhouettes. Create a new transparent PNG sheet with exactly SIX entirely separate sprites in a strict THREE columns by TWO rows grid, wide landscape layout, generous transparent gutters and cell margins. Row1 left: tall oasis date palm with curved warm trunk and dusty olive-green fronds; middle: flowering branching cactus with a few coral blooms; right: wiry dry branching desert bush. Row2 left: warm weathered layered sandstone boulder; middle: low blue-sage succulent rosettes; right: natural straw-colored dry grass clump. Slightly elevated front view compatible with an orthographic cozy 2.5D farming world. Tops lit warm upper-left, dark umber and sage shadow planes, visible deliberate pixel clusters, crisp stepped pixel edges. Each prop whole, centered in its own cell, root/foot resting near bottom of its cell. No baked ground shadow, no soil pedestal, no black rectangle, no sticker outline, no white halo, no labels, no borders. Actual transparent alpha background throughout all empty areas. No UI, no text. Use only original artwork.\n\n## Animals prompt\n\nUse case: stylized-concept. Asset type: original game animal animation sprite atlas for Agora desert biome. The provided original Agora props image is STYLE REFERENCE only; match warm detailed hand-painted pixel-cluster texture and cozy readable 2.5D forms. Output a transparent PNG sprite sheet with EXACTLY FOUR columns and THREE rows =12 separate animal sprites; landscape sheet. All animals face RIGHT in a slightly elevated side/front 2.5D view. Row1: same charming warm tan one-humped domestic camel in 4 poses: standing idle, walking legs forward, walking opposite legs forward, eating with neck lowered toward floor. No saddle. Row2: same little cream fennec fox with very large ears and bushy sand-colored tail, same 4 poses: idle, walk A, walk B, nose lowered sniffing ground. Row3: same small olive-brown desert tortoise with honey patterned shell, same4 poses: idle, walk A, walk B, head lowered eating. Maintain each animal's exact body size and design across all4 cells of its row; feet share IDENTICAL BASELINE in every cell of each row, body position constant (only legs/neck move). Walk poses clearly differ. Generous transparent spacing between cells; no overlap or clipping. Warm upper-left light, rich chestnut shadow planes, crisp deliberate small pixel clusters. Entire animals shown including feet and tails. No baked cast shadow, no shadow ellipse, no ground, no sand pedestal, no labels, no letters, no borders, no sticker outline, no white halo. All empty space true transparent alpha. Original artwork only.\n\n",
+        "styleRef": "REF-B"
+      }
+    },
+    {
+      "path": "art-review/biomes/desert-animals.png",
+      "title": "Agora biome collection — desert-animals",
+      "authors": [
+        "Vincent (Agora project)",
+        "OpenAI image generation"
+      ],
+      "license": "Own work (AI-assisted)",
+      "source": "https://openai.com/policies/terms-of-use/",
+      "modified": false,
+      "notes": "Original biome review artwork, 2026-10-12. Transparent source retained unchanged. Runtime atlas extraction; no third-party game art copied.",
+      "generation": {
+        "generator": "OpenAI built-in image_gen",
+        "termsUrl": "https://openai.com/policies/terms-of-use/",
+        "prompt": "# Desert biome artwork\n\nBuilt-in image_gen mode, original artwork generated 2026-10-12. Style reference: Agora's existing original `apps/web/public/assets/art-review/props.png`. No third-party sprites copied or extracted.\n\n## Reference notes\n\n[Minecraft's official desert feature](https://www.minecraft.net/en-us/article/desert) and [official biome guide](https://help.minecraft.net/hc/en-us/articles/360046470431-Minecraft-Types-of-Biomes) informed the sand, sandstone, cactus and dry-bush vocabulary; the [official camel feature](https://www.minecraft.net/es-mx/article/camel) informed the domestic camel choice. The palette, silhouettes, plant mix and all artwork are original. The approved Agora botanical screenshot governed style continuity.\n\n## Deliverables\n\n- `apps/web/public/assets/art-review/biomes/desert-props.png`: six sprites, 1536 × 1024 RGBA.\n- `apps/web/public/assets/art-review/biomes/desert-animals.png`: three species, four poses each, 1536 × 1024 RGBA.\n- `apps/web/src/artReview/biomes/desert.json`: measured alpha bounds and equal-size animation frame windows per animal species.\n\nAlpha was checked numerically: empty corners have alpha 0. The image viewer displays RGB color behind some fully transparent pixels; that RGB is not a visible backdrop in normal alpha composition. No background removal or image processing was needed. Props bounds encompass pixels above alpha 10; animal frames preserve shared row baselines and dimensions through the feeding pose. Idle/walk A/walk B/eat order.\n\n## Props prompt\n\nUse case: stylized-concept. Asset type: original game sprite atlas for Agora desert biome. Input image is STYLE REFERENCE only: match its hand-painted pixel-cluster detail, warm small palette, tangible 2.5D shaded forms and charming readable silhouettes. Create a new transparent PNG sheet with exactly SIX entirely separate sprites in a strict THREE columns by TWO rows grid, wide landscape layout, generous transparent gutters and cell margins. Row1 left: tall oasis date palm with curved warm trunk and dusty olive-green fronds; middle: flowering branching cactus with a few coral blooms; right: wiry dry branching desert bush. Row2 left: warm weathered layered sandstone boulder; middle: low blue-sage succulent rosettes; right: natural straw-colored dry grass clump. Slightly elevated front view compatible with an orthographic cozy 2.5D farming world. Tops lit warm upper-left, dark umber and sage shadow planes, visible deliberate pixel clusters, crisp stepped pixel edges. Each prop whole, centered in its own cell, root/foot resting near bottom of its cell. No baked ground shadow, no soil pedestal, no black rectangle, no sticker outline, no white halo, no labels, no borders. Actual transparent alpha background throughout all empty areas. No UI, no text. Use only original artwork.\n\n## Animals prompt\n\nUse case: stylized-concept. Asset type: original game animal animation sprite atlas for Agora desert biome. The provided original Agora props image is STYLE REFERENCE only; match warm detailed hand-painted pixel-cluster texture and cozy readable 2.5D forms. Output a transparent PNG sprite sheet with EXACTLY FOUR columns and THREE rows =12 separate animal sprites; landscape sheet. All animals face RIGHT in a slightly elevated side/front 2.5D view. Row1: same charming warm tan one-humped domestic camel in 4 poses: standing idle, walking legs forward, walking opposite legs forward, eating with neck lowered toward floor. No saddle. Row2: same little cream fennec fox with very large ears and bushy sand-colored tail, same 4 poses: idle, walk A, walk B, nose lowered sniffing ground. Row3: same small olive-brown desert tortoise with honey patterned shell, same4 poses: idle, walk A, walk B, head lowered eating. Maintain each animal's exact body size and design across all4 cells of its row; feet share IDENTICAL BASELINE in every cell of each row, body position constant (only legs/neck move). Walk poses clearly differ. Generous transparent spacing between cells; no overlap or clipping. Warm upper-left light, rich chestnut shadow planes, crisp deliberate small pixel clusters. Entire animals shown including feet and tails. No baked cast shadow, no shadow ellipse, no ground, no sand pedestal, no labels, no letters, no borders, no sticker outline, no white halo. All empty space true transparent alpha. Original artwork only.\n\n",
+        "styleRef": "REF-B"
+      }
+    },
+    {
+      "path": "art-review/biomes/taiga-props.png",
+      "title": "Agora biome collection — taiga-props",
+      "authors": [
+        "Vincent (Agora project)",
+        "OpenAI image generation"
+      ],
+      "license": "Own work (AI-assisted)",
+      "source": "https://openai.com/policies/terms-of-use/",
+      "modified": false,
+      "notes": "Original biome review artwork, 2026-10-12. Transparent source retained unchanged. Runtime atlas extraction; no third-party game art copied.",
+      "generation": {
+        "generator": "OpenAI built-in image_gen",
+        "termsUrl": "https://openai.com/policies/terms-of-use/",
+        "prompt": "# Taiga biome art\n\nOriginal Agora assets generated with the built-in image_gen tool on 2026-10-12. These two PNG atlases use the existing original Agora props.png only as a style reference. No Stardew Valley or Minecraft art was copied or extracted.\n\n## References\n\nMinecraft's [Old Growth Taiga](https://www.minecraft.net/nb-no/article/around-block-old-growth-taiga) describes spruce, podzol/coarse dirt, mossy boulders, mushrooms, berries and ferns. Its [Snowy Taiga](https://www.minecraft.net/nl-nl/article/snowy-taiga) reference suggests a mix of wild and farm animals. These informed habitat categories; silhouettes, palettes and characters are original.\n\n## Files and validation\n\n- apps/web/public/assets/art-review/biomes/taiga-props.png — 1536 × 1024 RGBA, six props. Actual row gutter is near y=620, not the mathematical halfway point.\n- apps/web/public/assets/art-review/biomes/taiga-animals.png — 1536 × 1024 RGBA, three species × four poses (idle, walk A, walk B, forage).\n- apps/web/src/artReview/biomes/taiga.json — measured alpha bounds and world dimensions.\n\nAlpha inspection confirmed 787,682 fully transparent pixels in props and 903,375 in animals. Background RGB remains in transparent areas; runtime must honor alpha. Prop bounds were measured at alpha > 16 and padded by two pixels. Each animal row uses one shared local extent across all four frames to keep its scale and ground baseline stable while its head lowers. The generated source files are preserved unmodified. Small frame-to-frame foot variation is intentional movement. Species include wild red fox and hare, plus farm sheep. Farm behavior is review metadata, not a new production husbandry system.\n\n## Props prompt\n\nUse case: stylized-concept. Create an ORIGINAL Agora taiga biome sprite atlas, using the attached original Agora props image ONLY as aesthetic reference (warm handcrafted pixel clusters, rich 2.5D shading, organic irregular silhouettes). Output transparent RGBA sprite sheet, 1536x1024, EXACTLY 3 columns x 2 rows with six isolated props on an invisible regular grid. Top row left-to-right: tall mature spruce with layered teal-green needles, warm bark and light irregular snow dust; squat dense red berry bush with frosted leaf tips; lush fern and moss tuft. Bottom row left-to-right: broad angular granite boulder with patches of snow and lichen; fallen pine log with a visible ochre cut end and moss on bark; cluster of woodland mushrooms with russet and cream caps, tiny roots and leaf litter attached close to stems. Each sprite centered in its own cell, minimum 35 pixels entirely transparent gutter around each cell, no sprite crosses cell boundaries. Spruce uses most of cell height; other props each use adequate detail area and will be scaled separately. View slightly above, front/side like supplied sprites. Lighting from upper left. Warm muted greens, ochre, icy cream highlights. Detailed crisp pixel-art clusters, not flat cartoon/vector. Ground-attached roots and rough bases, but NO ground tiles, NO drop shadows or circular shadows, NO white sticker outlines, NO labels, text, grids or frame borders. True transparent empty background.\n\n## Animals prompt\n\nUse case: stylized-concept. Create an ORIGINAL animated animal sprite atlas for the cozy 2.5D Agora farming game. Attached original Agora props image is a STYLE reference only: emulate its rich handcrafted pixel clusters, warm organic shading, fine readable textured detail. Transparent RGBA 1536x1024 atlas, EXACTLY 4 columns x 3 rows (12 isolated sprites). Equal 384x341 invisible cells; leave 40 pixels clear padding and no overlap. ROW ONE: the SAME russet red fox with fluffy cream-tipped tail and charcoal paws, facing right in all four columns. ROW TWO: the SAME soft grey-brown hare with long ears, buff belly and small white tail, facing right. ROW THREE: the SAME round shaggy cream-wool sheep with a warm grey face, little dark hooves, facing right. Columns for each species: 1 standing idle, 2 walking with near front leg forward and near back leg back, 3 walking with near front leg back and near back leg forward, 4 grazing/eating/sniffing head lowered to ground with body kept same height. All four poses per species preserve same character, proportions, body scale, body-center X inside cell and same ground-contact baseline. Four complete legged animals per row, distinct foot motion between walk frames. Slightly above side/front view, enough top and front visible for 2.5D world. Crisp low-resolution pixel-art clusters, comfortable character proportions and expressive small eyes; original designs. Soft upper-left light. No outlines in white, no sticker edges, no environment, no tile, no ground, no cast shadow, no contact-shadow blobs, no labels or grid or text. True transparent empty background around every animal.\n\n",
+        "styleRef": "REF-B"
+      }
+    },
+    {
+      "path": "art-review/biomes/taiga-animals.png",
+      "title": "Agora biome collection — taiga-animals",
+      "authors": [
+        "Vincent (Agora project)",
+        "OpenAI image generation"
+      ],
+      "license": "Own work (AI-assisted)",
+      "source": "https://openai.com/policies/terms-of-use/",
+      "modified": false,
+      "notes": "Original biome review artwork, 2026-10-12. Transparent source retained unchanged. Runtime atlas extraction; no third-party game art copied.",
+      "generation": {
+        "generator": "OpenAI built-in image_gen",
+        "termsUrl": "https://openai.com/policies/terms-of-use/",
+        "prompt": "# Taiga biome art\n\nOriginal Agora assets generated with the built-in image_gen tool on 2026-10-12. These two PNG atlases use the existing original Agora props.png only as a style reference. No Stardew Valley or Minecraft art was copied or extracted.\n\n## References\n\nMinecraft's [Old Growth Taiga](https://www.minecraft.net/nb-no/article/around-block-old-growth-taiga) describes spruce, podzol/coarse dirt, mossy boulders, mushrooms, berries and ferns. Its [Snowy Taiga](https://www.minecraft.net/nl-nl/article/snowy-taiga) reference suggests a mix of wild and farm animals. These informed habitat categories; silhouettes, palettes and characters are original.\n\n## Files and validation\n\n- apps/web/public/assets/art-review/biomes/taiga-props.png — 1536 × 1024 RGBA, six props. Actual row gutter is near y=620, not the mathematical halfway point.\n- apps/web/public/assets/art-review/biomes/taiga-animals.png — 1536 × 1024 RGBA, three species × four poses (idle, walk A, walk B, forage).\n- apps/web/src/artReview/biomes/taiga.json — measured alpha bounds and world dimensions.\n\nAlpha inspection confirmed 787,682 fully transparent pixels in props and 903,375 in animals. Background RGB remains in transparent areas; runtime must honor alpha. Prop bounds were measured at alpha > 16 and padded by two pixels. Each animal row uses one shared local extent across all four frames to keep its scale and ground baseline stable while its head lowers. The generated source files are preserved unmodified. Small frame-to-frame foot variation is intentional movement. Species include wild red fox and hare, plus farm sheep. Farm behavior is review metadata, not a new production husbandry system.\n\n## Props prompt\n\nUse case: stylized-concept. Create an ORIGINAL Agora taiga biome sprite atlas, using the attached original Agora props image ONLY as aesthetic reference (warm handcrafted pixel clusters, rich 2.5D shading, organic irregular silhouettes). Output transparent RGBA sprite sheet, 1536x1024, EXACTLY 3 columns x 2 rows with six isolated props on an invisible regular grid. Top row left-to-right: tall mature spruce with layered teal-green needles, warm bark and light irregular snow dust; squat dense red berry bush with frosted leaf tips; lush fern and moss tuft. Bottom row left-to-right: broad angular granite boulder with patches of snow and lichen; fallen pine log with a visible ochre cut end and moss on bark; cluster of woodland mushrooms with russet and cream caps, tiny roots and leaf litter attached close to stems. Each sprite centered in its own cell, minimum 35 pixels entirely transparent gutter around each cell, no sprite crosses cell boundaries. Spruce uses most of cell height; other props each use adequate detail area and will be scaled separately. View slightly above, front/side like supplied sprites. Lighting from upper left. Warm muted greens, ochre, icy cream highlights. Detailed crisp pixel-art clusters, not flat cartoon/vector. Ground-attached roots and rough bases, but NO ground tiles, NO drop shadows or circular shadows, NO white sticker outlines, NO labels, text, grids or frame borders. True transparent empty background.\n\n## Animals prompt\n\nUse case: stylized-concept. Create an ORIGINAL animated animal sprite atlas for the cozy 2.5D Agora farming game. Attached original Agora props image is a STYLE reference only: emulate its rich handcrafted pixel clusters, warm organic shading, fine readable textured detail. Transparent RGBA 1536x1024 atlas, EXACTLY 4 columns x 3 rows (12 isolated sprites). Equal 384x341 invisible cells; leave 40 pixels clear padding and no overlap. ROW ONE: the SAME russet red fox with fluffy cream-tipped tail and charcoal paws, facing right in all four columns. ROW TWO: the SAME soft grey-brown hare with long ears, buff belly and small white tail, facing right. ROW THREE: the SAME round shaggy cream-wool sheep with a warm grey face, little dark hooves, facing right. Columns for each species: 1 standing idle, 2 walking with near front leg forward and near back leg back, 3 walking with near front leg back and near back leg forward, 4 grazing/eating/sniffing head lowered to ground with body kept same height. All four poses per species preserve same character, proportions, body scale, body-center X inside cell and same ground-contact baseline. Four complete legged animals per row, distinct foot motion between walk frames. Slightly above side/front view, enough top and front visible for 2.5D world. Crisp low-resolution pixel-art clusters, comfortable character proportions and expressive small eyes; original designs. Soft upper-left light. No outlines in white, no sticker edges, no environment, no tile, no ground, no cast shadow, no contact-shadow blobs, no labels or grid or text. True transparent empty background around every animal.\n\n",
+        "styleRef": "REF-B"
+      }
+    },
+    {
+      "path": "art-review/biomes/rune-goat.png",
+      "title": "Agora biome collection — rune-goat",
+      "authors": [
+        "Vincent (Agora project)",
+        "OpenAI image generation"
+      ],
+      "license": "Own work (AI-assisted)",
+      "source": "https://openai.com/policies/terms-of-use/",
+      "modified": false,
+      "notes": "Original biome review artwork, 2026-10-12. Transparent source retained unchanged. Runtime atlas extraction; no third-party game art copied.",
+      "generation": {
+        "generator": "OpenAI built-in image_gen",
+        "termsUrl": "https://openai.com/policies/terms-of-use/",
+        "prompt": "Original Agora production farm animal sprite sheet, matching reference illustration's cozy crisp pixel clusters and warm earthy shaded 2.5D style. Reference contains cows pigs hens deer; generate ONLY a new rune goat, a warm tawny beige dairy goat with small swept gray horns, tiny beard, cream belly and very subtle darker curly markings in its fur, natural goat silhouette. Exactly TWO columns by TWO rows four separate frames on real transparent background with generous padding, same animal size and feet baseline within each cell. Row1: idle facing right slightly toward viewer; walking pose A. Row2: walking pose B; head lowered eating. Preserve consistent body proportions and identity across all four frames, readable feet planted, no background, no ground or shadow, no white outline, no grid labels, no text. Elegant deliberate pixel art, muted palette, warm upper-left highlights and cool brown shadow planes, same resolution of details as the approved reference.",
+        "styleRef": "REF-B"
+      }
     }
   ]
 }

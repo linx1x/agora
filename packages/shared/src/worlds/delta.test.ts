@@ -59,6 +59,14 @@ describe('deltaIdProblems', () => {
 });
 
 describe('deltaOverlay', () => {
+  it('round-trips bed orientation through saved JSON, overlays and materialized chunks',()=> {
+    const delta=ChunkDeltaSchema.parse(JSON.parse(JSON.stringify({'33':{decor:'bed',bedAxis:'horizontal'}})));
+    const edited=new WorldTerrain(SEED,P,{overlay:deltaOverlay(()=>delta)});
+    expect(edited.cellAt(1,1)).toMatchObject({decor:'bed',bedAxis:'horizontal'});
+    const source=applyDelta(generateChunk(SEED,0,0,P),delta);
+    expect(new WorldTerrain(SEED,P,{source:()=>source}).cellAt(1,1).bedAxis).toBe('horizontal');
+    expect(ChunkDeltaSchema.safeParse({'33':{decor:'bed',bedAxis:'diagonal'}}).success).toBe(false);
+  });
   it('shows stored edits in WorldTerrain without changing the cached base chunk', () => {
     const deltas = new Map<string, ChunkDelta>([['0,0', { '33': { block: 'tilled_soil', decor: '' } }]]);
     const overlay = deltaOverlay((cx, cy) => deltas.get(`${cx},${cy}`));
