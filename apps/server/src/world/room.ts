@@ -691,6 +691,8 @@ export class SpaceRoom {
         return this.onNpcConsent(p, m.accept);
       case 'npc:recall':
         return this.onNpcRecall(p, m.npcId);
+      case 'npc:attend':
+        return this.onNpcAttend(p, m.npcId);
       case 'npc:forget':
         return this.onNpcForget(p);
       case 'npc:voice':
@@ -1835,6 +1837,21 @@ export class SpaceRoom {
     if (link.notice.needed && !p.npcConsent) return refuse('consent');
     npc.attend(p, Date.now());
     void this.runTalk(p, npc, m.body, link);
+  }
+
+  /**
+   * The Talk box is open (P15.4 follow-up): the character holds still for a while, as it does for a
+   * message, under the same place rules (here, on the open floor, within talking range). Silent: no
+   * answer, no refusal; it only keeps the character from walking off mid-conversation.
+   */
+  private onNpcAttend(p: Player, npcId: string) {
+    if (!this.npcDirector || !p.buckets.misc.take()) return;
+    if (this.opts.clientConfig.flags.npcTalk !== true && this.opts.clientConfig.flags.worlds !== true) return;
+    const npc = this.npcDirector.get(npcId);
+    if (!npc || NPC_FORBIDDEN.includes(this.placed(p).zoneKind ?? 'area')) return;
+    const reach = (NPC_TALK_TILES + NPC_TALK_SLACK_TILES) * TILE;
+    if (Math.hypot(npc.state.x - p.x, npc.state.y - p.y) > reach) return;
+    npc.attend(p, Date.now());
   }
 
   private async runTalk(p: Player, npc: Npc, body: string, link: NpcTalkLink) {

@@ -46,6 +46,13 @@ export function TalkBox() {
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, [talkTo]);
+  // the character waits while the box is open (the server holds it for a while; renewed every 15 s)
+  useEffect(() => {
+    if (!talkTo) return;
+    world.send({ t: 'npc:attend', npcId: talkTo });
+    const id = setInterval(() => world.send({ t: 'npc:attend', npcId: talkTo }), 15_000);
+    return () => clearInterval(id);
+  }, [talkTo]);
   const accept = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (talkTo) (needsNotice ? accept.current : input.current)?.focus();

@@ -283,6 +283,11 @@ export const C2S = z.discriminatedUnion('t', [
   z.object({ t: z.literal('npc:consent'), accept: z.boolean() }),
   /** P15.5 (ADR-046): what does this character remember about me? */
   z.object({ t: z.literal('npc:recall'), npcId: z.string().min(1).max(40) }),
+  /**
+   * The Talk box is open on this character (sent on open and while it stays open): the character waits
+   * for me instead of walking off while I read the notice or choose a gift. Carries nothing I wrote.
+   */
+  z.object({ t: z.literal('npc:attend'), npcId: z.string().min(1).max(40) }),
   /** P15.5: forget me, every character at once */
   z.object({ t: z.literal('npc:forget') }),
   /** P15.6: do I want to hear characters' voices? Only people who said yes are sent clips. */

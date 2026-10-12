@@ -140,13 +140,33 @@ async function openTalk(page: Page, want?: string): Promise<string> {
   throw new Error('could not open the Talk box with a character');
 }
 
+/**
+ * Open the Talk box and wait until it is usable (the notice or the message field). A character that
+ * heads home cannot be held (it leaves), and its box closes: then walk to one again.
+ */
+async function openTalkReady(page: Page, want?: string): Promise<string> {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const name = await openTalk(page, want);
+    const box = page.getByRole('dialog', { name: `Parler à ${name}` });
+    const ready = await Promise.race([
+      box.getByRole('button', { name: 'J’accepte' }).waitFor({ timeout: 5_000 }),
+      box.getByRole('textbox', { name: `Message pour ${name}` }).waitFor({ timeout: 5_000 }),
+    ]).then(
+      () => true,
+      () => false,
+    );
+    if (ready) return name;
+  }
+  throw new Error('the Talk box did not stay open');
+}
+
 test.describe('talking to a character (P15.4, ADR-045)', () => {
   test('the AI notice first, then a prepared reply and a model-written one, as bubbles and in the box', async ({
     page,
   }) => {
     await enter(page);
     await page.waitForFunction(() => (window as any).__agora.store.get().npcs.length === 3);
-    const name = await openTalk(page);
+    const name = await openTalkReady(page);
     const box = page.getByRole('dialog', { name: `Parler à ${name}` });
     await expect(box).toBeVisible();
 
@@ -248,7 +268,7 @@ test.describe('character voices (P15.6)', () => {
     });
     await enter(page);
     await page.waitForFunction(() => (window as any).__agora.store.get().npcs.length === 3);
-    const name = await openTalk(page);
+    const name = await openTalkReady(page);
     const box = page.getByRole('dialog', { name: `Parler à ${name}` });
     const input = box.getByRole('textbox', { name: `Message pour ${name}` });
     // the notice may already be accepted by an earlier test (the account is shared in this run)
@@ -267,7 +287,7 @@ test.describe('character voices (P15.6)', () => {
     await page.getByRole('button', { name: 'Réglages', exact: true }).click();
     await page.getByRole('checkbox', { name: /Voix des personnages/ }).check();
     await page.keyboard.press('Escape');
-    await openTalk(page, name);
+    await openTalkReady(page, name);
     await expect(box).toBeVisible();
     await input.fill('Merci beaucoup');
     await input.press('Enter');
