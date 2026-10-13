@@ -616,15 +616,18 @@ export class World3DView implements WorldView {
   private onMessage(m: S2CMsg) {
     const now = performance.now();
     const npcBubbles = store.get().settings.npcBubbles;
-    if (m.t === 'emote') this.overlays.emote(m.id, EMOTE_GLYPH[m.emote as Emote], now);
-    else if (m.t === 'npc:emote') this.overlays.emote(m.id, EMOTE_GLYPH[m.emote], now);
+    if (m.t === 'emote') { this.overlays.emote(m.id, EMOTE_GLYPH[m.emote as Emote], now); this.people.playAction(m.id,m.emote,now); }
+    else if (m.t === 'npc:emote') { this.overlays.emote(m.id, EMOTE_GLYPH[m.emote], now); this.npcs.playAction(m.id,m.emote,now); }
     else if (m.t === 'npc:say') {
+      this.npcs.playAction(m.id,'talk',now,{duration:Math.min(4000,Math.max(1200,m.body.length*45))});
       if (!npcBubbles) return;
       this.overlays.typing(m.id, false);
       this.overlays.say(m.id, m.body, now);
     } else if (m.t === 'npc:typing') this.overlays.typing(m.id, m.on && npcBubbles);
-    else if (m.t === 'chat' && m.msg.scope === 'nearby')
+    else if (m.t === 'chat' && m.msg.scope === 'nearby') {
       this.overlays.say(m.msg.from, m.msg.body, now);
+      this.people.playAction(m.msg.from,'talk',now,{duration:Math.min(3500,Math.max(1000,m.msg.body.length*45))});
+    }
   }
 
   // ───────────────────────────────────────────── path

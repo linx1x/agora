@@ -237,3 +237,10 @@ describe('factsOf for housings, machines, stations and shops (P17.25)', () => {
     expect(factsOf({ decor: 'chest' }, data).shop).toBe(false);
   });
 });
+
+ it('only new intents trigger a local animation, never reconnect resends', () => {
+   const played: number[]=[];
+   const q=new ActQueue({send:()=>{},newKey:()=> 'gesture-key',onSubmit:(_world,_act,op)=>played.push(op)});
+   q.submit('w1',{kind:'plant',at:{x:1,y:2},item:SEED});
+   q.resend('w1');q.resend('w1');expect(played).toEqual([1]);
+ });

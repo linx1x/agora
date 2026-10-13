@@ -7,10 +7,11 @@
  */
 import { OVERLAY_GRID, tierOverlay, type OverlayRect } from './overlay';
 import { FACINGS, SWING_FRAMES, type Facing } from './swing';
+import { drawTool, isToolFamily } from './toolArtwork';
 
-/** Side of a card's canvas, in pixels: the card grid (the 2.5D card is drawn `CARD_TILES` tiles wide). */
-export const FRAME_PX = OVERLAY_GRID;
-const CENTRE = FRAME_PX / 2;
+/** Render the 32px design grid at triple resolution for clean tool silhouettes at world zoom. */
+export const FRAME_PX = OVERLAY_GRID * 3;
+const CENTRE = OVERLAY_GRID / 2;
 /** The swing turns this far (radians) from the first frame to the last. */
 const SWING_ARC = 0.9;
 /** The head's centre from the hand, in pixels (the flat view's head). */
@@ -84,7 +85,8 @@ function drawCardMark(g: CanvasRenderingContext2D, tier: number): void {
   const width = tier * PIP + (tier - 1) * PIP_GAP;
   const x0 = PLATE.x + (PLATE.w - width) / 2;
   g.fillStyle = tierOverlay(tier).color;
-  for (let i = 0; i < tier; i++) g.fillRect(x0 + i * (PIP + PIP_GAP), PLATE.y + (PLATE.h - PIP) / 2, PIP, PIP);
+  for (let i = 0; i < tier; i++)
+    g.fillRect(x0 + i * (PIP + PIP_GAP), PLATE.y + (PLATE.h - PIP) / 2, PIP, PIP);
 }
 
 /**
@@ -95,9 +97,10 @@ function drawCardMark(g: CanvasRenderingContext2D, tier: number): void {
 function drawCard(
   facing: Facing,
   n: number,
-  opts: { tier: number | null; trail: boolean },
+  opts: { tier: number | null; trail: boolean; tool?: string },
 ): HTMLCanvasElement {
   const { canvas, g } = canvasOf(FRAME_PX);
+  g.scale(3, 3);
   const head = opts.tier === null ? STEEL : tierOverlay(opts.tier).color;
   g.lineCap = 'round';
   g.lineJoin = 'round';
@@ -108,7 +111,7 @@ function drawCard(
   const headAlong = card ? CARD_HEAD_ALONG : HEAD_ALONG;
   // the tier plate first: the arc and the head are drawn over it
   if (opts.tier !== null) drawCardMark(g, opts.tier);
-  if (opts.trail && n > 0) {
+  if (opts.trail && n > 0 && opts.tool !== 'can') {
     // the arc the head has swept: a paper edge, then the head's colour on top
     g.beginPath();
     g.arc(CENTRE, CENTRE, reach, frameAngle(facing, 0), a);
@@ -120,6 +123,29 @@ function drawCard(
     g.lineWidth = card ? 3 : 2;
     g.globalAlpha = 1;
     g.stroke();
+  }
+  if (opts.tool && isToolFamily(opts.tool)) {
+    g.save();
+    g.translate(CENTRE, CENTRE);
+    if (opts.tool === 'can') {
+      g.scale(facing === 'left' ? -0.68 : 0.68, 0.68);
+      g.rotate((n - 1) * 0.15);
+      g.translate(-16, -17);
+    } else {
+      g.rotate(a + Math.PI / 2);
+      g.scale(0.54, 0.54);
+      g.translate(-16, -27);
+    }
+    drawTool(g, opts.tool, head);
+    g.restore();
+    if (opts.tool === 'can' && n > 0) {
+      g.fillStyle = '#a3e5ef';
+      for (let i = 0; i < 4; i++) {
+        const x = facing === 'left' ? 4 - (i % 2) * 2 : 27 + (i % 2) * 2;
+        g.fillRect(x, 17 + Math.floor(i / 2) * 4 + n, 1.5, 2.5);
+      }
+    }
+    return canvas;
   }
   const hx = CENTRE + Math.cos(a) * reach;
   const hy = CENTRE + Math.sin(a) * reach;
@@ -166,11 +192,17 @@ export function swingFrameCanvas(facing: Facing, n: number): HTMLCanvasElement {
  * The 2.5D card of a tier: frame `n` of a facing, in the tier's colours, with its tier mark and, when
  * `trail` is set, the arc swept so far. Cached per (tier, facing, frame, trail).
  */
-export function swingCardCanvas(tier: number, facing: Facing, n: number, trail: boolean): HTMLCanvasElement {
-  const key = `${tier}-${facing}-${n}-${trail ? 1 : 0}`;
+export function swingCardCanvas(
+  tier: number,
+  facing: Facing,
+  n: number,
+  trail: boolean,
+  tool?: string,
+): HTMLCanvasElement {
+  const key = `${tier}-${facing}-${n}-${trail ? 1 : 0}-${tool ?? 'generic'}`;
   let c = cards.get(key);
   if (!c) {
-    c = drawCard(facing, n, { tier, trail });
+    c = drawCard(facing, n, { tier, trail, tool });
     cards.set(key, c);
   }
   return c;

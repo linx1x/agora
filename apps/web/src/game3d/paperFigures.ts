@@ -31,7 +31,15 @@ import {
   type FlipStart,
 } from './figureMath';
 import type { Box3 } from './occlusionMath';
-import { makePaperSheet } from './paperAvatar';
+import { makePaperSheet, paperMotionFrame } from './paperAvatar';
+import {
+  AvatarMotionPlayer,
+  motionDuration,
+  motionFrameAt,
+  type AvatarClip,
+  type MotionOptions,
+} from '../game/avatarMotion';
+import { paperCellSize } from './paperLayout';
 import type { PaperScale } from './paperLayout';
 
 /** What the view knows about a body this frame (world px, as the controller gives it). */
@@ -136,6 +144,33 @@ function releaseShared(): void {
   shared.ringGeo.dispose();
   shared.ringMat.dispose();
   shared = null;
+  motionCanvases.clear();
+  motionPixels = 0;
+}
+
+// CPU artwork is shared; each figure retains its own reusable GPU texture. Both limits
+// apply so changing outfits cannot accumulate every possible wardrobe combination.
+const motionCanvases = new Map<string, HTMLCanvasElement>();
+const MAX_MOTION_PIXELS = 4 * 1024 * 1024;
+const MAX_MOTION_CANVASES = 128;
+let motionPixels = 0;
+function motionCanvas(key: string, render: () => HTMLCanvasElement): HTMLCanvasElement {
+  const hit = motionCanvases.get(key);
+  if (hit) {
+    motionCanvases.delete(key);
+    motionCanvases.set(key, hit);
+    return hit;
+  }
+  const canvas = render();
+  motionCanvases.set(key, canvas);
+  motionPixels += canvas.width * canvas.height;
+  while (motionPixels > MAX_MOTION_PIXELS || motionCanvases.size > MAX_MOTION_CANVASES) {
+    const oldest = motionCanvases.keys().next().value!;
+    const image = motionCanvases.get(oldest)!;
+    motionPixels -= image.width * image.height;
+    motionCanvases.delete(oldest);
+  }
+  return canvas;
 }
 
 /** One CanvasTexture of a whole sheet per (look, scale), shared by every figure of that look. */
@@ -157,10 +192,10 @@ function acquireSheet(
   let e = sheets.get(key);
   if (!e) {
     const master = new THREE.CanvasTexture(makePaperSheet(avatar, scale));
-    // smooth art: linear filtering, no mipmaps (the sheet is drawn at its own size)
+    // Keep the wardrobe pixel grid crisp, matching the world artwork.
     master.colorSpace = THREE.SRGBColorSpace;
-    master.magFilter = THREE.LinearFilter;
-    master.minFilter = THREE.LinearFilter;
+    master.magFilter = THREE.NearestFilter;
+    master.minFilter = THREE.NearestFilter;
     master.generateMipmaps = false;
     e = { master, refs: 0 };
     sheets.set(key, e);
@@ -192,6 +227,9 @@ interface Figure {
   shadowMat: THREE.MeshBasicMaterial;
   ring: THREE.Mesh;
   alpha: number;
+  speaking: boolean;
+  motionTexture?: THREE.CanvasTexture;
+  motionKey?: string;
   /** the last direction the server or controller gave */
   target: Dir;
   /** a turn in progress, or null */
@@ -207,6 +245,15 @@ export class PaperFigures {
   private readonly figs = new Map<string, Figure>();
   private readonly reducedQuery: MediaQueryList | null;
   private disposed = false;
+  private readonly motions = new AvatarMotionPlayer();
+
+  playAction(id: string, clip: AvatarClip, now: number, options: MotionOptions = {}): boolean {
+    return !this.disposed && this.motions.play(id, clip, now, options);
+  }
+
+  cancelAction(id: string, token?: number): void {
+    this.motions.cancel(id, token);
+  }
 
   constructor(scene: THREE.Scene, scale: PaperScale) {
     this.scene = scene;
@@ -233,34 +280,98 @@ export class PaperFigures {
       this.figs.set(id, f);
     }
     const reduced = this.reducedQuery?.matches ?? false;
+    const action = this.motions.sample(id, now, p.moving, reduced);
+    const facing = action?.dir ?? p.dir;
 
     // a turn: left↔right plays the card flip, any other change is at once. A turn that comes
     // while a flip runs starts from the side on screen at that moment.
-    if (p.dir !== f.target) {
+    if (facing !== f.target) {
       const shown = flipAt(f.flip, now, reduced, f.target).dir;
-      f.flip = !reduced && isFlip(shown, p.dir) ? { from: shown, to: p.dir, t0: now } : null;
+      f.flip = !reduced && isFlip(shown, facing) ? { from: shown, to: facing, t0: now } : null;
       if (f.flip) f.flips += 1;
-      f.target = p.dir;
+      f.target = facing;
     }
-    const flip = flipAt(f.flip, now, reduced, p.dir);
+    const flip = flipAt(f.flip, now, reduced, facing);
     if (flip.done) f.flip = null;
 
     // the seat and the frame use the side on screen, so the lift and the art agree
-    const transitioning = now - p.poseAt < POSE_MS;
-    const { lift, dz } = seatPlacement(p.pose, flip.dir, transitioning);
-    const frame = frameName(flip.dir, p.pose, p.moving, now, p.poseAt, POSE_MS);
+    const transitioning = p.poseAt > 0 && now - p.poseAt < POSE_MS;
+    let { lift, dz } = seatPlacement(p.pose, flip.dir, transitioning);
+    if (transitioning && !reduced) {
+      const seat = seatPlacement('sit', flip.dir, false);
+      const k = Math.max(0, Math.min(1, (now - p.poseAt) / POSE_MS));
+      lift = seat.lift * (p.pose === 'sit' ? k : 1 - k);
+      dz = seat.dz * (p.pose === 'sit' ? k : 1 - k);
+    }
+    let frame = frameName(flip.dir, p.pose, p.moving, now, p.poseAt, POSE_MS);
     const cell = frameCell(flip.dir, p.pose, p.moving, now, p.poseAt, POSE_MS);
     const uv = cellUv(cell.col, cell.row, this.scale);
     f.tex.offset.set(uv.offsetX, uv.offsetY);
     f.tex.repeat.set(uv.repeatX, uv.repeatY);
 
+    let scaleX = 1,
+      scaleY = 1;
+    const clip = f.speaking ? 'talk' : 'idle';
+    const phase =
+      (now + Array.from(id).reduce((n, ch) => n + ch.charCodeAt(0) * 97, 0)) % motionDuration(clip);
+    const transition =
+      transitioning && !reduced
+        ? {
+            clip: p.pose === 'sit' ? ('sitDown' as const) : ('standUp' as const),
+            frame: motionFrameAt(p.pose === 'sit' ? 'sitDown' : 'standUp', now - p.poseAt, POSE_MS),
+          }
+        : null;
+    const motion =
+      transition ??
+      action ??
+      (!p.moving && !transitioning && !reduced
+        ? { clip, frame: motionFrameAt(clip, phase) }
+        : null);
+    if (motion) {
+      const motionKey = `${flip.dir}|${p.pose}|${motion.clip}|${motion.frame}|${'tier' in motion ? motion.tier : 0}`;
+      if (f.motionKey !== motionKey) {
+        const canvas = motionCanvas(`${f.look}|${motionKey}`, () =>
+          paperMotionFrame(
+            avatar,
+            flip.dir,
+            p.pose === 'sit' && !transition ? 'sit' : 'walk',
+            motion,
+            this.scale,
+          ),
+        );
+        if (!f.motionTexture) {
+          // Never draw into a cached canvas when this figure advances to its next pose.
+          const target = document.createElement('canvas');
+          target.width = canvas.width;
+          target.height = canvas.height;
+          f.motionTexture = new THREE.CanvasTexture(target);
+          f.motionTexture.colorSpace = THREE.SRGBColorSpace;
+          f.motionTexture.magFilter = THREE.NearestFilter;
+          f.motionTexture.minFilter = THREE.NearestFilter;
+          f.motionTexture.generateMipmaps = false;
+        }
+        const target = f.motionTexture.image as HTMLCanvasElement;
+        const ctx = target.getContext('2d')!;
+        ctx.clearRect(0, 0, target.width, target.height);
+        ctx.drawImage(canvas, 0, 0);
+        f.motionTexture.needsUpdate = true;
+        f.motionKey = motionKey;
+      }
+      const { cw, ch } = paperCellSize(this.scale);
+      const canvas = f.motionTexture!.image as HTMLCanvasElement;
+      scaleX = canvas.width / cw;
+      scaleY = canvas.height / ch;
+      f.mat.map = f.motionTexture!;
+      if (action) frame = `${action.clip}-${flip.dir}-${action.frame}`;
+    } else f.mat.map = f.tex;
+
     // the floor point moves; the card is lifted onto the seat; the shadow stays on the floor
     f.group.position.set(p.x / TILE, p.elev ?? 0, p.y / TILE + dz);
-    f.card.position.y = lift;
+    f.card.position.y = lift + PAD_BOTTOM * (scaleY - 1);
     // the shadow and the ring stay under the seat (the floor point), not under the shifted card
     f.shadow.position.z = -dz;
     f.ring.position.z = -dz;
-    f.card.scale.x = flip.scaleX;
+    f.card.scale.set(flip.scaleX * scaleX, scaleY, 1);
     f.info = { frame, scaleX: flip.scaleX, flips: f.flips, lift, dir: flip.dir };
   }
 
@@ -276,7 +387,10 @@ export class PaperFigures {
   /** The speaking ring on the floor around the feet. */
   setSpeaking(id: string, on: boolean): void {
     const f = this.figs.get(id);
-    if (f) f.ring.visible = on;
+    if (f) {
+      f.ring.visible = on;
+      f.speaking = on;
+    }
   }
 
   info(id: string): FigureInfo | null {
@@ -317,6 +431,7 @@ export class PaperFigures {
 
   /** Remove every figure whose id is not in `ids`. */
   keep(ids: Set<string>): void {
+    this.motions.keep(ids);
     for (const [id, f] of this.figs) {
       if (ids.has(id)) continue;
       this.drop(f);
@@ -329,6 +444,7 @@ export class PaperFigures {
     this.disposed = true;
     for (const f of this.figs.values()) this.drop(f);
     this.figs.clear();
+    this.motions.clear();
     releaseShared();
   }
 
@@ -376,6 +492,7 @@ export class PaperFigures {
       shadowMat,
       ring,
       alpha: 1,
+      speaking: false,
       target: dir,
       flip: null,
       flips: 0,
@@ -389,6 +506,7 @@ export class PaperFigures {
     f.shadowMat.dispose();
     // the clone goes before the sheet, which is freed with its last figure
     f.tex.dispose();
+    f.motionTexture?.dispose();
     releaseSheet(f.look);
   }
 }

@@ -562,6 +562,8 @@ export type S2CMsg =
    * way they faced, `tier` the tool's tier (1 to 3).
    */
   | { t: 'world:swing'; id: string; dir: Dir; tier: number }
+  /** Accepted activity, visible to nearby peers; replayed/refused requests never animate peers. */
+  | { t: 'world:action'; id: string; kind: ActionKind; dir: Dir; at?: { x: number; y: number }; tier?: number; speed?: number }
   /**
    * SFU backend (ADR-031): the media rooms the server places me in, with fresh
    * tokens (used when (re)connecting; a live connection is kept). `zone` null =

@@ -1,21 +1,12 @@
 /**
- * Procedural avatars (placeholder for LPC layers, ADR-011) and personalised desk
+ * Layered pixel avatars and personalised desk
  * decor sprites. Avatar sheet: 32×40 frames; rows 0–3 walk (down, left, right, up)
  * × 4 frames; row 4 crouch and row 5 seated, one column per direction.
  */
-import {
-  ACCESSORIES,
-  BOTTOM_COLORS,
-  HAIR_COLORS,
-  HAIR_STYLES,
-  LAMP_COLORS,
-  POSTERS,
-  SKIN_TONES,
-  TOP_COLORS,
-  type Avatar,
-} from '@agora/shared';
+import { LAMP_COLORS, POSTERS, type Avatar } from '@agora/shared';
 import { DECOR_PLANTS, DECOR_SPRITES, PALETTES, rect, shade, type Ctx } from './tiles';
 import { drawSprite } from './sprites';
+import { wardrobeFrame } from './wardrobeArt';
 
 export const AV_W = 32;
 export const AV_H = 40;
@@ -29,162 +20,9 @@ function drawAvatarFrame(
   frame: number,
   pose: 'walk' | 'crouch' | 'sit' = 'walk',
 ) {
-  const skin = SKIN_TONES[a.skin]!;
-  const hairCol = HAIR_COLORS[a.hairColor]!;
-  const top = TOP_COLORS[a.top]!;
-  const bottom = BOTTOM_COLORS[a.bottom]!;
-  const style = HAIR_STYLES[a.hair]!;
-  const acc = ACCESSORIES[a.accessory]!;
-  const side = dir === 'left' || dir === 'right';
-  const flip = dir === 'left';
-  const X = (x: number, w = 1) => (flip ? AV_W - x - w : x);
-  const R = (x: number, y: number, w: number, h: number, col: string) =>
-    rect(c, X(x, w), y, w, h, col);
-  // walk cycle: 0 stand, 1 left step, 2 stand, 3 right step
-  const stepL = frame === 1 ? -2 : frame === 3 ? 1 : 0;
-  const stepR = frame === 3 ? -2 : frame === 1 ? 1 : 0;
-  const low = pose === 'sit' ? 5 : pose === 'crouch' ? 3 : 0;
-  const bob = (frame === 1 || frame === 3 ? -1 : 0) + low;
-
-  // shadow
-  c.fillStyle = 'rgba(16,24,32,0.28)';
-  c.beginPath();
-  c.ellipse(16, 38, 9, 3, 0, 0, Math.PI * 2);
-  c.fill();
-
-  // legs + shoes
-  if (pose === 'sit') {
-    if (dir === 'down') {
-      R(11, 31, 4, 4, bottom);
-      R(17, 31, 4, 4, bottom);
-      R(11, 35, 4, 2, '#22262b');
-      R(17, 35, 4, 2, '#22262b');
-    } else if (side) {
-      R(14, 31, 9, 4, bottom);
-      R(20, 33, 4, 4, shade(bottom, -0.05));
-      R(20, 36, 6, 2, '#22262b');
-    }
-  } else {
-    const k = low;
-    if (side) {
-      R(13, 30 + bob, 4, 6 + stepL - k, shade(bottom, -0.05));
-      R(16, 30 + bob, 4, 6 + stepR - k, bottom);
-      R(13, 35 + bob + stepL - k, 5, 2, '#22262b');
-      R(16, 35 + bob + stepR - k, 6, 2, '#2b3036');
-    } else {
-      R(11, 30 + bob, 4, 6 + stepL - k, bottom);
-      R(17, 30 + bob, 4, 6 + stepR - k, bottom);
-      R(11, 35 + bob + stepL - k, 4, 2, '#22262b');
-      R(17, 35 + bob + stepR - k, 4, 2, '#22262b');
-    }
-  }
-  // torso
-  const ty = 20 + bob;
-  R(10, ty, 12, 11, top);
-  R(10, ty, 12, 2, shade(top, 0.08));
-  R(10, ty + 9, 12, 2, shade(top, -0.1));
-  // arms
-  if (side) {
-    const swing = pose !== 'walk' ? 0 : frame === 1 ? -1 : frame === 3 ? 1 : 0;
-    R(14 + swing, ty + 1, 4, 8, shade(top, -0.08));
-    R(14 + swing, ty + 9, 4, 2, skin);
-  } else {
-    const sw = pose !== 'walk' ? 0 : frame === 1 ? 1 : frame === 3 ? -1 : 0;
-    R(7, ty + 1 + sw, 3, 8, shade(top, -0.08));
-    R(22, ty + 1 - sw, 3, 8, shade(top, -0.08));
-    R(7, ty + 9 + sw, 3, 2, skin);
-    R(22, ty + 9 - sw, 3, 2, skin);
-  }
-  // head
-  const hy = 7 + bob;
-  R(9, hy + 1, 14, 12, skin);
-  R(10, hy, 12, 14, skin);
-  R(10, hy + 12, 12, 1, shade(skin, -0.08));
-  // face
-  if (dir === 'down') {
-    R(12, hy + 7, 2, 2, '#1d2228');
-    R(18, hy + 7, 2, 2, '#1d2228');
-    R(14, hy + 10, 4, 1, shade(skin, -0.2));
-  } else if (side) {
-    R(18, hy + 7, 2, 2, '#1d2228');
-    R(21, hy + 8, 2, 2, shade(skin, -0.06));
-  }
-  // hair
-  const H = (x: number, y: number, w: number, h: number) => R(x, hy + y, w, h, hairCol);
-  const Hd = (x: number, y: number, w: number, h: number) =>
-    R(x, hy + y, w, h, shade(hairCol, -0.08));
-  if (style !== 'none') {
-    if (style === 'buzz') {
-      H(10, -1, 12, 3);
-      if (dir === 'up') H(9, 1, 14, 6);
-      else {
-        H(9, 1, 2, 3);
-        H(21, 1, 2, 3);
-      }
-    } else {
-      H(10, -2, 12, 3);
-      H(9, 0, 14, 4);
-      if (dir === 'up') H(9, 2, 14, 9);
-      else if (side) {
-        H(9, 3, 7, 4);
-        H(9, 3, 3, 7);
-      } else {
-        H(9, 3, 2, 4);
-        H(21, 3, 2, 4);
-        H(11, 3, 5, 2);
-      }
-      if (style === 'long') {
-        if (dir === 'up') H(9, 2, 14, 16);
-        else if (side) H(9, 3, 4, 15);
-        else {
-          H(8, 3, 3, 14);
-          H(21, 3, 3, 14);
-        }
-      }
-      if (style === 'bun') {
-        H(13, -6, 6, 5);
-        Hd(14, -5, 4, 1);
-      }
-      if (style === 'curly') {
-        for (const [x, y] of [
-          [8, -1],
-          [12, -3],
-          [16, -3],
-          [20, -1],
-          [8, 4],
-          [22, 4],
-        ] as const)
-          H(x, y, 3, 3);
-        Hd(11, -1, 2, 1);
-        Hd(18, -1, 2, 1);
-      }
-    }
-  }
-  // accessories
-  if (acc === 'glasses' && dir !== 'up') {
-    if (side) {
-      R(17, hy + 6, 5, 4, '#1d2228');
-      R(18, hy + 7, 3, 2, '#9fd0ee');
-      R(12, hy + 7, 5, 1, '#1d2228');
-    } else {
-      R(11, hy + 6, 4, 4, '#1d2228');
-      R(17, hy + 6, 4, 4, '#1d2228');
-      R(12, hy + 7, 2, 2, '#9fd0ee');
-      R(18, hy + 7, 2, 2, '#9fd0ee');
-      R(15, hy + 7, 2, 1, '#1d2228');
-    }
-  } else if (acc === 'beanie') {
-    R(9, hy - 3, 14, 6, '#c2364b');
-    R(9, hy + 2, 14, 2, '#9e2a3c');
-    R(14, hy - 5, 4, 2, '#f3f6f8');
-  } else if (acc === 'headphones') {
-    R(9, hy - 3, 14, 2, '#2b333b');
-    if (side) R(13, hy + 4, 4, 6, '#2b333b');
-    else {
-      R(7, hy + 4, 3, 6, '#2b333b');
-      R(22, hy + 4, 3, 6, '#2b333b');
-    }
-  }
+  const art = wardrobeFrame(a, dir, pose, frame);
+  c.imageSmoothingEnabled = false;
+  c.drawImage(art, 0, 0, AV_W, AV_H);
 }
 
 export function makeAvatarCanvas(a: Avatar): HTMLCanvasElement {
@@ -213,7 +51,10 @@ export function makeAvatarCanvas(a: Avatar): HTMLCanvasElement {
 
 /** Single front-facing frame, scaled, for the avatar editor and presence list. */
 export function avatarPreviewDataUrl(a: Avatar, scale = 3): string {
-  const sheet = makeAvatarCanvas(a);
+  const sheet = document.createElement('canvas');
+  sheet.width = AV_W;
+  sheet.height = AV_H;
+  drawAvatarFrame(sheet.getContext('2d')!, a, 'down', 0);
   const cv = document.createElement('canvas');
   cv.width = AV_W * scale;
   cv.height = AV_H * scale;

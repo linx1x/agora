@@ -48,6 +48,9 @@ for (const backend of [memory, postgres]) {
       await waitFor(() => swings(near.c).length === 1);
       expect(swings(near.c)[0]).toEqual({ t: 'world:swing', id: 'owner', dir: owner.m.d, tier: 1 });
       expect(swings(owner.c)).toHaveLength(0);
+      expect(owner.c.of('world:action')).toHaveLength(0);
+
+      expect(near.c.of('world:action')).toEqual([{t:'world:action',id:'owner',kind:'till',dir:owner.m.d,at:spot,tier:1,speed:1}]);
 
       // a refused action (a seed is not a tool for tilling) swings nothing
       act(room, owner.m, 2, 'swing-refused', 'till', 'dawn_radish_seed', spot);
@@ -57,10 +60,14 @@ for (const backend of [memory, postgres]) {
       expect(await reply(owner.c, 3)).toMatchObject({ t: 'world:acted', op: 3 });
       expect(swings(near.c)).toHaveLength(1);
 
+      expect(near.c.of('world:action')).toHaveLength(1);
+
       // a seed is planted by hand, not swung: no tool, no swing
       act(room, owner.m, 4, 'swing-plant', 'plant', 'dawn_radish_seed', spot);
       expect((await reply(owner.c, 4)).t).toBe('world:acted');
       expect(swings(near.c)).toHaveLength(1);
+      expect(near.c.of('world:action')).toHaveLength(2);
+      expect(near.c.of('world:action')[1]).toMatchObject({kind:'plant',at:spot});
       room.leave(near.m);
       room.leave(owner.m);
     });
@@ -80,6 +87,7 @@ for (const backend of [memory, postgres]) {
       act(room, owner.m, 1, 'swing-w1-only', 'till', 'hoe_1', spot);
       expect((await reply(owner.c, 1)).t).toBe('world:acted');
       expect(swings(guest.c)).toHaveLength(0);
+      expect(guest.c.of('world:action')).toHaveLength(0);
       expect(swings(owner.c)).toHaveLength(0);
       room.leave(owner.m);
       other.leave(guest.m);

@@ -178,3 +178,13 @@ describe('WorldSession: a cave (P17.32)', () => {
   });
 });
 
+
+it('forwards accepted peer actions and matching refusal tokens, and stops after leaving', () => {
+ const {s}=open();const listener=vi.fn();const off=s.onAction(listener);
+ s.handle({t:'world:action',id:'peer',kind:'water',dir:'left',at:{x:2,y:3},tier:2,speed:1.2});
+ expect(listener).toHaveBeenLastCalledWith(expect.objectContaining({id:'peer',kind:'water',tier:2}));
+ s.handle({t:'world:refused',op:7,reason:'missing'});
+ expect(listener).toHaveBeenLastCalledWith({id:'me',kind:null,token:7});
+ s.stop();s.handle({t:'world:action',id:'peer',kind:'plant',dir:'up'});expect(listener).toHaveBeenCalledTimes(2);
+ off();
+});

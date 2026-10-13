@@ -12,6 +12,9 @@ import {
   worldTerrainFor,
   type WorldTerrain,
   type ChunkDelta,
+  type ActionKind,
+  type Emote,
+  type CellRef,
   type Dir,
   type PlotState,
   type S2CMsg,
@@ -32,6 +35,16 @@ export interface WorldSwing {
   readonly id: string;
   readonly dir: Dir;
   readonly tier: number;
+}
+
+export interface WorldAction {
+  readonly id: string;
+  readonly kind: ActionKind | Emote | 'talk' | null;
+  readonly dir?: Dir;
+  readonly at?: CellRef;
+  readonly tier?: number;
+  readonly speed?: number;
+  readonly token?: number;
 }
 
 export class WorldSession {
@@ -58,6 +71,14 @@ export class WorldSession {
   private serial = 0;
   private readonly listeners = new Set<(change: WorldChange) => void>();
   private readonly swingListeners = new Set<(swing: WorldSwing) => void>();
+
+  private readonly actionListeners = new Set<(action: WorldAction) => void>();
+  onAction(fn: (action: WorldAction) => void): () => void {
+    this.actionListeners.add(fn); return () => this.actionListeners.delete(fn);
+  }
+  animate(action: WorldAction): void {
+    if(this.active)for(const fn of this.actionListeners)fn(action);
+  }
 
   get active(): boolean {
     return this.worldId !== null;
@@ -155,6 +176,18 @@ export class WorldSession {
         this.time = m.time;
         this.weather = m.weather ?? null;
         this.emit('time');
+        return;
+      case 'world:action':
+        this.animate(m);
+        return;
+      case 'world:refused':
+        this.animate({id:this.you,kind:null,token:m.op});
+        return;
+      case 'emote':
+        this.animate({id:m.id,kind:m.emote});
+        return;
+      case 'chat':
+        if(m.msg.scope==='nearby')this.animate({id:m.msg.from,kind:'talk'});
         return;
       case 'world:swing':
         for (const fn of this.swingListeners) fn({ id: m.id, dir: m.dir, tier: m.tier });

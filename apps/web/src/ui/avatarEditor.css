@@ -1,0 +1,212 @@
+.wardrobe-dialog {
+  background: #f7f2e6;
+  color: #343d31;
+  border: 1px solid #c7c6aa;
+}
+.wardrobe-dialog .wardrobe-intro {
+  color: #64705b;
+  margin: 0 0 20px;
+  font-size: 14px;
+}
+.wardrobe-dialog .avatar-editor {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  gap: 24px;
+}
+.wardrobe-dialog .avatar-preview {
+  align-self: start;
+  padding: 22px 14px;
+  color: #efe5c6;
+  background: radial-gradient(ellipse at 50% 56%, #778864 0, #455e45 48%, #263d32 100%);
+  border: 1px solid #51694b;
+  border-radius: 14px;
+  position: sticky;
+  top: 0;
+}
+.wardrobe-eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 10px;
+  font-weight: 700;
+}
+.avatar-motion-control {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  font-size: 12px;
+}
+.avatar-motion-control select {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #b6b992;
+  border-radius: 7px;
+  background: #f6edcf;
+  color: #354431;
+  font: inherit;
+}
+.wardrobe-dialog .avatar-previews.avatar-animated .avatar-paper-img {
+  width: 268px;
+  max-width: none;
+}
+.wardrobe-dialog .avatar-animated .avatar-fig + .avatar-fig {
+  display: none;
+}
+.wardrobe-dialog .avatar-previews {
+  min-height: 255px;
+  flex-wrap: nowrap;
+  gap: 0;
+  width: 100%;
+  color: #ede5ce;
+  background: radial-gradient(ellipse 75px 12px at 44% 91%, #253e32aa 0, transparent 100%);
+}
+.wardrobe-dialog .avatar-previews .avatar-paper-img {
+  image-rendering: pixelated;
+  width: 168px;
+  height: auto;
+}
+.wardrobe-dialog .avatar-fig + .avatar-fig {
+  margin-left: -12px;
+  margin-bottom: 12px;
+  opacity: 0.85;
+}
+.wardrobe-dialog .avatar-fig figcaption {
+  font-size: 11px;
+}
+.wardrobe-dialog .avatar-turn-row {
+  color: #efe5c6;
+}
+.wardrobe-dialog .avatar-preview .btn {
+  background: #f6edcf;
+  border-color: #d6c393;
+  color: #354431;
+}
+.wardrobe-dialog .avatar-fields {
+  min-width: 0;
+  gap: 12px;
+}
+.wardrobe-dialog .field input {
+  background: #fffdf7;
+  color: #343d31;
+  border: 1px solid #c6cbb5;
+}
+.wardrobe-groups {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 10px;
+  background: #e6e8d9;
+}
+.wardrobe-groups button {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  border-radius: 7px;
+  padding: 9px 5px;
+  font: inherit;
+  font-size: 13px;
+  color: #53634d;
+  background: transparent;
+  cursor: pointer;
+}
+.wardrobe-groups button[aria-pressed='true'] {
+  background: #354e3e;
+  color: #fff4d8;
+  box-shadow: 0 2px 4px #263d321a;
+}
+.wardrobe-options {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.wardrobe-dialog .picker {
+  grid-template-columns: minmax(90px, 1fr) 28px minmax(86px, 110px) 28px;
+  padding: 8px 0;
+  border-bottom: 1px solid #dce0cd;
+  gap: 2px;
+}
+.wardrobe-dialog .picker .icon-btn {
+  color: #3b533d;
+  width: 28px;
+  min-width: 28px;
+  height: 30px;
+  padding: 4px;
+}
+.wardrobe-dialog .picker .icon-btn:hover {
+  background: #e2e6d5;
+}
+.wardrobe-dialog .picker-label {
+  font-size: 13px;
+}
+.wardrobe-dialog .picker-value {
+  font-size: 12px;
+}
+.wardrobe-swatches {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 2px 2px;
+}
+.wardrobe-swatches button {
+  width: 27px;
+  height: 27px;
+  border: 2px solid #fff7e3;
+  outline: 1px solid #b5bda7;
+  border-radius: 50%;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+.wardrobe-swatches button[aria-pressed='true'] {
+  outline: 2px solid #3d573c;
+  outline-offset: 2px;
+}
+.wardrobe-swatches button span {
+  color: white;
+  text-shadow:
+    0 1px 2px #000,
+    1px 0 2px #000;
+  font-size: 13px;
+}
+.wardrobe-hint {
+  color: #6c7560;
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 2px 0 0;
+}
+.wardrobe-dialog .dialog-actions {
+  border-top: 1px solid #d6dcc8;
+  padding-top: 14px;
+}
+.wardrobe-dialog .dialog-actions .primary {
+  background: #354e3e;
+  color: #fff4d8;
+  border-color: #354e3e;
+}
+.wardrobe-dialog button:focus-visible {
+  outline: 3px solid #b77c31;
+  outline-offset: 3px;
+}
+@media (max-width: 640px) {
+  .wardrobe-dialog {
+    padding: 16px;
+  }
+  .wardrobe-dialog .avatar-editor {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+  .wardrobe-dialog .avatar-preview {
+    position: static;
+    padding: 14px;
+    gap: 8px;
+  }
+  .wardrobe-dialog .avatar-previews {
+    min-height: 0;
+  }
+  .wardrobe-dialog .avatar-previews .avatar-paper-img {
+    width: 112px;
+  }
+  .wardrobe-dialog .avatar-fig + .avatar-fig {
+    margin-left: 10px;
+  }
+}

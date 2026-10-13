@@ -14,7 +14,7 @@ import { worldHud } from '../ui/hudState';
 import { faceCell } from '../inputActs';
 import * as use from '../use';
 import { liveUse } from '../useLive';
-import { speedOfTier, swingDurationMs } from '../tools/swing';
+import { BASE_SWING_MS, speedOfTier, swingDurationMs } from '../tools/swing';
 import { farmSprites, type FarmSprites } from '../farmArt';
 import {
   CHUNK_SIZE,
@@ -22,6 +22,8 @@ import {
   rainWaters,
   animalsShelter,
   baseItemOf,
+  loadGameData,
+  toolOf,
   type CellRef,
   type Dir,
   type GridCell,
@@ -33,7 +35,8 @@ import { inputVector, isTyping } from '../../game/input';
 import { exposeTestApi, type ViewTestApi } from '../../game/view';
 import { store, toast } from '../../state/store';
 import { COMPACT_QUERY, matches } from '../../ui/layout';
-import { worldSession } from '../session';
+import { worldSession, type WorldAction } from '../session';
+import { actionFacing, motionPose, motionDuration } from '../../game/avatarMotion';
 import { WorldWalker } from '../walker';
 import { portalOfPrompt, worldPromptAt } from '../prompts';
 import { CELL, farmVisual, pickCell, type CellWindow } from '../cellMath';
@@ -314,7 +317,7 @@ export class WorldRoom3DView {
         }
       }),
     );
-    this.unsubs.push(worldSession.onSwing((s) => this.playSwing(s.id, s.dir, s.tier)));
+    this.unsubs.push(worldSession.onAction((action) => this.animateAction(action)));
     this.bindInput();
     this.bindLayout();
     this.layout();
@@ -433,11 +436,10 @@ export class WorldRoom3DView {
     };
   }
 
-  /** The input's world: the held item acts on a cell, and my own swing is played from here. */
+  /** Action submission drives both body and effects through onAction. */
   private useEnv(): use.UseEnv {
     return liveUse(
-      (at, tier, speed) =>
-        this.playSwing(worldSession.you, this.walker?.d ?? 'down', tier, true, speed, at),
+      () => {},
       (key) => toast(key),
     );
   }
@@ -693,6 +695,10 @@ export class WorldRoom3DView {
         { x, y, dir: d, moving, pose: 'stand', poseAt: 0, elev: heightOf(level) },
         now,
       );
+      this.people.setSpeaking(
+        p.id,
+        mine ? store.get().speakingSelf : !!store.get().remote[p.id]?.speaking,
+      );
       rendered.set(p.id, { x, y });
       ids.add(p.id);
     }
@@ -943,6 +949,43 @@ export class WorldRoom3DView {
     if (JSON.stringify(prompt) !== JSON.stringify(cur ?? null)) store.set({ prompt });
   }
 
+  private animateAction(action: WorldAction): void {
+    if (action.kind === null) {
+      this.people.cancelAction(action.id, action.token);
+      return;
+    }
+    const own = action.id === worldSession.you;
+    const feet = own ? this.walker : worldSession.people.get(action.id);
+    if (!feet) return;
+    if (own && action.token !== undefined) this.walker?.cancel();
+    const dir = action.at
+      ? actionFacing(feet.x, feet.y, action.at, CELL, action.dir ?? feet.d)
+      : (action.dir ?? feet.d);
+    if (own && action.at && this.walker) this.walker.d = dir;
+    // Finish remote position interpolation at the action's authoritative origin. Residual
+    // interpolation is not a new movement input and must not cancel the accepted animation.
+    if (!own && action.kind !== 'talk') this.drawn.set(action.id, { x: feet.x, y: feet.y });
+    const tool = motionPose({ clip: action.kind, frame: 0 }).tool;
+    const tier = action.tier ?? 1;
+    const speed = action.speed ?? speedOfTier(tier);
+    const duration =
+      motionDuration(action.kind, dir) *
+      (tool ? swingDurationMs({ tier, speed }) / BASE_SWING_MS : 1);
+    const now = performance.now();
+    const effect = tool
+      ? this.playSwing(action.id, dir, tier, own, speed, action.at, tool, { now, duration })
+      : undefined;
+    const played = this.people.playAction(action.id, action.kind, now, {
+      dir,
+      duration,
+      tier,
+      token: action.token,
+      onEvent: effect?.cue,
+      onCancel: effect?.cancel,
+    });
+    if (!played) effect?.cancel();
+  }
+
   /**
    * A tool swing by a person in view (P17.21b, P17.21c): mine (`own`, which shakes the view) or
    * another's. The arc starts at the hand; the sparks land on `at`, or on the cell in front of the feet.
@@ -954,25 +997,38 @@ export class WorldRoom3DView {
     own = false,
     speed = speedOfTier(tier),
     at?: CellRef,
-  ): void {
+    tool?: string,
+    clock?: { now: number; duration: number },
+  ) {
     const t = worldSession.terrain;
-    const feet = id === worldSession.you ? this.walker : rendered.get(id);
+    const feet =
+      id === worldSession.you ? this.walker : (this.drawn.get(id) ?? worldSession.people.get(id));
     if (!t || !feet) return;
     const target = at ?? faceCell(feet.x, feet.y, dir);
+    dir = actionFacing(feet.x, feet.y, target, CELL, dir);
     this.swings++;
     if (own)
       this.ownSwings.push({
         cell: { x: target.x, y: target.y },
-        endAt: performance.now() + swingDurationMs({ tier, speed }),
+        endAt:
+          (clock?.now ?? performance.now()) + (clock?.duration ?? swingDurationMs({ tier, speed })),
       });
-    this.swingFx.play(
+    return this.swingFx.play(
       {
+        bodyTool: true,
+        eventDriven: !!clock,
+        duration: clock?.duration,
         feetX: feet.x / TILE,
         feetZ: feet.y / TILE,
         floor: heightOf(this.levelAtPx(feet.x, feet.y)),
         dir,
         tier,
         speed,
+        tool:
+          tool ??
+          (own && worldHud.get().inHand
+            ? toolOf(loadGameData(), baseItemOf(worldHud.get().inHand!))?.tool
+            : undefined),
         target: {
           cx: target.x,
           cy: target.y,
@@ -982,7 +1038,7 @@ export class WorldRoom3DView {
         reduced: reducedMotion(),
         sounds: store.get().settings.sounds,
       },
-      performance.now(),
+      clock?.now ?? performance.now(),
     );
   }
   /** swings asked of this view (test hook, as in the flat view) */

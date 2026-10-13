@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { NpcPersonaSchema, type NpcPersona } from '@agora/shared';
+import { wardrobe, NpcPersonaSchema, type NpcPersona } from '@agora/shared';
 
 /**
  * The first cast (ADR-042; names are drafts). Each one is also written to `data/npcs/<id>.json`
@@ -11,7 +11,7 @@ export const DEFAULT_NPCS: NpcPersona[] = [
   {
     id: 'zoe',
     name: 'Zoé',
-    avatar: { skin: 1, hair: 1, hairColor: 5, top: 7, bottom: 3, accessory: 0 },
+    avatar: wardrobe({ skin: 1, hair: 1, hairColor: 5, top: 7, bottom: 3, accessory: 0 }),
     home: 'oasis',
     enabled: true,
     locale: 'fr-CA',
@@ -44,7 +44,7 @@ export const DEFAULT_NPCS: NpcPersona[] = [
   {
     id: 'felix',
     name: 'Félix',
-    avatar: { skin: 5, hair: 4, hairColor: 6, top: 1, bottom: 5, accessory: 1 },
+    avatar: wardrobe({ skin: 5, hair: 4, hairColor: 6, top: 1, bottom: 5, accessory: 1 }),
     home: 'zen',
     enabled: true,
     locale: 'fr-CA',
@@ -73,7 +73,7 @@ export const DEFAULT_NPCS: NpcPersona[] = [
   {
     id: 'theo',
     name: 'Théo',
-    avatar: { skin: 3, hair: 3, hairColor: 1, top: 4, bottom: 0, accessory: 3 },
+    avatar: wardrobe({ skin: 3, hair: 3, hairColor: 1, top: 4, bottom: 0, accessory: 3 }),
     home: 'jungle',
     enabled: true,
     locale: 'fr-CA',

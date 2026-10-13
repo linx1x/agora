@@ -2,11 +2,11 @@
  * P16.7 (ADR-052): layout of the paper avatar sheet, kept free of the DOM so it is unit-tested.
  * Same grid as the 2D sheet (`game/avatars.ts`) so the 2.5D view picks frames the same way:
  * rows 0–3 walk (down, left, right, up) × 4 frames; row 4 crouch and row 5 seated, one column per
- * direction. The figure is 64×96 at 1×; each cell adds a margin for the white cut-out edge.
+ * direction. The figure is 64×96 at 1×; each cell retains its original transparent padding for stable world placement.
  */
 export const PAPER_W = 64;
 export const PAPER_H = 96;
-/** margin around the figure (1× px) for the white cut-out edge and its faint shadow line */
+/** transparent margin around the figure (1× px), retained for existing UVs and anchors */
 export const PAPER_PAD = 3;
 export const PAPER_FRAMES = 4;
 export const PAPER_ROWS = 6;

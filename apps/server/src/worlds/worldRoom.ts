@@ -736,11 +736,15 @@ export class WorldRoom {
    */
   private swing(m: WorldMember, req: WorldActRequest, data: GameData): void {
     const tool = req.item ? toolOf(data, req.item) : undefined;
-    if (!tool) return;
     const at = chunkOfPoint(m.x, m.y);
     const key = chunkKey(at.cx, at.cy);
-    for (const o of this.members.values())
-      if (o !== m && o.view.has(key)) o.conn?.send({ t: 'world:swing', id: m.id, dir: m.d, tier: tool.tier });
+    for (const o of this.members.values()) {
+      if(o === m || !o.view.has(key)) continue;
+      o.conn?.send({ t: 'world:action', id: m.id, kind: req.kind, dir: m.d,
+        ...(req.at ? {at: req.at} : {}), ...(tool ? {tier: tool.tier, speed: tool.speed} : {}) });
+      // Retain the legacy effect event for clients that only understand tool swings.
+      if(tool)o.conn?.send({ t: 'world:swing', id: m.id, dir: m.d, tier: tool.tier });
+    }
   }
 
   /** A chunk's stored delta changed: this room's terrain follows it, and its viewers get it. */

@@ -155,6 +155,8 @@ interface Pending {
 }
 
 export interface ActQueueDeps {
+  /** New intents only, never reconnect resends. */
+  readonly onSubmit?: (world: string, act: ActItem, op: number) => void;
   readonly send: (m: C2SMsg) => void;
   /** a fresh idempotency key per intent (crypto.randomUUID in the app) */
   readonly newKey: () => string;
@@ -188,6 +190,7 @@ export class ActQueue {
     this.pending.set(key, entry);
     while (this.pending.size > this.limit) this.pending.delete(this.pending.keys().next().value as string);
     this.transmit(entry);
+    this.deps.onSubmit?.(world, act, entry.op);
     return key;
   }
 

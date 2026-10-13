@@ -4,7 +4,7 @@
  * (`world:welcome`, also after a reconnect) sends the unanswered intents of that world again with
  * their own keys, so the server applies each one once.
  */
-import type { C2SMsg } from '@agora/shared';
+import { baseItemOf, loadGameData, toolOf, type C2SMsg } from '@agora/shared';
 import { world as link } from '../net/client';
 import { ActQueue } from './inputActs';
 import { worldSession } from './session';
@@ -23,6 +23,12 @@ function newKey(): string {
 export const worldActs = new ActQueue({
   send: (m: C2SMsg) => link.send(m),
   newKey,
+  onSubmit: (world, act, op) => {
+    if(world !== worldSession.worldId)return;
+    const tool=act.item ? toolOf(loadGameData(),baseItemOf(act.item)) : undefined;
+    worldSession.animate({id:worldSession.you,kind:act.kind,at:act.at,token:op,
+      ...(tool ? {tier:tool.tier,speed:tool.speed} : {})});
+  },
 });
 
 link.on((m) => {
