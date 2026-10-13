@@ -29,6 +29,7 @@ export function Settings({
   const { t } = useTranslation();
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const settings = useStore((s) => s.settings);
+  const me = useStore((s) => (s.me ? s.profiles[s.me] : undefined));
   const npcTalkOn = useStore((s) => s.config?.flags.npcTalk === true);
   const npcVoiceOn = useStore((s) => s.config?.flags.npcVoice === true);
   const canUnlock = useStore(
@@ -89,6 +90,15 @@ export function Settings({
   return (
     <Dialog title={t('settings.title')} onClose={onClose}>
       <div className="stack">
+        {me && (
+          <button
+            type="button"
+            className="btn secondary"
+            onClick={() => store.set({ dialog: 'avatar' })}
+          >
+            {t('controls.editAvatar')}
+          </button>
+        )}
         {sel(
           'audioinput',
           'settings.mic',

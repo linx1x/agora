@@ -638,6 +638,7 @@ export class SpaceRoom {
     }
     const m = parsed.data;
     if (m.t === 'badge') return void this.onBadge(p, m.skill);
+    if (m.t === 'profile') return this.onProfile(p, m);
     if (p.world) return this.onWorldMessage(p, m);
     switch (m.t) {
       case 'move':
@@ -667,18 +668,6 @@ export class SpaceRoom {
       case 'media:token':
         if (!p.buckets.misc.take() || !this.gate) return;
         return void this.gate.refresh(this.gp(p));
-      case 'profile': {
-        if (!p.buckets.misc.take()) return;
-        this.setProfile(p, { name: m.name, avatar: m.avatar });
-        void this.store.upsertUser({ uid: p.uid, name: m.name, avatar: m.avatar }).catch(() => {});
-        const d = this.deskOf(p.uid);
-        if (d && d.ownerName !== m.name) {
-          d.ownerName = m.name;
-          void this.store.saveDesk(d).catch(() => {});
-          this.broadcastDesks();
-        }
-        return;
-      }
       case 'gift':
         return void this.onGift(p, m);
       case 'office:buy':
@@ -930,6 +919,24 @@ export class SpaceRoom {
     } catch (err) {
       this.log.warn({ err }, 'office purchase failed');
       reply(false, 'conflict');
+    }
+  }
+
+  /** Account appearance can be changed in the office, a personal world or a cave. */
+  private onProfile(p: Player, m: Extract<C2SMsg, { t: 'profile' }>) {
+    if (!p.buckets.misc.take()) return;
+    this.setProfile(p, { name: m.name, avatar: m.avatar });
+    if (p.world) {
+      p.world.room.updateProfile(p.world.member, m);
+      // Office broadcasts exclude people inside worlds; refresh their editor and toolbar too.
+      p.conn?.send({ t: 'profile', profile: p.profile });
+    }
+    void this.store.upsertUser({ uid: p.uid, name: m.name, avatar: m.avatar }).catch(() => {});
+    const d = this.deskOf(p.uid);
+    if (d && d.ownerName !== m.name) {
+      d.ownerName = m.name;
+      void this.store.saveDesk(d).catch(() => {});
+      this.broadcastDesks();
     }
   }
 

@@ -72,9 +72,7 @@ function useControls() {
     myDesk: useStore((s) => s.myDesk),
     canBuild: useStore((s) => s.builder && s.config?.flags.builder !== false),
     /** world tuning panel (P17.12): behind the `worlds` flag, for builders and in development */
-    canTune: useStore(
-      (s) => s.config?.flags.worlds === true && (s.builder || import.meta.env.DEV),
-    ),
+    canTune: useStore((s) => s.config?.flags.worlds === true && (s.builder || import.meta.env.DEV)),
     building: useStore((s) => !!s.build),
     spaceName: useStore((s) => s.spaceName),
     /** the owner's People page (invites, accounts), passkey mode only */
@@ -484,6 +482,13 @@ function MoreSheet({ onClose }: { onClose: () => void }) {
         <StatusChoices onDone={onClose} role="radiogroup" />
       </section>
       <div className="sheet-grid">
+        {c.me && (
+          <SheetAction
+            icon={<UserCog size={20} aria-hidden />}
+            label={t('controls.editAvatar')}
+            onClick={go(() => store.set({ dialog: 'avatar' }))}
+          />
+        )}
         {c.myDesk && (
           <SheetAction
             icon={<Home size={20} aria-hidden />}

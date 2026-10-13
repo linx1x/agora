@@ -87,9 +87,13 @@ try {
           },
         },
       },
-      dialog: 'avatar',
     });
   });
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: 'Edit my avatar', exact: true })
+    .click();
   const dialog = page.getByRole('dialog'),
     preview = page.getByTestId('avatar-paper-preview');
   await preview.waitFor();
@@ -158,7 +162,12 @@ try {
     const s = window.__agora?.store.get();
     return s?.conn === 'online' && s.profiles[s.me]?.avatar.costume === 1;
   });
-  await page.evaluate(() => window.__agora.store.set({ dialog: 'avatar' }));
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole('button', { name: 'More options', exact: true }).click();
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: 'Edit my avatar', exact: true })
+    .click();
   await preview.waitFor();
   assert.equal(
     await preview.getAttribute('src'),

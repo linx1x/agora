@@ -873,6 +873,29 @@ describe('SpaceRoom: personal worlds (P17.9, ADR-053)', () => {
     expect(cb.of('chat').map((m) => m.msg.body)).not.toContain('from the world');
   });
 
+  it('saves avatar edits inside a world and updates the owner, visitors and later sign-ins', async () => {
+    await enter(owner);
+    place(room, c, cellPos(map, spot.guest));
+    await enter(c);
+    expect(c.world?.room).toBe(owner.world?.room);
+    const member = owner.world!.member;
+    const position = { x: member.x, y: member.y, d: member.d };
+    const avatar = { ...owner.profile.avatar, hair: 8, shoes: 2, costume: 3 };
+    room.handle(owner, { t: 'profile', name: 'Alice Ranger', avatar });
+    await settle();
+    expect(member).toMatchObject({ ...position, name: 'Alice Ranger', avatar });
+    expect(co.of('profile').at(-1)?.profile).toMatchObject({ name: 'Alice Ranger', avatar });
+    for (const conn of [co, cc])
+      expect(conn.of('world:join').at(-1)?.person).toMatchObject({ id: owner.id, ...position, avatar });
+    expect(cb.of('world:join')).toHaveLength(0);
+    expect(await store.getUser(OWNER)).toMatchObject({ name: 'Alice Ranger', avatar });
+    room.handle(owner, { t: 'world:leave' });
+    expect(owner.profile.avatar).toMatchObject(avatar);
+    room.remove(owner);
+    const rejoined = (await room.join(new FakeConn(), { uid: OWNER, name: 'Alice Ranger' }))!;
+    expect(rejoined.profile.avatar).toMatchObject(avatar);
+  });
+
   it('office-only messages do nothing inside a world', async () => {
     await enter(owner);
     const seen = cc.msgs.length;

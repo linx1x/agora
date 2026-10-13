@@ -470,6 +470,15 @@ export class WorldRoom {
       });
   }
 
+  /** Refresh the existing person without changing their position or world membership. */
+  updateProfile(m: WorldMember, profile: { name: string; avatar: Avatar }): void {
+    if (this.disposed || this.members.get(m.id) !== m) return;
+    m.name = profile.name;
+    m.avatar = profile.avatar;
+    for (const person of this.members.values())
+      person.conn?.send({ t: 'world:join', person: personOf(m) });
+  }
+
   /** A fresh media token for someone who asked again (the SFU connection dropped for good). */
   refreshMedia(m: WorldMember): void {
     if (this.members.get(m.id) === m) void this.grant(m);
